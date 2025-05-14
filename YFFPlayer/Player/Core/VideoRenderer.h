@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RendererCallback.h"
-
 #include <cstdint>
+
+#include "RendererCallback.h"
 
 namespace yffplayer {
 // 像素格式枚举

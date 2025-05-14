@@ -1,4 +1,5 @@
 #include "BufferQueue.h"
+
 #include "AudioFrame.h"
 #include "VideoFrame.h"
 
@@ -8,14 +9,14 @@ extern "C" {
 
 namespace yffplayer {
 
-template<typename T>
+template <typename T>
 BufferQueue<T>::BufferQueue(size_t maxSize) : mMaxSize(maxSize) {
     if (maxSize == 0) {
         throw std::invalid_argument("Queue size must be greater than 0");
     }
 }
 
-template<typename T>
+template <typename T>
 void BufferQueue<T>::push(const T& item) {
     std::unique_lock<std::mutex> lock(mMutex);
     mNotFull.wait(lock, [this]() { return mQueue.size() < mMaxSize; });
@@ -25,7 +26,7 @@ void BufferQueue<T>::push(const T& item) {
     mNotEmpty.notify_one();
 }
 
-template<typename T>
+template <typename T>
 T BufferQueue<T>::pop() {
     std::unique_lock<std::mutex> lock(mMutex);
     mNotEmpty.wait(lock, [this]() { return !mQueue.empty(); });
@@ -37,7 +38,7 @@ T BufferQueue<T>::pop() {
     return item;
 }
 
-template<typename T>
+template <typename T>
 bool BufferQueue<T>::tryPush(const T& item) {
     std::unique_lock<std::mutex> lock(mMutex, std::try_to_lock);
     if (!lock.owns_lock() || mQueue.size() >= mMaxSize) {
@@ -50,7 +51,7 @@ bool BufferQueue<T>::tryPush(const T& item) {
     return true;
 }
 
-template<typename T>
+template <typename T>
 bool BufferQueue<T>::tryPop(T& item) {
     std::unique_lock<std::mutex> lock(mMutex, std::try_to_lock);
     if (!lock.owns_lock() || mQueue.empty()) {
@@ -64,25 +65,25 @@ bool BufferQueue<T>::tryPop(T& item) {
     return true;
 }
 
-template<typename T>
+template <typename T>
 size_t BufferQueue<T>::size() const {
     std::lock_guard<std::mutex> lock(mMutex);
     return mQueue.size();
 }
 
-template<typename T>
+template <typename T>
 bool BufferQueue<T>::empty() const {
     std::lock_guard<std::mutex> lock(mMutex);
     return mQueue.empty();
 }
 
-template<typename T>
+template <typename T>
 bool BufferQueue<T>::full() const {
     std::lock_guard<std::mutex> lock(mMutex);
     return mQueue.size() >= mMaxSize;
 }
 
-template<typename T>
+template <typename T>
 void BufferQueue<T>::clear() {
     std::lock_guard<std::mutex> lock(mMutex);
     while (!mQueue.empty()) {
@@ -98,4 +99,4 @@ template class BufferQueue<std::shared_ptr<VideoFrame>>;
 // 数据包
 template class BufferQueue<AVPacket*>;
 
-} // namespace yffplayer
+}  // namespace yffplayer

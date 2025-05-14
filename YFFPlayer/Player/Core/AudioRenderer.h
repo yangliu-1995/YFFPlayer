@@ -1,9 +1,9 @@
 #pragma once
 
-#include "RendererCallback.h"
-
 #include <cstdint>
 #include <memory>
+
+#include "RendererCallback.h"
 
 namespace yffplayer {
 struct AudioFrame;

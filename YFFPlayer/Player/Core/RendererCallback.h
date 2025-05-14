@@ -8,8 +8,8 @@ class AudioFrame;
 class VideoFrame;
 
 // 视频渲染回调接口
-class RendererCallback: public std::enable_shared_from_this<RendererCallback> {
-public:
+class RendererCallback : public std::enable_shared_from_this<RendererCallback> {
+   public:
     virtual ~RendererCallback() = default;
 
     // 通知播放器视频帧开始渲染，用于更新视频时钟
@@ -21,4 +21,4 @@ public:
     // 可扩展更多功能，例如渲染延迟通知、帧队列耗尽等
 };
 
-} // namespace yffplayer
+}  // namespace yffplayer

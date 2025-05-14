@@ -3,7 +3,6 @@
 #include <chrono>
 #include <thread>
 
-// 假设使用FFmpeg库
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
@@ -24,7 +23,7 @@ AudioDecoder::AudioDecoder(
 
 AudioDecoder::~AudioDecoder() { close(); }
 
-bool AudioDecoder::open(AVCodecParameters *codecParam) {
+bool AudioDecoder::open(AVCodecParameters* codecParam) {
     // 查找解码器
     const AVCodec* decoder = avcodec_find_decoder(codecParam->codec_id);
     if (!decoder) {
@@ -40,7 +39,8 @@ bool AudioDecoder::open(AVCodecParameters *codecParam) {
         return false;
     }
 
-    if (avcodec_parameters_to_context((AVCodecContext*)mCodecContext, codecParam) < 0) {
+    if (avcodec_parameters_to_context((AVCodecContext*)mCodecContext,
+                                      codecParam) < 0) {
         mLogger->log(LogLevel::Error, "AudioDecoder", "无法设置解码器参数");
         avcodec_free_context((AVCodecContext**)&mCodecContext);
         return false;
@@ -135,8 +135,8 @@ bool AudioDecoder::resampleAudio(void* srcData, int srcSamples,
     }
 
     // 计算目标采样数
-    dstSamples = av_rescale_rnd(srcSamples, kAudioTargetSampleRate, srcSampleRate,
-                                AV_ROUND_UP);
+    dstSamples = av_rescale_rnd(srcSamples, kAudioTargetSampleRate,
+                                srcSampleRate, AV_ROUND_UP);
 
     // 执行重采样
     int ret = swr_convert(swr, (uint8_t**)&dstData, dstSamples,
@@ -160,8 +160,9 @@ void AudioDecoder::decodeLoop() {
             // 首先检查输出帧缓冲区是否已满
             if (mFrameBuffer->full()) {
                 // 如果缓冲区已满，睡眠一段时间后继续
-//                mLogger->log(LogLevel::Warning, "AudioDecoder",
-//                                "缓冲区已满，等待数据处理");
+                //                mLogger->log(LogLevel::Warning,
+                //                "AudioDecoder",
+                //                                "缓冲区已满，等待数据处理");
                 av_usleep(10000);  // 10毫秒 = 10000微秒
                 continue;
             }
@@ -213,8 +214,8 @@ void AudioDecoder::decodeLoop() {
                 // 分配重采样后的数据缓冲区
                 int64_t dstSamples = 0;
                 int dstBufferSize = av_samples_get_buffer_size(
-                                                               nullptr, kAudioTargetChannels, avFrame->nb_samples * 2,
-                                                               AV_SAMPLE_FMT_S16, 0);
+                    nullptr, kAudioTargetChannels, avFrame->nb_samples * 2,
+                    AV_SAMPLE_FMT_S16, 0);
                 uint8_t* dstData = (uint8_t*)av_malloc(dstBufferSize);
 
                 // 执行重采样
@@ -223,8 +224,8 @@ void AudioDecoder::decodeLoop() {
                                   dstData, dstSamples)) {
                     // 设置重采样后的参数
                     audioFrame->data = dstData;
-                    audioFrame->size =
-                    dstSamples * kAudioTargetChannels * (kAudioTargetBitDepth / 8);
+                    audioFrame->size = dstSamples * kAudioTargetChannels *
+                                       (kAudioTargetBitDepth / 8);
                     audioFrame->channels = kAudioTargetChannels;
                     audioFrame->sampleRate = kAudioTargetSampleRate;
                     audioFrame->bitDepth = kAudioTargetBitDepth;

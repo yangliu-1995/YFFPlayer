@@ -14,12 +14,11 @@ class AudioDecoder : public Decoder {
    public:
     AudioDecoder(
         std::shared_ptr<BufferQueue<AVPacket*>> packetBuffer,
-        std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>>
-            frameBuffer,
+        std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> frameBuffer,
         std::shared_ptr<Logger> logger);
     ~AudioDecoder() override;
 
-    bool open(AVCodecParameters *codecParam) override;
+    bool open(AVCodecParameters* codecParam) override;
     void start() override;
     void stop() override;
     void close() override;

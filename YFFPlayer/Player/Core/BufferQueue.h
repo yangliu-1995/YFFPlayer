@@ -1,21 +1,21 @@
 #pragma once
 
-#include <queue>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <queue>
 #include <stdexcept>
 
 namespace yffplayer {
-template<typename T>
+template <typename T>
 class BufferQueue {
-private:
+   private:
     std::queue<T> mQueue;
     mutable std::mutex mMutex;
     std::condition_variable mNotEmpty;
     std::condition_variable mNotFull;
     size_t mMaxSize;
 
-public:
+   public:
     explicit BufferQueue(size_t maxSize = 100);
 
     void push(const T& item);
@@ -27,4 +27,4 @@ public:
     bool full() const;
     void clear();
 };
-}
+}  // namespace yffplayer

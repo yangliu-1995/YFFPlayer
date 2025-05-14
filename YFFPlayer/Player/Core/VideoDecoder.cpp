@@ -24,7 +24,7 @@ VideoDecoder::VideoDecoder(
 
 VideoDecoder::~VideoDecoder() { close(); }
 
-bool VideoDecoder::open(AVCodecParameters *codecParam) {
+bool VideoDecoder::open(AVCodecParameters* codecParam) {
     // 查找解码器
     const AVCodec* decoder = avcodec_find_decoder(codecParam->codec_id);
     if (!decoder) {
@@ -40,12 +40,13 @@ bool VideoDecoder::open(AVCodecParameters *codecParam) {
         return false;
     }
 
-    if (avcodec_parameters_to_context((AVCodecContext*)mCodecContext, codecParam) < 0) {
+    if (avcodec_parameters_to_context((AVCodecContext*)mCodecContext,
+                                      codecParam) < 0) {
         mLogger->log(LogLevel::Error, "VideoDecoder", "无法设置解码器参数");
         avcodec_free_context((AVCodecContext**)&mCodecContext);
         return false;
     }
-    ((AVCodecContext*)mCodecContext)->thread_count = 4; // 设置线程数
+    ((AVCodecContext*)mCodecContext)->thread_count = 4;  // 设置线程数
     // 打开解码器
     if (avcodec_open2((AVCodecContext*)mCodecContext, decoder, nullptr) < 0) {
         mLogger->log(LogLevel::Error, "VideoDecoder", "无法打开解码器");

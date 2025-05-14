@@ -15,12 +15,11 @@ class VideoDecoder : public Decoder {
    public:
     VideoDecoder(
         std::shared_ptr<BufferQueue<AVPacket*>> packetBuffer,
-        std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>>
-            frameBuffer,
+        std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>> frameBuffer,
         std::shared_ptr<Logger> logger);
     ~VideoDecoder() override;
 
-    bool open(AVCodecParameters *codecParam) override;
+    bool open(AVCodecParameters* codecParam) override;
     void start() override;
     void stop() override;
     void close() override;

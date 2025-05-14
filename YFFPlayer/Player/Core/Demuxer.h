@@ -18,11 +18,10 @@ extern "C" {
 namespace yffplayer {
 class Demuxer {
    public:
-    explicit Demuxer(
-        std::shared_ptr<BufferQueue<AVPacket*>> audioBuffer,
-        std::shared_ptr<BufferQueue<AVPacket*>> videoBuffer,
-        std::shared_ptr<Logger> logger,
-        std::shared_ptr<DemuxerCallback> callback = nullptr);
+    explicit Demuxer(std::shared_ptr<BufferQueue<AVPacket*>> audioBuffer,
+                     std::shared_ptr<BufferQueue<AVPacket*>> videoBuffer,
+                     std::shared_ptr<Logger> logger,
+                     std::shared_ptr<DemuxerCallback> callback = nullptr);
     ~Demuxer();
 
     // 打开媒体文件或URL

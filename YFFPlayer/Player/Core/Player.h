@@ -20,8 +20,7 @@
 
 namespace yffplayer {
 
-class Player : public RendererCallback,
-               public DemuxerCallback {
+class Player : public RendererCallback, public DemuxerCallback {
    public:
     Player(std::shared_ptr<PlayerCallback> callback,
            std::shared_ptr<AudioRenderer> audioRenderer,
@@ -93,10 +92,8 @@ class Player : public RendererCallback,
     // 缓冲区
     std::shared_ptr<BufferQueue<AVPacket*>> mAudioPacketBuffer;
     std::shared_ptr<BufferQueue<AVPacket*>> mVideoPacketBuffer;
-    std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>>
-        mAudioFrameBuffer;
-    std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>>
-        mVideoFrameBuffer;
+    std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> mAudioFrameBuffer;
+    std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>> mVideoFrameBuffer;
 
     // 解复用器和解码器
     std::shared_ptr<Demuxer> mDemuxer;

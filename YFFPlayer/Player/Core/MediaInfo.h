@@ -11,12 +11,12 @@ struct AVCodecParameters;
 
 namespace yffplayer {
 struct MediaInfo {
-    MediaType type{MediaType::UNKNOWN};  // 媒体类型
-    AVCodecParameters *audioCodecParam{nullptr};                 // 音频编解码器ID
-    AVCodecParameters *videoCodecParam{nullptr};                 // 编解码器ID
-    int64_t durationMs{0};               // 媒体总时长（毫秒）
-    bool hasVideo{false};                // 是否有视频流
-    bool hasAudio{false};                // 是否有音频流
+    MediaType type{MediaType::UNKNOWN};           // 媒体类型
+    AVCodecParameters *audioCodecParam{nullptr};  // 音频编解码器参数
+    AVCodecParameters *videoCodecParam{nullptr};  // 编解码器参数
+    int64_t durationMs{0};                        // 媒体总时长（毫秒）
+    bool hasVideo{false};                         // 是否有视频流
+    bool hasAudio{false};                         // 是否有音频流
 
     int videoWidth{0};       // 视频宽度
     int videoHeight{0};      // 视频高度

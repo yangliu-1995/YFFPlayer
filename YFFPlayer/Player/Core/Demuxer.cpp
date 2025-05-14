@@ -7,11 +7,14 @@ extern "C" {
 
 namespace yffplayer {
 
-Demuxer::Demuxer(
-    std::shared_ptr<BufferQueue<AVPacket*>> audioBuffer,
-    std::shared_ptr<BufferQueue<AVPacket*>> videoBuffer,
-    std::shared_ptr<Logger> logger, std::shared_ptr<DemuxerCallback> callback)
-    : mAudioBuffer(audioBuffer), mVideoBuffer(videoBuffer), mLogger(logger), mCallback(callback) {
+Demuxer::Demuxer(std::shared_ptr<BufferQueue<AVPacket*>> audioBuffer,
+                 std::shared_ptr<BufferQueue<AVPacket*>> videoBuffer,
+                 std::shared_ptr<Logger> logger,
+                 std::shared_ptr<DemuxerCallback> callback)
+    : mAudioBuffer(audioBuffer),
+      mVideoBuffer(videoBuffer),
+      mLogger(logger),
+      mCallback(callback) {
     mLogger->log(LogLevel::Info, "Demuxer", "解复用器已创建");
     updateState(DemuxerState::IDLE);
 }
@@ -81,13 +84,13 @@ bool Demuxer::open(const std::string& url) {
         if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO &&
             audioStreamIndex < 0) {
             audioStreamIndex = i;
-            AVCodecParameters *codecParams = avcodec_parameters_alloc();
+            AVCodecParameters* codecParams = avcodec_parameters_alloc();
             avcodec_parameters_copy(codecParams, stream->codecpar);
             mMediaInfo.audioCodecParam = codecParams;
         } else if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO &&
                    videoStreamIndex < 0) {
             videoStreamIndex = i;
-            AVCodecParameters *codecParams = avcodec_parameters_alloc();
+            AVCodecParameters* codecParams = avcodec_parameters_alloc();
             avcodec_parameters_copy(codecParams, stream->codecpar);
             mMediaInfo.videoCodecParam = codecParams;
         }
@@ -257,8 +260,8 @@ void Demuxer::readLoop() {
             // 检查缓冲区是否已满
             if (mAudioBuffer->full() || mVideoBuffer->full()) {
                 // 如果缓冲区已满，睡眠一段时间后继续
-//                mLogger->log(LogLevel::Warning, "Demuxer",
-//                                "缓冲区已满，等待数据处理");
+                //                mLogger->log(LogLevel::Warning, "Demuxer",
+                //                                "缓冲区已满，等待数据处理");
                 av_usleep(10000);  // 10毫秒 = 10000微秒
                 continue;
             }
@@ -297,7 +300,6 @@ void Demuxer::readLoop() {
             // 处理音视频数据包
             if (avPacket->stream_index == audioStreamIndex ||
                 avPacket->stream_index == videoStreamIndex) {
-
                 AVPacket* packet = av_packet_clone(avPacket);
 
                 if (!packet) {

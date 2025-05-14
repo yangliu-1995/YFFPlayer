@@ -25,10 +25,10 @@ Player::Player(std::shared_ptr<PlayerCallback> callback,
       mVideoRenderer(videoRenderer),
       mLogger(logger) {
     // 初始化缓冲区
-    mAudioPacketBuffer = std::make_shared<BufferQueue<AVPacket*>>(
-        PACKET_BUFFER_SIZE);
-    mVideoPacketBuffer = std::make_shared<BufferQueue<AVPacket*>>(
-              PACKET_BUFFER_SIZE);
+    mAudioPacketBuffer =
+        std::make_shared<BufferQueue<AVPacket *>>(PACKET_BUFFER_SIZE);
+    mVideoPacketBuffer =
+        std::make_shared<BufferQueue<AVPacket *>>(PACKET_BUFFER_SIZE);
     mAudioFrameBuffer =
         std::make_shared<BufferQueue<std::shared_ptr<AudioFrame>>>(
             FRAME_BUFFER_SIZE);
@@ -45,7 +45,7 @@ Player::~Player() {
 }
 
 bool Player::open(const std::string &url) {
-//    std::lock_guard<std::mutex> lock(mStateMutex);
+    //    std::lock_guard<std::mutex> lock(mStateMutex);
 
     if (mState != PlayerState::IDLE && mState != PlayerState::STOPPED) {
         mLogger->log(LogLevel::Error, "Player", "播放器状态错误，无法打开媒体");
@@ -55,7 +55,8 @@ bool Player::open(const std::string &url) {
     updateState(PlayerState::INITIALIZED);
 
     // 创建解复用器
-    mDemuxer = std::make_shared<Demuxer>(mAudioPacketBuffer, mVideoPacketBuffer, mLogger);
+    mDemuxer = std::make_shared<Demuxer>(mAudioPacketBuffer, mVideoPacketBuffer,
+                                         mLogger);
 
     // 打开媒体文件
     if (!mDemuxer->open(url)) {
@@ -95,9 +96,9 @@ bool Player::open(const std::string &url) {
 
     // 初始化渲染器
     if (mMediaInfo.hasAudio && mAudioRenderer) {
-        bool ret = mAudioRenderer->init(kAudioTargetSampleRate, kAudioTargetChannels,
-                                        kAudioTargetBitDepth,
-                                        this->shared_from_this());
+        bool ret = mAudioRenderer->init(
+            kAudioTargetSampleRate, kAudioTargetChannels, kAudioTargetBitDepth,
+            this->shared_from_this());
         if (!ret) {
             mLogger->log(LogLevel::Error, "Player", "初始化音频渲染器失败");
             updateState(PlayerState::ERROR);
@@ -106,9 +107,8 @@ bool Player::open(const std::string &url) {
     }
 
     if (mMediaInfo.hasVideo && mVideoRenderer) {
-        if (!mVideoRenderer->init(
-                mMediaInfo.videoWidth, mMediaInfo.videoHeight,
-                PixelFormat::YUV420P,  // 假设默认使用YUV420P
+        if (!mVideoRenderer->init(mMediaInfo.videoWidth, mMediaInfo.videoHeight,
+                                  PixelFormat::YUV420P,  // 假设默认使用YUV420P
                                   this->shared_from_this())) {
             mLogger->log(LogLevel::Error, "Player", "初始化视频渲染器失败");
             updateState(PlayerState::ERROR);
@@ -154,18 +154,18 @@ bool Player::start() {
     }
 
     // 如果有音频，开始播放第一帧
-    constexpr int minFrames = 30; // 至少等待3帧
+    constexpr int minFrames = 30;  // 至少等待3帧
     auto startTime = getCurrentTimeUs();
-    constexpr int64_t timeoutUs = 1000000; // 1秒超时
+    constexpr int64_t timeoutUs = 1000000;  // 1秒超时
     while (mAudioFrameBuffer->size() < minFrames && mIsPlaying) {
         if (getCurrentTimeUs() - startTime > timeoutUs) {
             mLogger->log(LogLevel::Warning, "Player", "等待音频帧超时");
             break;
         }
-        av_usleep(10000); // 等待10ms
+        av_usleep(10000);  // 等待10ms
     }
     if (!mAudioFrameBuffer->empty()) {
-        playNextAudioFrame(); // 缓冲区有数据后再开始播放
+        playNextAudioFrame();  // 缓冲区有数据后再开始播放
     } else {
         mLogger->log(LogLevel::Error, "Player", "音频缓冲区为空，无法开始播放");
         return false;
@@ -435,9 +435,10 @@ void Player::videoPlayLoop() {
                 av_usleep(delay);
             } else if (delay < -SYNC_THRESHOLD_US * 2) {
                 // 如果视频落后太多，跳过这一帧
-//                mLogger->log(
-//                    LogLevel::Verbose, "Player",
-//                    "视频帧丢弃，延迟: " + std::to_string(delay) + " 微秒");
+                //                mLogger->log(
+                //                    LogLevel::Verbose, "Player",
+                //                    "视频帧丢弃，延迟: " +
+                //                    std::to_string(delay) + " 微秒");
                 continue;
             }
 
