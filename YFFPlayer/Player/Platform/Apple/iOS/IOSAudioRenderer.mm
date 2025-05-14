@@ -46,7 +46,15 @@ bool IOSAudioRenderer::init(int sampleRate, int channels, int bitsPerSample,
         return false;
     }
 
-    constexpr UInt32 bufferSize = 48000 * 2 * 2 * 1; // 增加缓冲区大小
+    // 增加缓冲区数量和大小
+    static constexpr int kNumBuffers = 5; // 增加到5个缓冲区
+    static constexpr float bufferDurationInSeconds = 0.3f; // 增加到300毫秒
+    
+    UInt32 bufferSize = sampleRate * channels * (bitsPerSample / 8) * bufferDurationInSeconds;
+    printf("IOSAudioRenderer: 使用缓冲区大小: %u 字节 (%.1f毫秒)\n", 
+           bufferSize, bufferDurationInSeconds * 1000);
+    
+    // 分配缓冲区
     for (int i = 0; i < kNumBuffers; ++i) {
         status = AudioQueueAllocateBuffer(audioQueue_, bufferSize, &buffers_[i]);
         if (status != noErr) {
@@ -183,14 +191,24 @@ void IOSAudioRenderer::handleBufferCompleted(AudioQueueBufferRef buffer) {
 
     // 通知已播放的帧
     if (!frameQueue_.empty()) {
-        AudioFrame frame = frameQueue_.front();
-        frameQueue_.pop();
+        AudioFrame frame = frameQueue_.back();
+//        frameQueue_.pop();
+        
         if (callback_) {
             printf("IOSAudioRenderer: Notifying frame rendered, PTS=%lld\n", frame.pts);
             callback_->onAudioFrameRendered(frame);
         }
+        
+        // 释放帧数据内存
+//        delete[] frame.data;
+        frame.data = nullptr;
     } else {
         printf("IOSAudioRenderer: frameQueue is empty\n");
+        // 如果队列为空，填充静音数据避免爆音
+        std::memset(buffer->mAudioData, 0, buffer->mAudioDataBytesCapacity);
+        buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
+        AudioQueueEnqueueBuffer(audioQueue_, buffer, 0, nullptr);
+        return;
     }
 
     // 检查 AudioQueue 是否运行
@@ -209,9 +227,12 @@ void IOSAudioRenderer::handleBufferCompleted(AudioQueueBufferRef buffer) {
     // 填充新数据
     if (!frameQueue_.empty()) {
         const AudioFrame& nextFrame = frameQueue_.front();
+        frameQueue_.pop();
         if (nextFrame.sampleRate != sampleRate_ || nextFrame.channels != channels_ ||
             nextFrame.bitDepth != bitsPerSample_) {
-            printf("IOSAudioRenderer: Invalid frame format\n");
+            printf("IOSAudioRenderer: Invalid frame format - 预期(%d,%d,%d) 实际(%d,%d,%d)\n", 
+                   sampleRate_, channels_, bitsPerSample_,
+                   nextFrame.sampleRate, nextFrame.channels, nextFrame.bitDepth);
         } else {
             UInt32 bytesToCopy = std::min(static_cast<UInt32>(nextFrame.size),
                                          buffer->mAudioDataBytesCapacity);
@@ -220,6 +241,11 @@ void IOSAudioRenderer::handleBufferCompleted(AudioQueueBufferRef buffer) {
             printf("IOSAudioRenderer: Filled buffer with %u bytes, PTS=%lld\n",
                    bytesToCopy, nextFrame.pts);
         }
+    } else {
+        // 如果队列为空，填充静音数据
+        buffer->mAudioDataByteSize = buffer->mAudioDataBytesCapacity;
+        std::memset(buffer->mAudioData, 0, buffer->mAudioDataByteSize);
+        printf("IOSAudioRenderer: No frames available, filling with silence\n");
     }
 
     // 重新入队缓冲区
@@ -244,7 +270,6 @@ bool IOSAudioRenderer::enqueueAudioFrame(const AudioFrame& frame) {
             // 填充缓冲区
             int64_t bytesToCopy = frame.size;
             std::memcpy(buffers_[i]->mAudioData, frame.data, bytesToCopy);
-            free(frame.data);
             buffers_[i]->mAudioDataByteSize = bytesToCopy;
 
             // 入队缓冲区
@@ -255,6 +280,7 @@ bool IOSAudioRenderer::enqueueAudioFrame(const AudioFrame& frame) {
             return true;
         }
     }
+    printf("IOSAudioRenderer: 没有空闲缓冲区，帧可能被丢弃\n");
     return false; // 没有空闲缓冲区
 }
 

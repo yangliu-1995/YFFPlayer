@@ -1,5 +1,7 @@
 #include "IOSVideoRenderer.h"
 
+#import <Foundation/Foundation.h>
+
 namespace yffplayer {
 IOSVideoRenderer::IOSVideoRenderer() {
     // Initialize the renderer
@@ -24,6 +26,7 @@ bool IOSVideoRenderer::render(const VideoFrame& frame) {
     if (callback) {
         callback->onVideoFrameRendered(frame);
     }
+    NSLog(@"视频帧渲染完成，pts: %lld", frame.pts);
     return true;
 }
 

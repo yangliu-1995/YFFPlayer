@@ -10,6 +10,7 @@
 #include "Player.h"
 #import "IOSAudioRenderer.h"
 #import "IOSVideoRenderer.h"
+#include "AppleAudioUnitRenderer.h"
 #import "AppleLogger.h"
 
 using namespace yffplayer;
@@ -48,7 +49,7 @@ private:
 @interface TestPlayer () {
     std::shared_ptr<Player> _playerCore;
     std::shared_ptr<PlayerCallbackImpl> _playerCallback;
-    std::shared_ptr<IOSAudioRenderer> _audioRenderer;
+    std::shared_ptr<AppleAudioUnitRenderer> _audioRenderer;
     std::shared_ptr<IOSVideoRenderer> _videoRenderer;
     std::shared_ptr<AppleLogger> _logger;
 }
@@ -60,7 +61,7 @@ private:
     self = [super init];
     _logger = std::make_shared<AppleLogger>();
     _playerCallback = std::make_shared<PlayerCallbackImpl>(self);
-    _audioRenderer = std::make_shared<IOSAudioRenderer>();
+    _audioRenderer = std::make_shared<AppleAudioUnitRenderer>();
     _videoRenderer = std::make_shared<IOSVideoRenderer>();
     _playerCore = std::make_shared<Player>(_playerCallback, _audioRenderer, _videoRenderer, _logger);
     return self;
