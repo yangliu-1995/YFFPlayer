@@ -12,35 +12,35 @@ class AudioRenderer {
    public:
     virtual ~AudioRenderer() = default;
 
-    // 初始化渲染器
+    // Initialize renderer
     virtual bool init(int sampleRate, int channels, int bitsPerSample,
                       std::shared_ptr<RendererCallback> callback) = 0;
 
-    // 播放音频数据
+    // Play audio data
     virtual bool play(const AudioFrame& frame) = 0;
 
-    // 暂停音频播放
+    // Pause audio playback
     virtual void pause() = 0;
 
-    // 恢复音频播放
+    // Resume audio playback
     virtual void resume() = 0;
 
-    // 停止音频播放
+    // Stop audio playback
     virtual void stop() = 0;
 
-    // 设置音量
+    // Set volume
     virtual void setVolume(float volume) = 0;
 
-    // 获取音量
+    // Get volume
     virtual float getVolume() const = 0;
 
-    // 设置静音
+    // Set mute
     virtual void setMute(bool mute) = 0;
 
-    // 获取静音状态
+    // Get mute status
     virtual bool isMuted() const = 0;
 
-    // 释放资源
+    // Release resources
     virtual void release() = 0;
 };
 }  // namespace yffplayer

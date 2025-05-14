@@ -9,19 +9,19 @@ class DemuxerCallback {
    public:
     virtual ~DemuxerCallback() = default;
 
-    // 通知解复用器状态变化
+    // Notify demuxer state changes
     virtual void onDemuxerStateChanged(DemuxerState state) = 0;
 
-    // 通知解复用器出错
+    // Notify demuxer errors
     virtual void onDemuxerError(const Error& error) = 0;
 
-    // 通知媒体文件已到结尾
+    // Notify when media file reaches the end
     virtual void onEndOfFile() = 0;
 
-    // 通知媒体信息已获取
+    // Notify when media information is ready
     virtual void onMediaInfoReady(const MediaInfo& info) = 0;
 
-    // 通知跳转操作完成
+    // Notify when seek operation is completed
     virtual void onSeekCompleted(int64_t position) = 0;
 };
 

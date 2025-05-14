@@ -5,24 +5,24 @@
 #include "RendererCallback.h"
 
 namespace yffplayer {
-// 像素格式枚举
+// Pixel format enumeration
 enum class PixelFormat;
-// 视频帧结构体
+// Video frame structure
 class VideoFrame;
 
-// 视频渲染器接口
+// Video renderer interface
 class VideoRenderer {
    public:
     virtual ~VideoRenderer() = default;
 
-    // 初始化视频渲染器
+    // Initialize video renderer
     virtual bool init(int width, int height, PixelFormat format,
                       std::shared_ptr<RendererCallback> callback) = 0;
 
-    // 渲染视频帧
+    // Render video frame
     virtual bool render(const VideoFrame& frame) = 0;
 
-    // 释放资源
+    // Release resources
     virtual void release() = 0;
 };
 }  // namespace yffplayer

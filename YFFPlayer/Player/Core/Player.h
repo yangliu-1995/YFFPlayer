@@ -28,7 +28,7 @@ class Player : public RendererCallback, public DemuxerCallback {
            std::shared_ptr<Logger> logger);
     ~Player();
 
-    // 播放控制
+    // Playback control
     bool open(const std::string& url);
     bool start();
     bool pause();
@@ -37,98 +37,98 @@ class Player : public RendererCallback, public DemuxerCallback {
     bool close();
     bool seek(int64_t position);
 
-    // 获取播放状态
+    // Get playback status
     PlayerState getState() const;
     int64_t getCurrentPosition() const;
     int64_t getDuration() const;
 
-    // 设置音量
+    // Set volume
     void setVolume(float volume);
     float getVolume() const;
 
-    // 设置播放速度
+    // Set playback speed
     void setPlaybackRate(float rate);
     float getPlaybackRate() const;
 
-    // 设置静音
+    // Set mute
     void setMute(bool mute);
     bool isMuted() const;
 
-    // AudioRenderCallback接口实现
+    // AudioRenderCallback interface implementation
     void onAudioFrameRendered(const AudioFrame& frame) override;
 
-    // VideoRenderCallback接口实现
+    // VideoRenderCallback interface implementation
     void onVideoFrameRendered(const VideoFrame& frame) override;
 
-    // DemuxerCallback接口实现
-    // 通知解复用器状态变化
+    // DemuxerCallback interface implementation
+    // Notify demuxer state changes
     void onDemuxerStateChanged(DemuxerState state) override;
-    // 通知解复用器出错
+    // Notify demuxer errors
     void onDemuxerError(const Error& error) override;
-    // 通知媒体文件已到结尾
+    // Notify when media file reaches the end
     void onEndOfFile() override;
-    // 通知媒体信息已获取
+    // Notify when media information is ready
     void onMediaInfoReady(const MediaInfo& info) override;
-    // 通知跳转操作完成
+    // Notify when seek operation is completed
     void onSeekCompleted(int64_t position) override;
 
    private:
-    // 播放器状态
+    // Player state
     std::atomic<PlayerState> mState{PlayerState::IDLE};
 
-    // 回调接口
+    // Callback interface
     std::shared_ptr<PlayerCallback> mCallback;
 
-    // 渲染器
+    // Renderers
     std::shared_ptr<AudioRenderer> mAudioRenderer;
     std::shared_ptr<VideoRenderer> mVideoRenderer;
 
-    // 日志
+    // Logger
     std::shared_ptr<Logger> mLogger;
 
-    // 媒体信息
+    // Media information
     MediaInfo mMediaInfo;
 
-    // 缓冲区
+    // Buffers
     std::shared_ptr<BufferQueue<AVPacket*>> mAudioPacketBuffer;
     std::shared_ptr<BufferQueue<AVPacket*>> mVideoPacketBuffer;
     std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> mAudioFrameBuffer;
     std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>> mVideoFrameBuffer;
 
-    // 解复用器和解码器
+    // Demuxer and decoders
     std::shared_ptr<Demuxer> mDemuxer;
     std::shared_ptr<AudioDecoder> mAudioDecoder;
     std::shared_ptr<VideoDecoder> mVideoDecoder;
 
-    // 播放线程
+    // Playback thread
     std::thread mVideoPlayThread;
     std::atomic<bool> mIsPlaying{false};
 
-    // 时钟同步
-    std::atomic<int64_t> mAudioClock{0};  // 音频时钟，微秒
-    std::atomic<int64_t> mVideoClock{0};  // 视频时钟，微秒
-    std::atomic<int64_t> mStartTime{0};   // 开始播放时间，微秒
+    // Clock synchronization
+    std::atomic<int64_t> mAudioClock{0};  // Audio clock, microseconds
+    std::atomic<int64_t> mVideoClock{0};  // Video clock, microseconds
+    std::atomic<int64_t> mStartTime{0};   // Playback start time, microseconds
 
-    // 播放控制
+    // Playback control
     std::atomic<float> mPlaybackRate{1.0f};
     std::mutex mStateMutex;
 
-    // 视频播放线程函数
+    // Video playback thread function
     void videoPlayLoop();
 
-    // 更新播放器状态
+    // Update player state
     void updateState(PlayerState state);
 
-    // 获取当前系统时间（微秒）
+    // Get current system time (microseconds)
     int64_t getCurrentTimeUs();
 
-    // 计算音视频同步延迟
+    // Calculate audio-video sync delay
     int64_t calculateSyncDelay(int64_t videoPts);
 
-    // 播放下一帧音频
+    // Play next audio frame
     bool playNextAudioFrame();
 
-    // 清空packetBuffer
+    // Clear packet buffer
     void clearPacketBuffer();
 };
 

@@ -7,13 +7,13 @@ namespace yffplayer {
 enum class PixelFormat { YUV420P, RGB24, NV12 };
 
 struct VideoFrame {
-    uint8_t* data[3];    // 数据指针
-    int linesize[3];     // 行大小
-    int width;           // 宽度
-    int height;          // 高度
-    int64_t pts;         // 时间戳
-    int64_t duration;    // 持续时间
-    PixelFormat format;  // 像素格式
+    uint8_t* data[3];    // Data pointers
+    int linesize[3];     // Line sizes
+    int width;           // Width
+    int height;          // Height
+    int64_t pts;         // Timestamp
+    int64_t duration;    // Duration
+    PixelFormat format;  // Pixel format
 };
 
 }  // namespace yffplayer

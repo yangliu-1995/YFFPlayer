@@ -27,17 +27,17 @@ class AudioDecoder : public Decoder {
     std::shared_ptr<BufferQueue<AVPacket*>> mPacketBuffer;
     std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> mFrameBuffer;
 
-    // 音频重采样上下文
+    // Audio resampling context
     void* mSwrContext{nullptr};
 
-    // 解码上下文
+    // Decoding context
     void* mCodecContext{nullptr};
 
-    // 转换时间戳为微秒
+    // Convert timestamp to microseconds
     int64_t timestampToMicroseconds(int64_t timestamp, int timebase_num,
                                     int timebase_den);
 
-    // 重采样音频
+    // Resample audio
     bool resampleAudio(void* srcData, int srcSamples, int srcSampleRate,
                        int srcChannels, void* dstData, int64_t& dstSamples);
 

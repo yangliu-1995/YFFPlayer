@@ -24,7 +24,7 @@ class Demuxer {
                      std::shared_ptr<DemuxerCallback> callback = nullptr);
     ~Demuxer();
 
-    // 打开媒体文件或URL
+    // Open media file or URL
     bool open(const std::string& url);
 
     void start();
@@ -39,7 +39,7 @@ class Demuxer {
 
     MediaInfo getMediaInfo() const;
 
-    // 设置回调
+    // Set callback
     void setCallback(std::shared_ptr<DemuxerCallback> callback);
 
    private:

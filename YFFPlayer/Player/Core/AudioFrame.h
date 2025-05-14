@@ -4,12 +4,12 @@
 
 namespace yffplayer {
 struct AudioFrame {
-    int64_t pts;       // PTS时间戳
-    int64_t duration;  // 持续时间
-    int64_t size;      // 数据大小
-    uint8_t* data;     // 数据指针
-    int channels;      // 声道数
-    int sampleRate;    // 采样率
-    int bitDepth;      // 位深度
+    int64_t pts;       // PTS timestamp
+    int64_t duration;  // Duration
+    int64_t size;      // Data size
+    uint8_t* data;     // Data pointer
+    int channels;      // Number of channels
+    int sampleRate;    // Sample rate
+    int bitDepth;      // Bit depth
 };
 }  // namespace yffplayer

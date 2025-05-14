@@ -10,7 +10,6 @@ class Logger {
    public:
     virtual ~Logger() = default;
 
-    // 输出日志
     virtual void log(LogLevel level, const std::string& tag,
                      const std::string& message) = 0;
 };

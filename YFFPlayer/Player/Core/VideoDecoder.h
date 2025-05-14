@@ -28,26 +28,26 @@ class VideoDecoder : public Decoder {
     std::shared_ptr<BufferQueue<AVPacket*>> mPacketBuffer;
     std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>> mFrameBuffer;
 
-    // 图像转换上下文
+    // Image conversion context
     void* mSwsContext{nullptr};
 
-    // 解码上下文
+    // Decoding context
     void* mCodecContext{nullptr};
 
-    // 上一次转换的参数，用于优化SwsContext的创建
+    // Parameters from last conversion, used to optimize SwsContext creation
     int mLastSrcFormat{-1};
     int mLastDstFormat{-1};
     int mLastWidth{0};
     int mLastHeight{0};
 
-    // 转换时间戳为微秒
+    // Convert timestamp to microseconds
     int64_t timestampToMicroseconds(int64_t timestamp, int timebase_num,
                                     int timebase_den);
 
-    // 转换AVPixelFormat到自定义PixelFormat
+    // Convert AVPixelFormat to custom PixelFormat
     PixelFormat convertAVPixelFormat(int format);
 
-    // 转换帧格式
+    // Convert frame format
     bool convertFrame(AVFrame* srcFrame, std::shared_ptr<VideoFrame> dstFrame);
 
     void decodeLoop() override;

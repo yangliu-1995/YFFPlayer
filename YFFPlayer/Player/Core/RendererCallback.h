@@ -2,23 +2,23 @@
 #include <memory>
 
 namespace yffplayer {
-// 音频帧结构体
+// Audio frame structure
 class AudioFrame;
-// 视频帧结构体
+// Video frame structure
 class VideoFrame;
 
-// 视频渲染回调接口
+// Video renderer callback interface
 class RendererCallback : public std::enable_shared_from_this<RendererCallback> {
    public:
     virtual ~RendererCallback() = default;
 
-    // 通知播放器视频帧开始渲染，用于更新视频时钟
+    // Notify player when audio frame is rendered, used to update audio clock
     virtual void onAudioFrameRendered(const AudioFrame& frame) = 0;
 
-    // 通知播放器视频帧已渲染，用于更新视频时钟
+    // Notify player when video frame is rendered, used to update video clock
     virtual void onVideoFrameRendered(const VideoFrame& frame) = 0;
 
-    // 可扩展更多功能，例如渲染延迟通知、帧队列耗尽等
+    // Can be extended with more features, such as render delay notification, frame queue exhaustion, etc.
 };
 
 }  // namespace yffplayer

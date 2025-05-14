@@ -11,22 +11,22 @@ class PlayerCallback {
    public:
     virtual ~PlayerCallback() = default;
 
-    // 播放器状态回调
+    // Player state callback
     virtual void onPlayerStateChanged(PlayerState state) = 0;
 
-    // 播放进度回调
+    // Playback progress callback
     virtual void onPlaybackProgress(double position, double duration) = 0;
 
-    // 错误回调
+    // Error callback
     virtual void onError(const Error& error) = 0;
 
-    // 媒体信息回调
+    // Media info callback
     virtual void onMediaInfo(const MediaInfo& info) = 0;
 
-    // 视频帧回调
+    // Video frame callback
     virtual void onVideoFrame(VideoFrame& frame) = 0;
 
-    // 音频帧回调
+    // Audio frame callback
     virtual void onAudioFrame(AudioFrame& frame) = 0;
 };
 
