@@ -7,6 +7,9 @@
 
 extern "C" {
 struct AVPacket;
+struct AVFrame;
+struct SwrContext;
+struct AVCodecContext;
 }
 
 namespace yffplayer {
@@ -28,10 +31,10 @@ class AudioDecoder : public Decoder {
     std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> mFrameBuffer;
 
     // Audio resampling context
-    void* mSwrContext{nullptr};
+    SwrContext* mSwrContext{nullptr};
 
     // Decoding context
-    void* mCodecContext{nullptr};
+    AVCodecContext* mCodecContext{nullptr};
 
     // Convert timestamp to microseconds
     int64_t timestampToMicroseconds(int64_t timestamp, int timebase_num,
@@ -40,6 +43,9 @@ class AudioDecoder : public Decoder {
     // Resample audio
     bool resampleAudio(void* srcData, int srcSamples, int srcSampleRate,
                        int srcChannels, void* dstData, int64_t& dstSamples);
+
+    // Covert audio
+    std::shared_ptr<AudioFrame> convertAudioFrame(AVFrame* frame);
 
     void decodeLoop() override;
 };

@@ -46,7 +46,7 @@ bool IOSAudioRenderer::init(int sampleRate, int channels, int bitsPerSample,
         return false;
     }
 
-    constexpr UInt32 bufferSize = 32768; // 增加缓冲区大小
+    constexpr UInt32 bufferSize = 48000 * 2 * 2 * 1; // 增加缓冲区大小
     for (int i = 0; i < kNumBuffers; ++i) {
         status = AudioQueueAllocateBuffer(audioQueue_, bufferSize, &buffers_[i]);
         if (status != noErr) {
@@ -244,6 +244,7 @@ bool IOSAudioRenderer::enqueueAudioFrame(const AudioFrame& frame) {
             // 填充缓冲区
             int64_t bytesToCopy = frame.size;
             std::memcpy(buffers_[i]->mAudioData, frame.data, bytesToCopy);
+            free(frame.data);
             buffers_[i]->mAudioDataByteSize = bytesToCopy;
 
             // 入队缓冲区

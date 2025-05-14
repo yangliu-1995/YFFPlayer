@@ -114,40 +114,64 @@ int64_t AudioDecoder::timestampToMicroseconds(int64_t timestamp,
     return av_rescale_q(timestamp, timebase, microseconds);
 }
 
-bool AudioDecoder::resampleAudio(void* srcData, int srcSamples,
-                                 int srcSampleRate, int srcChannels,
-                                 void* dstData, int64_t& dstSamples) {
-    AVCodecContext* ctx = (AVCodecContext*)mCodecContext;
-    SwrContext* swr = (SwrContext*)mSwrContext;
-
+std::shared_ptr<AudioFrame> AudioDecoder::convertAudioFrame(AVFrame* frame) {
+    AVCodecContext* ctx = mCodecContext;
+    SwrContext* swr = mSwrContext;
+    
+    // 创建音频帧
+    std::shared_ptr<AudioFrame> audioFrame = std::make_shared<AudioFrame>();
+    
+    // 转换时间戳为微秒
+    audioFrame->pts = timestampToMicroseconds(
+        frame->pts, ctx->time_base.num, ctx->time_base.den);
+    
+    // 计算持续时间（微秒）
+    audioFrame->duration = 1000000 * frame->nb_samples / frame->sample_rate;
+    
+    // 设置原始音频参数
+    audioFrame->channels = frame->ch_layout.nb_channels;
+    audioFrame->sampleRate = frame->sample_rate;
+    audioFrame->bitDepth = av_get_bytes_per_sample(ctx->sample_fmt) * 8;
+    
     // 配置重采样上下文
-    av_opt_set_int(swr, "in_channel_count", srcChannels, 0);
+    av_opt_set_int(swr, "in_channel_count", frame->ch_layout.nb_channels, 0);
     av_opt_set_int(swr, "out_channel_count", kAudioTargetChannels, 0);
-    av_opt_set_int(swr, "in_sample_rate", srcSampleRate, 0);
+    av_opt_set_int(swr, "in_sample_rate", frame->sample_rate, 0);
     av_opt_set_int(swr, "out_sample_rate", kAudioTargetSampleRate, 0);
     av_opt_set_sample_fmt(swr, "in_sample_fmt", ctx->sample_fmt, 0);
     av_opt_set_sample_fmt(swr, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
-
+    
     // 初始化重采样上下文
     if (swr_init(swr) < 0) {
         mLogger->log(LogLevel::Error, "AudioDecoder", "重采样上下文初始化失败");
-        return false;
+        return nullptr;
     }
-
-    // 计算目标采样数
-    dstSamples = av_rescale_rnd(srcSamples, kAudioTargetSampleRate,
-                                srcSampleRate, AV_ROUND_UP);
-
+    
+    // 分配重采样后的数据缓冲区
+    int64_t dstSamples = av_rescale_rnd(frame->nb_samples, kAudioTargetSampleRate,
+                            frame->sample_rate, AV_ROUND_UP);
+    int dstBufferSize = av_samples_get_buffer_size(
+        nullptr, kAudioTargetChannels, (int)dstSamples,
+        AV_SAMPLE_FMT_S16, 0);
+    uint8_t* dstData = (uint8_t*)av_malloc(dstBufferSize);
+    
     // 执行重采样
-    int ret = swr_convert(swr, (uint8_t**)&dstData, dstSamples,
-                          (const uint8_t**)&srcData, srcSamples);
+    int ret = swr_convert(swr, &dstData, (int)dstSamples,
+                      (const uint8_t**)frame->data, frame->nb_samples);
     if (ret < 0) {
         mLogger->log(LogLevel::Error, "AudioDecoder", "音频重采样失败");
-        return false;
+        av_free(dstData);
+        return nullptr;
     }
-
-    dstSamples = ret;
-    return true;
+    
+    // 设置重采样后的参数
+    audioFrame->data = dstData;
+    audioFrame->size = ret * kAudioTargetChannels * (kAudioTargetBitDepth / 8);
+    audioFrame->channels = kAudioTargetChannels;
+    audioFrame->sampleRate = kAudioTargetSampleRate;
+    audioFrame->bitDepth = kAudioTargetBitDepth;
+    
+    return audioFrame;
 }
 
 void AudioDecoder::decodeLoop() {
@@ -193,52 +217,12 @@ void AudioDecoder::decodeLoop() {
                     break;
                 }
 
-                // 创建音频帧
-                std::shared_ptr<AudioFrame> audioFrame =
-                    std::make_shared<AudioFrame>();
-
-                // 转换时间戳为微秒
-                audioFrame->pts = timestampToMicroseconds(
-                    avFrame->pts, ctx->time_base.num, ctx->time_base.den);
-
-                // 计算持续时间（微秒）
-                audioFrame->duration =
-                    1000000 * avFrame->nb_samples / avFrame->sample_rate;
-
-                // 设置原始音频参数
-                audioFrame->channels = avFrame->channels;
-                audioFrame->sampleRate = avFrame->sample_rate;
-                audioFrame->bitDepth =
-                    av_get_bytes_per_sample(ctx->sample_fmt) * 8;
-
-                // 分配重采样后的数据缓冲区
-                int64_t dstSamples = 0;
-                int dstBufferSize = av_samples_get_buffer_size(
-                    nullptr, kAudioTargetChannels, avFrame->nb_samples * 2,
-                    AV_SAMPLE_FMT_S16, 0);
-                uint8_t* dstData = (uint8_t*)av_malloc(dstBufferSize);
-
-                // 执行重采样
-                if (resampleAudio(avFrame->data[0], avFrame->nb_samples,
-                                  avFrame->sample_rate, avFrame->channels,
-                                  dstData, dstSamples)) {
-                    // 设置重采样后的参数
-                    audioFrame->data = dstData;
-                    audioFrame->size = dstSamples * kAudioTargetChannels *
-                                       (kAudioTargetBitDepth / 8);
-                    audioFrame->channels = kAudioTargetChannels;
-                    audioFrame->sampleRate = kAudioTargetSampleRate;
-                    audioFrame->bitDepth = kAudioTargetBitDepth;
-
-                    // 尝试将帧放入缓冲区
+                std::shared_ptr<AudioFrame> audioFrame = convertAudioFrame(avFrame);
+                av_frame_unref(avFrame);
+                if (audioFrame) {
                     if (!mFrameBuffer->tryPush(audioFrame)) {
-                        // 如果推送失败（缓冲区已满），释放资源
-                        av_free(dstData);
-                        // 跳出循环，下一轮会先检查缓冲区是否已满
-                        break;
+                        av_free(audioFrame->data);
                     }
-                } else {
-                    av_free(dstData);
                 }
             }
         } catch (const std::exception& e) {
