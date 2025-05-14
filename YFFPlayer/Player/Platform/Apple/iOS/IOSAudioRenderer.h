@@ -16,53 +16,53 @@ public:
     IOSAudioRenderer();
     ~IOSAudioRenderer() override;
 
-    // 初始化渲染器
+    // Initialize renderer
     bool init(int sampleRate, int channels, int bitsPerSample,
               std::shared_ptr<RendererCallback> callback) override;
 
-    // 播放音频数据
+    // Play audio data
     bool play(const AudioFrame& frame) override;
 
-    // 暂停音频播放
+    // Pause audio playback
     void pause() override;
 
-    // 恢复音频播放
+    // Resume audio playback
     void resume() override;
 
-    // 停止音频播放
+    // Stop audio playback
     void stop() override;
 
-    // 设置音量
+    // Set volume
     void setVolume(float volume) override;
 
-    // 获取音量
+    // Get volume
     float getVolume() const override;
 
-    // 设置静音
+    // Set mute
     void setMute(bool mute) override;
 
-    // 获取静音状态
+    // Get mute state
     bool isMuted() const override;
 
-    // 释放资源
+    // Release resources
     void release() override;
 
 private:
-    // AudioQueue 回调函数
+    // AudioQueue callback function
     static void AudioQueueOutputCallback(void* inUserData,
                                         AudioQueueRef inAQ,
                                         AudioQueueBufferRef inBuffer);
 
-    // 处理缓冲区播放完成
+    // Handle buffer completion
     void handleBufferCompleted(AudioQueueBufferRef buffer);
 
-    // 填充音频缓冲区
+    // Fill audio buffer
     bool enqueueAudioFrame(const AudioFrame& frame);
 
     AudioQueueRef audioQueue_ = nullptr;
     std::shared_ptr<RendererCallback> callback_;
     mutable std::mutex mutex_;
-    std::queue<AudioFrame> frameQueue_; // 存储待播放的音频帧
+    std::queue<AudioFrame> frameQueue_; // Store audio frames to be played
     bool isPlaying_ = false;
     bool isMuted_ = false;
     float volume_ = 1.0f;
@@ -71,7 +71,7 @@ private:
     int bitsPerSample_ = 0;
     bool isStarted_ = false;
 
-    static constexpr int kNumBuffers = 3; // AudioQueue 缓冲区数量
+    static constexpr int kNumBuffers = 3; // Number of AudioQueue buffers
     AudioQueueBufferRef buffers_[kNumBuffers];
 };
 
