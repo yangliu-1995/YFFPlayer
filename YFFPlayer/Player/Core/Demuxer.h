@@ -1,66 +1,51 @@
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <string>
 #include <thread>
-
-#include "BufferQueue.h"
-#include "DemuxerCallback.h"
-#include "Logger.h"
-#include "MediaInfo.h"
-#include "PlayerTypes.h"
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <memory>
+#include "PacketQueue.h"
 
 extern "C" {
-#include <libavcodec/packet.h>
+struct AVFormatContext;
 }
 
 namespace yffplayer {
+
+struct MediaInfo;
+
 class Demuxer {
-   public:
-    explicit Demuxer(std::shared_ptr<BufferQueue<AVPacket*>> audioBuffer,
-                     std::shared_ptr<BufferQueue<AVPacket*>> videoBuffer,
-                     std::shared_ptr<Logger> logger,
-                     std::shared_ptr<DemuxerCallback> callback = nullptr);
+public:
+    Demuxer(std::shared_ptr<PacketQueue> audioQueue, std::shared_ptr<PacketQueue> videoQueue);
     ~Demuxer();
 
-    // Open media file or URL
-    bool open(const std::string& url);
-
+    bool open(const std::string& url, MediaInfo& mediaInfo);
     void start();
-
+    void pause();
+    void resume();
+    void seek(int64_t timestampMs);
     void stop();
 
-    void seek(int64_t position);
+private:
+    void demuxLoop();
 
-    void setPlaybackRate(float rate);
+    std::shared_ptr<PacketQueue> mAudioQueue;
+    std::shared_ptr<PacketQueue> mVideoQueue;
 
-    bool isLive() const;
+    std::thread mThread;
+    std::atomic<bool> mRunning{false};
+    std::atomic<bool> mPaused{false};
+    std::atomic<bool> mSeeking{false};
+    std::atomic<bool> mStopRequested{false};
 
-    MediaInfo getMediaInfo() const;
-
-    // Set callback
-    void setCallback(std::shared_ptr<DemuxerCallback> callback);
-
-   private:
-    std::shared_ptr<BufferQueue<AVPacket*>> mAudioBuffer;
-    std::shared_ptr<BufferQueue<AVPacket*>> mVideoBuffer;
-    std::shared_ptr<Logger> mLogger;
-    std::shared_ptr<DemuxerCallback> mCallback;
-
-    void readLoop();
-    void updateState(DemuxerState state);
-    void notifyError(ErrorCode code, const std::string& message);
-
-    std::atomic<DemuxerState> mState{DemuxerState::IDLE};
-    std::atomic<bool> mIsRunning{false};
-    std::atomic<bool> mIsSeeking{false};
-    std::atomic<int64_t> mSeekPosition{0};
-    std::atomic<bool> mIsLive{false};
-    std::atomic<float> mPlaybackRate{1.0f};
     std::mutex mMutex;
-    std::string mUrl;
-    std::thread mReadThread;
-    MediaInfo mMediaInfo;
+    std::condition_variable mCond;
+
+    // FFmpeg context forward declarations
+    AVFormatContext* mFormatCtx = nullptr;
+    int mAudioStreamIndex = -1;
+    int mVideoStreamIndex = -1;
 };
-}  // namespace yffplayer
+
+} // namespace yffplayer

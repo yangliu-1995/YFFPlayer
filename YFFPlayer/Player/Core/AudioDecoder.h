@@ -1,53 +1,41 @@
 #pragma once
 
+#include <memory>
+#include <thread>
+#include "PacketQueue.h"
+#include "FrameQueue.h"
 #include "AudioFrame.h"
-#include "BufferQueue.h"
-#include "Decoder.h"
-#include "Logger.h"
 
 extern "C" {
-struct AVPacket;
-struct AVFrame;
-struct SwrContext;
-struct AVCodecContext;
+#include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
+#include <libavutil/time.h>
+#include <libswresample/swresample.h>
 }
 
 namespace yffplayer {
-class AudioDecoder : public Decoder {
-   public:
-    AudioDecoder(
-        std::shared_ptr<BufferQueue<AVPacket*>> packetBuffer,
-        std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> frameBuffer,
-        std::shared_ptr<Logger> logger);
-    ~AudioDecoder() override;
 
-    bool open(AVCodecParameters* codecParam) override;
-    void start() override;
-    void stop() override;
-    void close() override;
+class AudioDecoder {
+public:
+    AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
+                 std::shared_ptr<FrameQueue<AudioFrame>> frameQueue,
+                 AVCodecParameters* codecParams,
+                 AVRational timeBase);
+    ~AudioDecoder();
 
-   private:
-    std::shared_ptr<BufferQueue<AVPacket*>> mPacketBuffer;
-    std::shared_ptr<BufferQueue<std::shared_ptr<AudioFrame>>> mFrameBuffer;
+    void start();
+    void stop();
 
-    // Audio resampling context
-    SwrContext* mSwrContext{nullptr};
+private:
+    std::shared_ptr<PacketQueue> mPacketQueue;
+    std::shared_ptr<FrameQueue<AudioFrame>> mFrameQueue;
+    AVCodecContext* mCodecCtx = nullptr;
+    SwrContext* mSwrCtx = nullptr;
+    AVRational mTimeBase;
+    bool mStopped = false;
+    std::thread mDecodeThread;
 
-    // Decoding context
-    AVCodecContext* mCodecContext{nullptr};
-
-    // Convert timestamp to microseconds
-    int64_t timestampToMicroseconds(int64_t timestamp, int timebase_num,
-                                    int timebase_den);
-
-    // Resample audio
-    bool resampleAudio(void* srcData, int srcSamples, int srcSampleRate,
-                       int srcChannels, void* dstData, int64_t& dstSamples);
-
-    // Covert audio
-    std::shared_ptr<AudioFrame> convertAudioFrame(AVFrame* frame);
-
-    void decodeLoop() override;
+    void decodeLoop();
 };
 
-}  // namespace yffplayer
+} // namespace yffplayer

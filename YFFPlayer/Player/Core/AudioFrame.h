@@ -1,15 +1,28 @@
 #pragma once
 
-#include <memory>
+#include <cstdint>
+#include <vector>
 
 namespace yffplayer {
+
 struct AudioFrame {
-    int64_t pts;       // PTS timestamp
-    int64_t duration;  // Duration
-    int64_t size;      // Data size
-    uint8_t* data;     // Data pointer
-    int channels;      // Number of channels
-    int sampleRate;    // Sample rate
-    int bitDepth;      // Bit depth
+    int64_t mPts = 0;
+    int64_t mDuration = 0;
+    int mSampleRate = 0;
+    int mChannels = 0;
+    int mNbSamples = 0; // 每帧的采样点数
+    std::vector<uint8_t> mData;
+
+    AudioFrame() = default;
+
+    AudioFrame(int64_t pts, int64_t duration, int sampleRate,
+               int channels, int nbSamples, std::vector<uint8_t>&& data)
+        : mPts(pts),
+          mDuration(duration),
+          mSampleRate(sampleRate),
+          mChannels(channels),
+          mNbSamples(nbSamples),
+          mData(std::move(data)) {}
 };
-}  // namespace yffplayer
+
+} // namespace yffplayer

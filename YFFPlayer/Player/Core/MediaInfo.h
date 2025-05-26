@@ -1,26 +1,25 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
 
-#include "PlayerTypes.h"
-
 extern "C" {
+#include <libavutil/avutil.h>
 struct AVCodecParameters;
 }
 
 namespace yffplayer {
 struct MediaInfo {
-    MediaType type{MediaType::UNKNOWN};           // Media type
-    AVCodecParameters *audioCodecParam{nullptr};  // Audio codec parameters
-    AVCodecParameters *videoCodecParam{nullptr};  // Video codec parameters
-    int64_t durationMs{0};                        // Total media duration (milliseconds)
-    bool hasVideo{false};                         // Whether it has video stream
-    bool hasAudio{false};                         // Whether it has audio stream
+    AVCodecParameters *mAudioCodecParameters{nullptr};
+    AVRational mAudioTimeBase{0, 1};
+    AVCodecParameters *mVideoCodecParameters{nullptr};
+    AVRational mVideoTimeBase{0, 1};
+    int64_t mDurationMs{0};
+    bool mHasVideo{false};
+    bool mHasAudio{false};
 
-    int videoWidth{0};       // Video width
-    int videoHeight{0};      // Video height
-    int audiochannels{0};    // Audio channels
-    int audioSampleRate{0};  // Audio sample rate
+    int mVideoWidth{0};
+    int mVideoHeight{0};
+    int mAudiochannels{0};
+    int mAudioSampleRate{0};
 };
-}  // namespace yffplayer
+}

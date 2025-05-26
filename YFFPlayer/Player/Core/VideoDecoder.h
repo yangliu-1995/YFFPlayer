@@ -1,56 +1,42 @@
 #pragma once
 
-#include "BufferQueue.h"
-#include "Decoder.h"
-#include "Logger.h"
+#include <thread>
+#include <memory>
+#include "PacketQueue.h"
+#include "FrameQueue.h"
 #include "VideoFrame.h"
 
 extern "C" {
-struct AVFrame;
-struct AVPacket;
+#include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
 }
 
 namespace yffplayer {
-class VideoDecoder : public Decoder {
-   public:
-    VideoDecoder(
-        std::shared_ptr<BufferQueue<AVPacket*>> packetBuffer,
-        std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>> frameBuffer,
-        std::shared_ptr<Logger> logger);
-    ~VideoDecoder() override;
 
-    bool open(AVCodecParameters* codecParam) override;
-    void start() override;
-    void stop() override;
-    void close() override;
+class VideoDecoder {
+public:
+    VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
+                 std::shared_ptr<FrameQueue<VideoFrame>> frameQueue,
+                 AVCodecParameters* codecParams,
+                 AVRational timeBase);
+    ~VideoDecoder();
 
-   private:
-    std::shared_ptr<BufferQueue<AVPacket*>> mPacketBuffer;
-    std::shared_ptr<BufferQueue<std::shared_ptr<VideoFrame>>> mFrameBuffer;
+    void start();
+    void stop();
 
-    // Image conversion context
-    void* mSwsContext{nullptr};
+private:
+    std::shared_ptr<PacketQueue> mPacketQueue;
+    std::shared_ptr<FrameQueue<VideoFrame>> mFrameQueue;
+    AVCodecContext* mCodecCtx = nullptr;
+    SwsContext* mSwsCtx = nullptr;
+    AVPixelFormat mTargetFormat = AV_PIX_FMT_RGB24;
+    AVRational mTimeBase;
+    bool mStopped = false;
+    std::thread mDecodeThread;
 
-    // Decoding context
-    void* mCodecContext{nullptr};
-
-    // Parameters from last conversion, used to optimize SwsContext creation
-    int mLastSrcFormat{-1};
-    int mLastDstFormat{-1};
-    int mLastWidth{0};
-    int mLastHeight{0};
-
-    // Convert timestamp to microseconds
-    int64_t timestampToMicroseconds(int64_t timestamp, int timebase_num,
-                                    int timebase_den);
-
-    // Convert AVPixelFormat to custom PixelFormat
-    PixelFormat convertAVPixelFormat(int format);
-
-    // Convert frame format
-    bool convertFrame(AVFrame* srcFrame, std::shared_ptr<VideoFrame> dstFrame);
-
-    void decodeLoop() override;
+    void decodeLoop();
+    int64_t toMs(int64_t pts, AVRational timeBase);
 };
 
-}  // namespace yffplayer
+} // namespace yffplayer

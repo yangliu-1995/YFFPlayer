@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		039C6B912DD350AB00CDE2E1 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 039C6B902DD350AB00CDE2E1 /* AudioToolbox.framework */; };
+		A11489142DE49062008992FA /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A11489132DE49062008992FA /* MetalKit.framework */; };
+		A11489162DE49077008992FA /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A11489152DE49077008992FA /* AVFoundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -26,6 +28,8 @@
 /* Begin PBXFileReference section */
 		037EBECD2DCC92FF00A0D27F /* YFFPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YFFPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		039C6B902DD350AB00CDE2E1 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+		A11489132DE49062008992FA /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		A11489152DE49077008992FA /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -39,13 +43,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		0311B51B2DD3124400C436A5 /* Exceptions for "YFFPlayer" folder in "Compile Sources" phase from "YFFPlayer" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 037EBEC92DCC92FF00A0D27F /* Sources */;
-			membershipExceptions = (
-				Player/Core/AudioFrame.h,
-			);
-		};
 		037EBF072DCCB3A700A0D27F /* Exceptions for "YFFPlayer" folder in "Embed Frameworks" phase from "YFFPlayer" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			attributesByRelativePath = {
@@ -75,7 +72,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				037EBEDF2DCC930000A0D27F /* Exceptions for "YFFPlayer" folder in "YFFPlayer" target */,
-				0311B51B2DD3124400C436A5 /* Exceptions for "YFFPlayer" folder in "Compile Sources" phase from "YFFPlayer" target */,
 				037EBF072DCCB3A700A0D27F /* Exceptions for "YFFPlayer" folder in "Embed Frameworks" phase from "YFFPlayer" target */,
 			);
 			path = YFFPlayer;
@@ -88,6 +84,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A11489142DE49062008992FA /* MetalKit.framework in Frameworks */,
+				A11489162DE49077008992FA /* AVFoundation.framework in Frameworks */,
 				039C6B912DD350AB00CDE2E1 /* AudioToolbox.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -115,6 +113,8 @@
 		039C6B8F2DD350AB00CDE2E1 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A11489152DE49077008992FA /* AVFoundation.framework */,
+				A11489132DE49062008992FA /* MetalKit.framework */,
 				039C6B902DD350AB00CDE2E1 /* AudioToolbox.framework */,
 			);
 			name = Frameworks;

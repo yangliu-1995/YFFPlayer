@@ -1,27 +1,15 @@
-#pragma once
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
-#include "VideoFrame.h"
-#include "VideoRenderer.h"
+#import "VideoFrame.h"
 
-namespace yffplayer {
-class IOSVideoRenderer: public VideoRenderer {
-public:
-    IOSVideoRenderer();
-    ~IOSVideoRenderer() override;
+NS_ASSUME_NONNULL_BEGIN
 
-    // Initialize renderer
-    bool init(int width, int height, PixelFormat format, std::shared_ptr<RendererCallback> callback) override;
+@interface IOSVideoRenderer : NSObject
 
-    // Render video frame
-    bool render(const VideoFrame& frame) override;
+- (instancetype)initWithView:(UIView *)view;
+- (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame;
 
-    // Release resources
-    void release() override;
+@end
 
-private:
-    int mWidth;          // Video width
-    int mHeight;         // Video height
-    PixelFormat mFormat; // Pixel format
-    std::weak_ptr<RendererCallback> mCallback; // Callback interface
-};
-} // namespace yffplayer
+NS_ASSUME_NONNULL_END

@@ -9,7 +9,10 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    let testPlayer = TestPlayer()
+    lazy var player: TestPlayer = {
+        let player = TestPlayer(videoRenderView: view)!
+        return player
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -18,7 +21,8 @@ class ViewController: UIViewController {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
-        testPlayer.start()
+        let url = Bundle.main.url(forResource: "m", withExtension: "avi")
+        player.playVideo(with: url)
     }
 
 
