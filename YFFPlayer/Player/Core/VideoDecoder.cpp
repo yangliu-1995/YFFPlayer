@@ -145,7 +145,7 @@ void VideoDecoder::decodeLoop() {
                     mSwsCtx = sws_getContext(
                         frame->width, frame->height, sourceFormat,
                         frame->width, frame->height, AV_PIX_FMT_RGB24,
-                        SWS_BILINEAR, nullptr, nullptr, nullptr);
+                        SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
                     av_image_alloc(rgbFrame->data, rgbFrame->linesize, frame->width, frame->height, AV_PIX_FMT_RGB24, 1);
                 }
                 sws_scale(mSwsCtx, frame->data, frame->linesize, 0, frame->height,
