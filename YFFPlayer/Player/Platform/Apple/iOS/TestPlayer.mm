@@ -17,6 +17,7 @@
 
 #import "IOSAudioRender.h"
 #import "IOSVideoRenderer.h"
+#import "IOSCVPixelBufferVideoRenderer.h"
 
 #import <memory>
 
@@ -38,6 +39,8 @@ extern "C" {
     std::atomic<int64_t> _audioClock;
     std::atomic<int64_t> _videoClock;
     IOSVideoRenderer *_videoRenderer;
+    IOSCVPixelBufferVideoRenderer *_cvVideoRender;
+    yffplayer::MediaInfo _mediaInfo;
 }
 
 @end
@@ -49,10 +52,10 @@ extern "C" {
     if (self) {
         _videoRenderView = videoRenderView;
         _audioQueue = std::make_shared<yffplayer::PacketQueue>(100);
-        _videoQueue = std::make_shared<yffplayer::PacketQueue>(30);
+        _videoQueue = std::make_shared<yffplayer::PacketQueue>(50);
 
         _audioFrameQueue = std::make_shared<yffplayer::FrameQueue<yffplayer::AudioFrame>>(100);
-        _videoFrameQueue = std::make_shared<yffplayer::FrameQueue<yffplayer::VideoFrame>>(30);
+        _videoFrameQueue = std::make_shared<yffplayer::FrameQueue<yffplayer::VideoFrame>>(50);
 
         _demuxer = std::make_shared<yffplayer::Demuxer>(_audioQueue, _videoQueue);
         _audioRender = [[IOSAudioRender alloc] initWithSampleRate:44100
@@ -69,6 +72,7 @@ extern "C" {
             });
         }];
         _videoRenderer = [[IOSVideoRenderer alloc] initWithView:videoRenderView];
+        _cvVideoRender = [[IOSCVPixelBufferVideoRenderer alloc] initWithView:videoRenderView];
     }
     return self;
 }
@@ -76,30 +80,29 @@ extern "C" {
 - (void)playVideoWithURL:(NSURL *)url {
     yffplayer::MediaInfo mediaInfo;
     if (_demuxer->open(url.absoluteString.UTF8String, mediaInfo)) {
+        _mediaInfo = mediaInfo;
         NSLog(@"Media Info, hasAudio: %d, sampleRate: %d, channels: %d, hasVideo: %d, width: %d, height: %d",
               mediaInfo.mHasAudio, mediaInfo.mAudioSampleRate, mediaInfo.mAudiochannels,
               mediaInfo.mHasVideo, mediaInfo.mVideoWidth, mediaInfo.mVideoHeight);
-        AVCodecParameters *audioCodecParams = avcodec_parameters_alloc();
-        avcodec_parameters_copy(audioCodecParams, mediaInfo.mAudioCodecParameters);
-        AVCodecParameters *videoCodecParams = avcodec_parameters_alloc();
-        avcodec_parameters_copy(videoCodecParams, mediaInfo.mVideoCodecParameters);
-        _audioDecoder = std::make_shared<yffplayer::AudioDecoder>(_audioQueue, _audioFrameQueue);
-        _videoDecoder = std::make_shared<yffplayer::VideoDecoder>(_videoQueue, _videoFrameQueue);
-
-
         _demuxer->start();
         if (mediaInfo.mHasAudio) {
+            AVCodecParameters *audioCodecParams = avcodec_parameters_alloc();
+            avcodec_parameters_copy(audioCodecParams, mediaInfo.mAudioCodecParameters);
+            _audioDecoder = std::make_shared<yffplayer::AudioDecoder>(_audioQueue, _audioFrameQueue);
             _audioDecoder->open(audioCodecParams, mediaInfo.mAudioTimeBase);
             _audioDecoder->start();
+            _audioRenderThread = [[NSThread alloc] initWithTarget:self selector:@selector(simAudioRenderThread) object:nil];
+            [_audioRenderThread start];
         }
         if (mediaInfo.mHasVideo) {
+            AVCodecParameters *videoCodecParams = avcodec_parameters_alloc();
+            avcodec_parameters_copy(videoCodecParams, mediaInfo.mVideoCodecParameters);
+            _videoDecoder = std::make_shared<yffplayer::VideoDecoder>(_videoQueue, _videoFrameQueue);
             _videoDecoder->open(videoCodecParams, mediaInfo.mVideoTimeBase);
             _videoDecoder->start();
+            _videoRenderThread = [[NSThread alloc] initWithTarget:self selector:@selector(simVideoRenderThread) object:nil];
+            [_videoRenderThread start];
         }
-        _audioRenderThread = [[NSThread alloc] initWithTarget:self selector:@selector(simAudioRenderThread) object:nil];
-        _videoRenderThread = [[NSThread alloc] initWithTarget:self selector:@selector(simVideoRenderThread) object:nil];
-        [_audioRenderThread start];
-        [_videoRenderThread start];
     }
 }
 
@@ -116,24 +119,46 @@ extern "C" {
 }
 
 - (void)simVideoRenderThread {
+    bool hasAudio = _mediaInfo.mHasAudio;
+    
     while (true) {
         auto videoFrame = _videoFrameQueue->pop();
         if (videoFrame) {
             NSLog(@"Video Frame: pts: %lld, duration: %lld", videoFrame->mPts, videoFrame->mDuration);
-            int64_t audioClock = _audioClock.load();
             int64_t pts = videoFrame->mPts;
-            int64_t diff = pts - audioClock;
-            if (diff > 50) {
-                NSLog(@"Video frame pts %lld is more than audio clock %lld, waiting for audio", pts, audioClock);
-                [NSThread sleepForTimeInterval:diff / 1000.0];
-                auto frame = videoFrame.get();
-                [_videoRenderer renderVideoFrame:*frame];
-            } else if (diff < -50) {
-                NSLog(@"Video frame pts %lld is less than audio clock %lld, skipping render", videoFrame->mPts, audioClock);
-                continue;
+            
+            if (hasAudio) {
+                // 有音频时使用原来的音频同步逻辑
+                int64_t audioClock = _audioClock.load();
+                int64_t diff = pts - audioClock;
+                if (diff > 50) {
+                    NSLog(@"Video frame pts %lld is more than audio clock %lld, waiting for audio", pts, audioClock);
+                    [NSThread sleepForTimeInterval:diff / 1000.0];
+                    auto frame = videoFrame.get();
+                    [_videoRenderer renderVideoFrame:*frame];
+//                    [_cvVideoRender renderVideoFrame:*frame];
+                } else if (diff < -50) {
+                    NSLog(@"Video frame pts %lld is less than audio clock %lld, skipping render", videoFrame->mPts, audioClock);
+                    continue;
+                } else {
+                    auto frame = videoFrame.get();
+                    [_videoRenderer renderVideoFrame:*frame];
+//                    [_cvVideoRender renderVideoFrame:*frame];
+                }
             } else {
+                // 没有音频时使用帧持续时间
                 auto frame = videoFrame.get();
                 [_videoRenderer renderVideoFrame:*frame];
+//                [_cvVideoRender renderVideoFrame:*frame];
+                // 计算需要等待的时间
+                int64_t frameDuration = videoFrame->mDuration;
+                if (frameDuration <= 0) {
+                    // 如果帧持续时间无效，使用默认值（例如 33ms，约 30fps）
+                    frameDuration = 33;
+                }
+                
+                // 等待适当的时间再处理下一帧
+                [NSThread sleepForTimeInterval:frameDuration / 1000.0];
             }
         }
     }

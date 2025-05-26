@@ -6,34 +6,40 @@ struct VertexOut {
     float2 texCoord;
 };
 
-vertex VertexOut vertexShader(uint vertexID [[vertex_id]],
-                            constant vector_uint2 *viewportSize [[buffer(0)]]) {
-    float2 pixelSpacePosition = float2(vertexID == 0 || vertexID == 1 ? 0.0 : 1.0,
-                                      vertexID == 0 || vertexID == 2 ? 1.0 : 0.0); // 翻转 y 坐标
-
-//    float2 viewportSizeF = float2(*viewportSize);
-    float2 position = pixelSpacePosition * 2.0 - 1.0;
-
+vertex VertexOut vertexShader(uint vertexID [[vertex_id]]) {
+    float2 pos[6] = {
+        float2(-1.0, -1.0), float2(1.0, -1.0), float2(-1.0, 1.0),
+        float2(-1.0, 1.0),  float2(1.0, -1.0), float2(1.0, 1.0)
+    };
+    float2 tex[6] = {
+        float2(0.0, 1.0), float2(1.0, 1.0), float2(0.0, 0.0),
+        float2(0.0, 0.0), float2(1.0, 1.0), float2(1.0, 0.0)
+    };
     VertexOut out;
-    out.position = float4(position, 0.0, 1.0);
-    out.texCoord = float2(pixelSpacePosition.x, 1.0 - pixelSpacePosition.y); // 再次确保纹理 y 坐标翻转
+    out.position = float4(pos[vertexID], 0.0, 1.0);
+    out.texCoord = tex[vertexID];
     return out;
 }
 
 fragment float4 yuvToRGBFragmentShader(VertexOut in [[stage_in]],
-                                      texture2d<float> yTexture [[texture(0)]],
-                                      texture2d<float> uTexture [[texture(1)]],
-                                      texture2d<float> vTexture [[texture(2)]]) {
-    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+                                       texture2d<float> yTex [[texture(0)]],
+                                       texture2d<float> uTex [[texture(1)]],
+                                       texture2d<float> vTex [[texture(2)]]) {
+    constexpr sampler s(address::clamp_to_edge, filter::linear);
+    float y = yTex.sample(s, in.texCoord).r;
+    float u = uTex.sample(s, in.texCoord).r;
+    float v = vTex.sample(s, in.texCoord).r;
 
-    float y = yTexture.sample(textureSampler, in.texCoord).r;
-    float u = uTexture.sample(textureSampler, in.texCoord).r - 0.5;
-    float v = vTexture.sample(textureSampler, in.texCoord).r - 0.5;
+    // BT.709 YUV limited range to RGB
+    float c = y - 16.0 / 255.0;
+    float d = u - 0.5;
+    float e = v - 0.5;
 
-    // YUV to RGB 转换矩阵
-    float r = y + 1.402 * v;
-    float g = y - 0.344 * u - 0.714 * v;
-    float b = y + 1.772 * u;
+    float r = 1.164 * c + 1.793 * e;
+    float g = 1.164 * c - 0.213 * d - 0.533 * e;
+    float b = 1.164 * c + 2.112 * d;
 
-    return float4(r, g, b, 1.0);
+    return float4(clamp(r, 0.0, 1.0),
+                  clamp(g, 0.0, 1.0),
+                  clamp(b, 0.0, 1.0), 1.0);
 }

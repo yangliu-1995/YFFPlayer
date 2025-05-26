@@ -69,7 +69,7 @@ static void AudioQueueCallback(void *userData, AudioQueueRef inAQ, AudioQueueBuf
         NSLog(@"AudioQueue initializing with sampleRate: %d, channels: %d, frameBytes: %u", sampleRate, channels, frameBytes);
 
         // 创建 AudioQueue
-        OSStatus status = AudioQueueNewOutput(&format, AudioQueueCallback, (__bridge void *)self, CFRunLoopGetCurrent(), kCFRunLoopCommonModes, 0, &_audioQueue);
+        OSStatus status = AudioQueueNewOutput(&format, AudioQueueCallback, (__bridge void *)self, nullptr, nullptr, 0, &_audioQueue);
         if (status != noErr) {
             NSLog(@"AudioQueueNewOutput failed: %d", (int)status);
             delete _frameBuffer;

@@ -15,6 +15,7 @@
 }
 
 @property (nonatomic, strong) UIView *containerView;
+@property (nonatomic) dispatch_queue_t renderQueue;
 
 @end
 
@@ -24,6 +25,7 @@
     self = [super init];
     if (self) {
         _containerView = view;
+        _renderQueue = dispatch_queue_create("com.example.iosvideorenderer.renderqueue", DISPATCH_QUEUE_SERIAL);
         [self setupMetal];
     }
     return self;
@@ -34,9 +36,9 @@
     _mtkView = [[MTKView alloc] initWithFrame:_containerView.bounds device:_device];
     _mtkView.delegate = self;
     _mtkView.preferredFramesPerSecond = 60;
+    _mtkView.framebufferOnly = NO;
     [_containerView addSubview:_mtkView];
 
-    // 设置 MTKView 自动调整大小
     _mtkView.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
         [_mtkView.leadingAnchor constraintEqualToAnchor:_containerView.leadingAnchor],
@@ -52,17 +54,14 @@
 
 - (void)setupPipeline {
     id<MTLLibrary> defaultLibrary = [_device newDefaultLibrary];
-
     MTLRenderPipelineDescriptor *pipelineDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     pipelineDescriptor.label = @"YUVToRGBPipeline";
 
-    // Vertex and fragment shaders
     id<MTLFunction> vertexFunction = [defaultLibrary newFunctionWithName:@"vertexShader"];
     id<MTLFunction> fragmentFunction = [defaultLibrary newFunctionWithName:@"yuvToRGBFragmentShader"];
 
     pipelineDescriptor.vertexFunction = vertexFunction;
     pipelineDescriptor.fragmentFunction = fragmentFunction;
-
     pipelineDescriptor.colorAttachments[0].pixelFormat = _mtkView.colorPixelFormat;
 
     NSError *error = nil;
@@ -78,89 +77,84 @@
         return;
     }
 
-    // 创建 YUV 纹理
-    [self createTexturesForFrame:frame];
-
-    // 更新视口大小
-    _viewportSize = (vector_uint2){(uint32_t)frame.mWidth, (uint32_t)frame.mHeight};
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [_mtkView setNeedsDisplay];
+    dispatch_sync(_renderQueue, ^{
+        [self createTexturesForFrame:frame];
+        self->_viewportSize = (vector_uint2){(uint32_t)frame.mWidth, (uint32_t)frame.mHeight};
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self->_mtkView setNeedsDisplay];
+        });
     });
 }
 
 - (void)createTexturesForFrame:(const yffplayer::VideoFrame &)frame {
-    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
+    if (frame.mWidth % 2 != 0 || frame.mHeight % 2 != 0) {
+        NSLog(@"Invalid frame size: width=%d, height=%d", frame.mWidth, frame.mHeight);
+        return;
+    }
 
-    // Y 通道
+    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
+    const uint8_t *data = frame.mData.data();
+
+    size_t ySize = frame.mWidth * frame.mHeight;
+    size_t uSize = (frame.mWidth / 2) * (frame.mHeight / 2);
+
     textureDescriptor.pixelFormat = MTLPixelFormatR8Unorm;
     textureDescriptor.width = frame.mWidth;
     textureDescriptor.height = frame.mHeight;
+    textureDescriptor.usage = MTLTextureUsageShaderRead;
 
     _yTexture = [_device newTextureWithDescriptor:textureDescriptor];
+    [_yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth, frame.mHeight)
+                 mipmapLevel:0
+                   withBytes:data
+                 bytesPerRow:frame.mLinesize[0]];
 
-    // U 和 V 通道（YUV420P 的 UV 分量是 1/4 大小）
     textureDescriptor.width = frame.mWidth / 2;
     textureDescriptor.height = frame.mHeight / 2;
 
     _uTexture = [_device newTextureWithDescriptor:textureDescriptor];
-    _vTexture = [_device newTextureWithDescriptor:textureDescriptor];
-
-    // 上传 YUV 数据
-    const uint8_t *data = frame.mData.data();
-    size_t ySize = frame.mWidth * frame.mHeight;
-    size_t uvSize = ySize / 4;
-
-    [_yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth, frame.mHeight)
-                mipmapLevel:0
-                  withBytes:data
-                bytesPerRow:frame.mWidth];
-
     [_uTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
-                mipmapLevel:0
-                  withBytes:data + ySize
-                bytesPerRow:frame.mWidth / 2];
+                 mipmapLevel:0
+                   withBytes:data + ySize
+                 bytesPerRow:frame.mLinesize[1]];
 
+    _vTexture = [_device newTextureWithDescriptor:textureDescriptor];
     [_vTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
-                mipmapLevel:0
-                  withBytes:data + ySize + uvSize
-                bytesPerRow:frame.mWidth / 2];
+                 mipmapLevel:0
+                   withBytes:data + ySize + uSize
+                 bytesPerRow:frame.mLinesize[2]];
 }
 
 #pragma mark - MTKViewDelegate
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
-    _viewportSize = (vector_uint2){(uint32_t)size.width, (uint32_t)size.height};
+    dispatch_async(_renderQueue, ^{
+        self->_viewportSize = (vector_uint2){(uint32_t)size.width, (uint32_t)size.height};
+    });
 }
 
 - (void)drawInMTKView:(MTKView *)view {
-    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
+    dispatch_sync(_renderQueue, ^{
+        id<MTLCommandBuffer> commandBuffer = [self->_commandQueue commandBuffer];
+        MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
 
-    if (renderPassDescriptor != nil && _yTexture != nil) {
-        id<MTLRenderCommandEncoder> renderEncoder =
-            [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+        if (renderPassDescriptor && self->_yTexture && self->_uTexture && self->_vTexture) {
+            id<MTLRenderCommandEncoder> renderEncoder =
+                [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
-        [renderEncoder setRenderPipelineState:_pipelineState];
+            [renderEncoder setRenderPipelineState:self->_pipelineState];
+            [renderEncoder setFragmentTexture:self->_yTexture atIndex:0];
+            [renderEncoder setFragmentTexture:self->_uTexture atIndex:1];
+            [renderEncoder setFragmentTexture:self->_vTexture atIndex:2];
 
-        [renderEncoder setVertexBytes:&_viewportSize
-                              length:sizeof(_viewportSize)
-                             atIndex:0];
+            [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:6];
+            [renderEncoder endEncoding];
 
-        [renderEncoder setFragmentTexture:_yTexture atIndex:0];
-        [renderEncoder setFragmentTexture:_uTexture atIndex:1];
-        [renderEncoder setFragmentTexture:_vTexture atIndex:2];
+            [commandBuffer presentDrawable:view.currentDrawable];
+        }
 
-        [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip
-                         vertexStart:0
-                         vertexCount:4];
-
-        [renderEncoder endEncoding];
-
-        [commandBuffer presentDrawable:view.currentDrawable];
-    }
-
-    [commandBuffer commit];
+        [commandBuffer commit];
+    });
 }
 
 @end
