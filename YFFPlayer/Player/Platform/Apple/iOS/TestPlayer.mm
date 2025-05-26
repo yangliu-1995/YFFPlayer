@@ -83,13 +83,19 @@ extern "C" {
         avcodec_parameters_copy(audioCodecParams, mediaInfo.mAudioCodecParameters);
         AVCodecParameters *videoCodecParams = avcodec_parameters_alloc();
         avcodec_parameters_copy(videoCodecParams, mediaInfo.mVideoCodecParameters);
-        _audioDecoder = std::make_shared<yffplayer::AudioDecoder>(_audioQueue, _audioFrameQueue, audioCodecParams, mediaInfo.mAudioTimeBase);
-        _videoDecoder = std::make_shared<yffplayer::VideoDecoder>(_videoQueue, _videoFrameQueue, videoCodecParams, mediaInfo.mVideoTimeBase);
+        _audioDecoder = std::make_shared<yffplayer::AudioDecoder>(_audioQueue, _audioFrameQueue);
+        _videoDecoder = std::make_shared<yffplayer::VideoDecoder>(_videoQueue, _videoFrameQueue);
 
 
         _demuxer->start();
-        _audioDecoder->start();
-        _videoDecoder->start();
+        if (mediaInfo.mHasAudio) {
+            _audioDecoder->open(audioCodecParams, mediaInfo.mAudioTimeBase);
+            _audioDecoder->start();
+        }
+        if (mediaInfo.mHasVideo) {
+            _videoDecoder->open(videoCodecParams, mediaInfo.mVideoTimeBase);
+            _videoDecoder->start();
+        }
         _audioRenderThread = [[NSThread alloc] initWithTarget:self selector:@selector(simAudioRenderThread) object:nil];
         _videoRenderThread = [[NSThread alloc] initWithTarget:self selector:@selector(simVideoRenderThread) object:nil];
         [_audioRenderThread start];

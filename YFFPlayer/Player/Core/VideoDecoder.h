@@ -1,29 +1,29 @@
 #pragma once
 
-#include <thread>
 #include <memory>
+#include "Decoder.h"
 #include "PacketQueue.h"
 #include "FrameQueue.h"
 #include "VideoFrame.h"
 
 extern "C" {
-#include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
 
 namespace yffplayer {
 
-class VideoDecoder {
+class VideoDecoder : public Decoder {
 public:
     VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                 std::shared_ptr<FrameQueue<VideoFrame>> frameQueue,
-                 AVCodecParameters* codecParams,
-                 AVRational timeBase);
-    ~VideoDecoder();
+                 std::shared_ptr<FrameQueue<VideoFrame>> frameQueue);
+    ~VideoDecoder() override;
 
-    void start();
-    void stop();
+    bool open(AVCodecParameters* codecParams, AVRational timeBase) override;
+    void start() override;
+    void stop() override;
+    void pause() override;
+    void resume() override;
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;
@@ -32,10 +32,11 @@ private:
     SwsContext* mSwsCtx = nullptr;
     AVPixelFormat mTargetFormat = AV_PIX_FMT_RGB24;
     AVRational mTimeBase;
-    bool mStopped = false;
-    std::thread mDecodeThread;
+    std::atomic<bool> mPaused{false};
+    std::mutex mMutex;
+    std::condition_variable mCond;
 
-    void decodeLoop();
+    void decodeLoop() override;
     int64_t toMs(int64_t pts, AVRational timeBase);
 };
 

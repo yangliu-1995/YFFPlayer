@@ -134,18 +134,16 @@ void Demuxer::demuxLoop() {
 
         if (pkt->stream_index == mVideoStreamIndex) {
             auto packet = std::make_shared<Packet>(av_packet_clone(pkt));
-            if (mVideoQueue->try_push(packet, std::chrono::milliseconds(100))) {
-//                std::cout << "Video packet pushed to queue, dts: " << pkt->dts << ", pts: " << pkt->pts << "\n";
-            } else {
+//            if (!mVideoQueue->push(packet)) {
 //                std::cerr << "Video queue is full, packet dropped, dts: " << pkt->dts << ", pts: " << pkt->pts << "\n";
-            }
+//            }
+            mVideoQueue->push(packet);
         } else if (pkt->stream_index == mAudioStreamIndex) {
             auto packet = std::make_shared<Packet>(av_packet_clone(pkt));
-            if (mAudioQueue->try_push(packet, std::chrono::milliseconds(100))) {
-//                std::cout << "Audio packet pushed to queue, dts: " << pkt->dts << ", pts: " << pkt->pts << "\n";
-            } else {
+//            if (!mAudioQueue->push(packet)) {
 //                std::cerr << "Audio queue is full, packet dropped, dts: " << pkt->dts << ", pts: " << pkt->pts << "\n";
-            }
+//            }
+            mAudioQueue->push(packet);
         }
         av_packet_unref(pkt);
     }

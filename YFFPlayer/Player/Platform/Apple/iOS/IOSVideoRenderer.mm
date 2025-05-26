@@ -84,8 +84,9 @@
     // 更新视口大小
     _viewportSize = (vector_uint2){(uint32_t)frame.mWidth, (uint32_t)frame.mHeight};
 
-    // 触发重绘
-    [_mtkView setNeedsDisplay];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [_mtkView setNeedsDisplay];
+    });
 }
 
 - (void)createTexturesForFrame:(const yffplayer::VideoFrame &)frame {

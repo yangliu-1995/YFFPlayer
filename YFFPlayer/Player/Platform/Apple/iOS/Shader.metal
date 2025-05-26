@@ -11,7 +11,7 @@ vertex VertexOut vertexShader(uint vertexID [[vertex_id]],
     float2 pixelSpacePosition = float2(vertexID == 0 || vertexID == 1 ? 0.0 : 1.0,
                                       vertexID == 0 || vertexID == 2 ? 1.0 : 0.0); // 翻转 y 坐标
 
-    float2 viewportSizeF = float2(*viewportSize);
+//    float2 viewportSizeF = float2(*viewportSize);
     float2 position = pixelSpacePosition * 2.0 - 1.0;
 
     VertexOut out;

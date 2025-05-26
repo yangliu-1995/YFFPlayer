@@ -4,6 +4,7 @@
 
 extern "C" {
 #include <libavutil/avutil.h>
+#include <libavcodec/avcodec.h>
 struct AVCodecParameters;
 }
 
@@ -21,5 +22,10 @@ struct MediaInfo {
     int mVideoHeight{0};
     int mAudiochannels{0};
     int mAudioSampleRate{0};
+
+    ~MediaInfo() {
+        avcodec_parameters_free(&mAudioCodecParameters);
+        avcodec_parameters_free(&mVideoCodecParameters);
+    };
 };
 }

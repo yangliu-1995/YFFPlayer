@@ -8,23 +8,39 @@
 namespace yffplayer {
 
 AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                           std::shared_ptr<FrameQueue<AudioFrame>> frameQueue,
-                           AVCodecParameters* codecParams,
-                           AVRational timeBase)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)), mTimeBase(timeBase) {
+                           std::shared_ptr<FrameQueue<AudioFrame>> frameQueue)
+    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {
+}
 
+AudioDecoder::~AudioDecoder() {
+    stop();
+    if (mSwrCtx) swr_free(&mSwrCtx);
+    if (mCodecCtx) avcodec_free_context(&mCodecCtx);
+}
+
+bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
+    mTimeBase = timeBase;
+    
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
-    if (!codec) throw std::runtime_error("Audio codec not found");
+    if (!codec) {
+        std::cerr << "Audio codec not found" << std::endl;
+        return false;
+    }
 
     mCodecCtx = avcodec_alloc_context3(codec);
-    if (!mCodecCtx) throw std::runtime_error("Failed to allocate audio codec context");
+    if (!mCodecCtx) {
+        std::cerr << "Failed to allocate audio codec context" << std::endl;
+        return false;
+    }
 
     if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
-        throw std::runtime_error("Failed to copy codec parameters");
+        std::cerr << "Failed to copy codec parameters" << std::endl;
+        return false;
     }
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
-        throw std::runtime_error("Failed to open audio codec");
+        std::cerr << "Failed to open audio codec" << std::endl;
+        return false;
     }
 
     // ✅ 目标布局（44100Hz, 2 channels, S16）
@@ -38,31 +54,52 @@ AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
     mSwrCtx = swr_alloc();
 
-    if (!mSwrCtx) throw std::runtime_error("Failed to allocate SwrContext");
+    if (!mSwrCtx) {
+        std::cerr << "Failed to allocate SwrContext" << std::endl;
+        return false;
+    }
 
     if (swr_alloc_set_opts2(&mSwrCtx,
                             &outLayout, AV_SAMPLE_FMT_S16, 44100,
                             &mCodecCtx->ch_layout, mCodecCtx->sample_fmt, mCodecCtx->sample_rate,
                             0, nullptr) < 0) {
-        throw std::runtime_error("swr_alloc_set_opts2 failed");
+        std::cerr << "swr_alloc_set_opts2 failed" << std::endl;
+        return false;
     }
 
     if (swr_init(mSwrCtx) < 0) {
-        throw std::runtime_error("Failed to initialize SwrContext");
+        std::cerr << "Failed to initialize SwrContext" << std::endl;
+        return false;
     }
 
     // 注意 outLayout 是栈上临时变量，拷贝后记得释放
     av_channel_layout_uninit(&outLayout);
-}
-
-AudioDecoder::~AudioDecoder() {
-    if (mSwrCtx) swr_free(&mSwrCtx);
-    if (mCodecCtx) avcodec_free_context(&mCodecCtx);
+    
+    return true;
 }
 
 void AudioDecoder::start() {
+    mIsRunning = true;
+    mPaused = false;
     mDecodeThread = std::thread(&AudioDecoder::decodeLoop, this);
-    std::cout << "VideoDecoder started\n";
+    std::cout << "AudioDecoder started" << std::endl;
+}
+
+void AudioDecoder::stop() {
+    mIsRunning = false;
+    resume(); // 防止线程阻塞在暂停状态
+    if (mDecodeThread.joinable()) {
+        mDecodeThread.join();
+    }
+}
+
+void AudioDecoder::pause() {
+    mPaused = true;
+}
+
+void AudioDecoder::resume() {
+    mPaused = false;
+    mCond.notify_all();
 }
 
 void AudioDecoder::decodeLoop() {
@@ -75,7 +112,18 @@ void AudioDecoder::decodeLoop() {
         return;
     }
 
-    while (!mStopped) {
+    while (mIsRunning) { // 使用mIsRunning替代!mStopped
+        // 处理暂停逻辑
+        std::unique_lock<std::mutex> lock(mMutex);
+        mCond.wait(lock, [this] {
+            return !mPaused || mIsRunning; // 使用!mIsRunning替代mStopped
+        });
+        lock.unlock();
+        
+        if (!mIsRunning) { // 使用!mIsRunning替代mStopped
+            break;
+        }
+        
         auto pkt = mPacketQueue->pop();
         if (!pkt) break; // 队列已关闭
 
@@ -136,10 +184,6 @@ void AudioDecoder::decodeLoop() {
 
     av_frame_free(&frame);
     av_packet_free(&packet);
-}
-
-void AudioDecoder::stop() {
-    mStopped = true;
 }
 
 } // namespace yffplayer

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <thread>
+#include "Decoder.h"
 #include "PacketQueue.h"
 #include "FrameQueue.h"
 #include "AudioFrame.h"
@@ -15,16 +15,17 @@ extern "C" {
 
 namespace yffplayer {
 
-class AudioDecoder {
+class AudioDecoder : public Decoder {
 public:
     AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                 std::shared_ptr<FrameQueue<AudioFrame>> frameQueue,
-                 AVCodecParameters* codecParams,
-                 AVRational timeBase);
-    ~AudioDecoder();
+                 std::shared_ptr<FrameQueue<AudioFrame>> frameQueue);
+    ~AudioDecoder() override;
 
-    void start();
-    void stop();
+    bool open(AVCodecParameters* codecParams, AVRational timeBase) override;
+    void start() override;
+    void stop() override;
+    void pause() override;
+    void resume() override;
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;
@@ -32,10 +33,11 @@ private:
     AVCodecContext* mCodecCtx = nullptr;
     SwrContext* mSwrCtx = nullptr;
     AVRational mTimeBase;
-    bool mStopped = false;
-    std::thread mDecodeThread;
+    std::atomic<bool> mPaused{false};
+    std::mutex mMutex;
+    std::condition_variable mCond;
 
-    void decodeLoop();
+    void decodeLoop() override;
 };
 
 } // namespace yffplayer
