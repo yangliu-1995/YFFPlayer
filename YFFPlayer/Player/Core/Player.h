@@ -1,0 +1,46 @@
+#pragma once
+#include "Demuxer.h"
+#include "PacketQueue.h"
+#include "FrameQueue.h"
+#include "AudioDecoder.h"
+#include "VideoDecoder.h"
+#include "AudioOutput.h"
+#include "VideoOutput.h"
+#include "MediaInfo.h"
+#include <atomic>
+#include <thread>
+#include <memory>
+
+namespace yffplayer {
+class Player: public std::enable_shared_from_this<Player>,
+              public AudioOutputFrameProvider {
+public:
+    Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput);
+    ~Player();
+
+    bool open(const std::string& url, MediaInfo& mediaInfo);
+    void start();
+    void stop();
+    std::shared_ptr<AudioFrame> getNextAudioFrame() override;
+
+private:
+    void audioRenderThread();
+    void videoRenderThread();
+
+    std::shared_ptr<Demuxer> mDemuxer;
+    std::shared_ptr<PacketQueue> mAudioPacketQueue;
+    std::shared_ptr<PacketQueue> mVideoPacketQueue;
+    std::shared_ptr<FrameQueue<AudioFrame>> mAudioFrameQueue;
+    std::shared_ptr<FrameQueue<VideoFrame>> mVideoFrameQueue;
+    std::shared_ptr<AudioDecoder> mAudioDecoder;
+    std::shared_ptr<VideoDecoder> mVideoDecoder;
+    std::shared_ptr<AudioOutput> mAudioOutput;
+    std::shared_ptr<VideoOutput> mVideoOutput;
+    std::thread mAudioRenderThread;
+    std::thread mVideoRenderThread;
+    std::atomic<int64_t> mAudioClock{0};
+    std::atomic<int64_t> mVideoClock{0};
+    MediaInfo mMediaInfo;
+    std::atomic<bool> mRunning{false};
+};
+} // namespace yffplayer
