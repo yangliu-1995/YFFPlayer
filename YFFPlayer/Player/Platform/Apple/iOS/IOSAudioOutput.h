@@ -4,7 +4,7 @@
 #include "IOSAudioRender.h"
 
 namespace yffplayer {
-class IOSAudioOutput : public AudioOutput {
+class IOSAudioOutput : public AudioOutput, public std::enable_shared_from_this<IOSAudioOutput> {
 public:
     IOSAudioOutput();
     ~IOSAudioOutput() override;

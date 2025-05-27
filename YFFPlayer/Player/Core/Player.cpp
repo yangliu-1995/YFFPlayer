@@ -109,7 +109,10 @@ void Player::videoRenderThread() {
                 int64_t audioClock = mAudioClock.load();
                 int64_t diff = pts - audioClock;
                 if (diff > 50) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(diff));
+                    int ret = av_usleep(static_cast<unsigned int>(diff * 1000));
+                    if (ret != 0) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(diff));
+                    }
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 } else if (diff < -50) {
                     continue; // 跳过落后太多的帧
@@ -123,6 +126,11 @@ void Player::videoRenderThread() {
                     frameDuration = 33; // 默认 30fps
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(frameDuration));
+                int ret = av_usleep(static_cast<unsigned int>(frameDuration * 1000));
+                if (ret != 0) {
+                    // 处理中断
+                    std::this_thread::sleep_for(std::chrono::milliseconds(frameDuration));
+                }
             }
         }
     }
