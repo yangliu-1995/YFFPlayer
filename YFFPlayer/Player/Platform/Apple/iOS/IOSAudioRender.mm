@@ -35,14 +35,14 @@ static void AudioQueueCallback(void *userData, AudioQueueRef inAQ, AudioQueueBuf
     if (self) {
         NSError *error = nil;
         AVAudioSession *session = [AVAudioSession sharedInstance];
-                [session setCategory:AVAudioSessionCategoryPlayback
-                         withOptions:0
-                               error:&error];
-                if (error) {
-                    NSLog(@"Failed to set AVAudioSession category: %@", error);
-                    return nil;
-                }
-                [session setActive:YES error:&error];
+        [session setCategory:AVAudioSessionCategoryPlayback
+                 withOptions:0
+                       error:&error];
+        if (error) {
+            NSLog(@"Failed to set AVAudioSession category: %@", error);
+            return nil;
+        }
+        [session setActive:YES error:&error];
         _sampleRate = sampleRate;
         _channels = channels;
         _frameBytes = (UInt32)(sampleRate * 0.5 * channels * 2); // 0.1 seconds of audio data, 2 bytes per channel (S16)
