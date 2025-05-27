@@ -25,6 +25,7 @@ Player::~Player() {
 }
 
 bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
+    stop();
     if (!mDemuxer->open(url, mediaInfo)) {
         return false;
     }
@@ -71,26 +72,78 @@ void Player::start() {
 }
 
 void Player::stop() {
+    if (!mRunning) {
+        return;
+    }
     mRunning = false;
-    if (mAudioOutput) {
-        mAudioOutput->stop();
+    mPaused = false;
+
+    // 先中断所有队列阻塞
+    if (mAudioPacketQueue) {
+        mAudioPacketQueue->abort();
+        mAudioPacketQueue->clear();
     }
-    if (mVideoOutput) {
-        mVideoOutput->stop();
+    if (mVideoPacketQueue) {
+        mVideoPacketQueue->abort();
+        mVideoPacketQueue->clear();
     }
-    if (mAudioRenderThread.joinable()) {
-        mAudioRenderThread.join();
+    if (mAudioFrameQueue) {
+        mAudioFrameQueue->abort();
+        mAudioFrameQueue->clear();
     }
-    if (mVideoRenderThread.joinable()) {
-        mVideoRenderThread.join();
+    if (mVideoFrameQueue) {
+        mVideoFrameQueue->abort();
+        mVideoFrameQueue->clear();
     }
+
+    // 停止解码器，解码器中如果阻塞了pop，也会因队列abort返回
     if (mAudioDecoder) {
         mAudioDecoder->stop();
     }
     if (mVideoDecoder) {
         mVideoDecoder->stop();
     }
-    mDemuxer->stop();
+
+    // 停止音频输出，结束音频渲染线程
+    if (mAudioOutput) {
+        mAudioOutput->stop();
+    }
+    if (mAudioRenderThread.joinable()) {
+        mAudioRenderThread.join();
+    }
+
+    // 停止视频输出，结束视频渲染线程
+    if (mVideoOutput) {
+        mVideoOutput->stop();
+    }
+    if (mVideoRenderThread.joinable()) {
+        mVideoRenderThread.join();
+    }
+
+    // 停止解复用线程
+    if (mDemuxer) {
+        mDemuxer->stop();
+    }
+
+    // 恢复队列可用状态，以备重新open时使用
+    if (mAudioPacketQueue) {
+        mAudioPacketQueue->start();
+    }
+    if (mVideoPacketQueue) {
+        mVideoPacketQueue->start();
+    }
+    if (mAudioFrameQueue) {
+        mAudioFrameQueue->start();
+    }
+    if (mVideoFrameQueue) {
+        mVideoFrameQueue->start();
+    }
+}
+
+
+void Player::stopThread() {
+    // 原stop方法的主体逻辑移到这里
+
 }
 
 void Player::pause() {

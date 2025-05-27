@@ -91,6 +91,11 @@ void AudioDecoder::stop() {
     if (mDecodeThread.joinable()) {
         mDecodeThread.join();
     }
+    if (mCodecCtx && avcodec_is_open(mCodecCtx)) {
+        avcodec_close(mCodecCtx);
+        avcodec_free_context(&mCodecCtx);
+        mCodecCtx = nullptr;
+    }
 }
 
 void AudioDecoder::pause() {

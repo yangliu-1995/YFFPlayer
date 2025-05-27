@@ -1,47 +1,41 @@
 #pragma once
 
-#include <memory>
+#include "Packet.h"
 #include <queue>
+#include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+#include <atomic>
 
 namespace yffplayer {
 
-struct Packet;
-
 class PacketQueue {
 public:
-    explicit PacketQueue(size_t capacity);
-    ~PacketQueue() = default;
+    PacketQueue(size_t capacity);
 
-    // 禁止拷贝和移动
-    PacketQueue(const PacketQueue&) = delete;
-    PacketQueue& operator=(const PacketQueue&) = delete;
-    PacketQueue(PacketQueue&&) = delete;
-    PacketQueue& operator=(PacketQueue&&) = delete;
-
-    // 推入数据包（带超时）
     bool try_push(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout);
-    // 推入数据包（可能阻塞）
-    void push(std::shared_ptr<Packet> packet);
-    // 弹出数据包（可能阻塞）
-    std::shared_ptr<Packet> pop();
-    // 弹出最后一个数据包（可能阻塞）
-    bool pop_last();
-    // 推入数据包并在非关键帧时丢弃（带超时）
     bool try_push_with_drop_if_keyframe(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout);
-    // 获取当前队列大小
+    void push(std::shared_ptr<Packet> packet);
+    std::shared_ptr<Packet> pop();
+    bool pop_last();
+
+    void clear();   // 清空队列
+    void abort();   // 中断阻塞操作
+    void start();   // 恢复阻塞操作
+    void flush();   // 等价于 clear + start
     size_t size() const;
-    // 清空队列并释放所有数据包
-    void clear();
 
 private:
     std::queue<std::shared_ptr<Packet>> mQueue;
+    size_t mCapacity;
+    size_t mSize;
+
     mutable std::mutex mMutex;
     std::condition_variable mCondFull;
     std::condition_variable mCondEmpty;
-    size_t mCapacity;
-    size_t mSize;
+
+    std::atomic<bool> mAborted {false};
 };
 
 } // namespace yffplayer

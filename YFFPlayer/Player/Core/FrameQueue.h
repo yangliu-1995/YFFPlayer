@@ -1,9 +1,11 @@
 #pragma once
 
-#include <memory>
 #include <queue>
+#include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+#include <atomic>
 
 namespace yffplayer {
 
@@ -12,22 +14,26 @@ class FrameQueue {
 public:
     explicit FrameQueue(size_t capacity);
 
-    FrameQueue(const FrameQueue&) = delete;
-    FrameQueue& operator=(const FrameQueue&) = delete;
-
     void push(std::shared_ptr<T> frame);
     std::shared_ptr<T> pop();
 
-    size_t size() const;
     void clear();
+    void abort();  // 中断阻塞操作
+    void start();  // 恢复阻塞
+    void flush();  // 等价于 abort + clear + start
+
+    size_t size() const;
 
 private:
+    std::queue<std::shared_ptr<T>> mQueue;
     size_t mCapacity;
+    size_t mSize;
+
     mutable std::mutex mMutex;
     std::condition_variable mCondFull;
     std::condition_variable mCondEmpty;
-    std::queue<std::shared_ptr<T>> mQueue;
-    size_t mSize;
+
+    std::atomic<bool> mAborted;
 };
 
 } // namespace yffplayer

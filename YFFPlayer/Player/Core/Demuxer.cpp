@@ -97,11 +97,16 @@ void Demuxer::seek(int64_t timestampMs) {
 
 void Demuxer::stop() {
     if (!mRunning) return;
-
     mStopRequested = true;
     resume();  // 防止阻塞在 paused
     if (mThread.joinable()) {
         mThread.join();
+    }
+    if (mFormatCtx) {
+        avformat_flush(mFormatCtx);
+        avformat_close_input(&mFormatCtx);
+        avformat_free_context(mFormatCtx);
+        mFormatCtx = nullptr;
     }
     mRunning = false;
 }

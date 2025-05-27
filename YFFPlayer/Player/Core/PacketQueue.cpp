@@ -1,24 +1,22 @@
 #include "PacketQueue.h"
-#include "Packet.h"
 
 namespace yffplayer {
 
 PacketQueue::PacketQueue(size_t capacity)
-    : mCapacity(capacity), mSize(0) {
-}
+    : mCapacity(capacity), mSize(0) {}
 
 bool PacketQueue::try_push(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lock(mMutex);
-    if (!mCondFull.wait_for(lock, timeout, [this]() { return mSize < mCapacity; })) {
+    if (!mCondFull.wait_for(lock, timeout, [this]() {
+        return mSize < mCapacity || mAborted.load();
+    })) {
         return false;
     }
+    if (mAborted.load()) return false;
 
     mQueue.push(std::move(packet));
     ++mSize;
-    auto size = mSize;
-
-    lock.unlock();
-    if (size == 1) {
+    if (mSize == 1) {
         mCondEmpty.notify_one();
     }
     return true;
@@ -33,83 +31,84 @@ bool PacketQueue::pop_last() {
         temp.push(std::move(mQueue.front()));
         mQueue.pop();
     }
-
-    // 丢弃最后一个
-    mQueue.pop();
+    mQueue.pop(); // 丢掉最后一个
     --mSize;
-
-    // 重新入队
     while (!temp.empty()) {
         mQueue.push(std::move(temp.front()));
         temp.pop();
     }
-
     mCondFull.notify_one();
     return true;
 }
 
-
 bool PacketQueue::try_push_with_drop_if_keyframe(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout) {
-    if (try_push(packet, timeout)) {
+    if (try_push(packet, timeout)) return true;
+    if (packet->isKeyFrame() && pop_last()) {
+        push(std::move(packet));
         return true;
     }
-
-    if (packet->isKeyFrame()) {
-        if (pop_last()) {
-            push(std::move(packet)); // 不需要阻塞了
-            return true;
-        }
-    }
-
-    return false; // 不是关键帧也不能推入
+    return false;
 }
 
 void PacketQueue::push(std::shared_ptr<Packet> packet) {
     std::unique_lock<std::mutex> lock(mMutex);
-    mCondFull.wait(lock, [this]() { return mSize < mCapacity; });
+    mCondFull.wait(lock, [this]() {
+        return mSize < mCapacity || mAborted.load();
+    });
+    if (mAborted.load()) return;
 
     mQueue.push(std::move(packet));
     ++mSize;
-    auto size = mSize;
-
-    lock.unlock();
-    if (size == 1) {
+    if (mSize == 1) {
         mCondEmpty.notify_one();
     }
 }
 
 std::shared_ptr<Packet> PacketQueue::pop() {
     std::unique_lock<std::mutex> lock(mMutex);
-    mCondEmpty.wait(lock, [this]() { return mSize > 0; });
+    mCondEmpty.wait(lock, [this]() {
+        return mSize > 0 || mAborted.load();
+    });
+    if (mAborted.load()) return nullptr;
 
     auto packet = mQueue.front();
     mQueue.pop();
     --mSize;
-    auto size = mSize;
-
-    lock.unlock();
-    if (size == mCapacity - 1) {
+    if (mSize == mCapacity - 1) {
         mCondFull.notify_one();
     }
     return packet;
 }
 
-size_t PacketQueue::size() const {
-    std::lock_guard<std::mutex> lock(mMutex);
-    return mSize;
-}
-
 void PacketQueue::clear() {
     std::lock_guard<std::mutex> lock(mMutex);
     while (!mQueue.empty()) {
-        auto packet = mQueue.front();
         mQueue.pop();
-        // Packet 类的析构函数会自动释放 AVPacket
     }
     mSize = 0;
-
     mCondFull.notify_all();
     mCondEmpty.notify_all();
+}
+
+void PacketQueue::abort() {
+    mAborted.store(true);
+    mCondFull.notify_all();
+    mCondEmpty.notify_all();
+}
+
+void PacketQueue::start() {
+    mAborted.store(false);
+}
+
+void PacketQueue::flush() {
+    abort();
+    clear();
+    start();
+}
+
+size_t PacketQueue::size() const {
+    std::lock_guard<std::mutex> lock(mMutex);
+    return mSize;
 }
 
 } // namespace yffplayer

@@ -7,14 +7,15 @@ namespace yffplayer {
 
 template<typename T>
 FrameQueue<T>::FrameQueue(size_t capacity)
-    : mCapacity(capacity), mSize(0) {}
+    : mCapacity(capacity), mSize(0), mAborted(false) {}
 
 template<typename T>
 void FrameQueue<T>::push(std::shared_ptr<T> frame) {
     std::unique_lock<std::mutex> lock(mMutex);
     mCondFull.wait(lock, [this]() {
-        return mSize < mCapacity;
+        return mSize < mCapacity || mAborted.load();
     });
+    if (mAborted.load()) return;
 
     mQueue.push(std::move(frame));
     ++mSize;
@@ -27,8 +28,9 @@ template<typename T>
 std::shared_ptr<T> FrameQueue<T>::pop() {
     std::unique_lock<std::mutex> lock(mMutex);
     mCondEmpty.wait(lock, [this]() {
-        return mSize > 0;
+        return mSize > 0 || mAborted.load();
     });
+    if (mAborted.load()) return nullptr;
 
     auto frame = mQueue.front();
     mQueue.pop();
@@ -37,12 +39,6 @@ std::shared_ptr<T> FrameQueue<T>::pop() {
     lock.unlock();
     mCondFull.notify_one();
     return frame;
-}
-
-template<typename T>
-size_t FrameQueue<T>::size() const {
-    std::lock_guard<std::mutex> lock(mMutex);
-    return mSize;
 }
 
 template<typename T>
@@ -55,6 +51,31 @@ void FrameQueue<T>::clear() {
 
     mCondFull.notify_all();
     mCondEmpty.notify_all();
+}
+
+template<typename T>
+void FrameQueue<T>::abort() {
+    mAborted.store(true);
+    mCondFull.notify_all();
+    mCondEmpty.notify_all();
+}
+
+template<typename T>
+void FrameQueue<T>::start() {
+    mAborted.store(false);
+}
+
+template<typename T>
+void FrameQueue<T>::flush() {
+    abort();
+    clear();
+    start();
+}
+
+template<typename T>
+size_t FrameQueue<T>::size() const {
+    std::lock_guard<std::mutex> lock(mMutex);
+    return mSize;
 }
 
 // 显式实例化

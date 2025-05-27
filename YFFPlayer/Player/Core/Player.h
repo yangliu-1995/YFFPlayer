@@ -28,6 +28,7 @@ public:
 private:
     void audioRenderThread();
     void videoRenderThread();
+    void stopThread();
 
     std::shared_ptr<Demuxer> mDemuxer;
     std::shared_ptr<PacketQueue> mAudioPacketQueue;
@@ -40,6 +41,7 @@ private:
     std::shared_ptr<VideoOutput> mVideoOutput;
     std::thread mAudioRenderThread;
     std::thread mVideoRenderThread;
+    std::thread mStopThread;  
     std::atomic<int64_t> mAudioClock{0};
     std::atomic<int64_t> mVideoClock{0};
     MediaInfo mMediaInfo;
