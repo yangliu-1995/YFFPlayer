@@ -142,6 +142,10 @@ static void AudioQueueCallback(void *userData, AudioQueueRef inAQ, AudioQueueBuf
 }
 
 - (void)feedAudioFrame:(const std::shared_ptr<yffplayer::AudioFrame> &)frame {
+    if (!frame) {
+        NSLog(@"Received null audio frame");
+        return;
+    }
     // 记录帧信息
     NSLog(@"Received frame: pts=%lld, dur=%lld, size=%zu", frame->mPts, frame->mDuration, frame->mData.size());
 
