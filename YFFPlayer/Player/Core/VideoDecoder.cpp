@@ -63,6 +63,10 @@ void VideoDecoder::stop() {
         avcodec_free_context(&mCodecCtx);
         mCodecCtx = nullptr;
     }
+    if (mSwsCtx) {
+        sws_freeContext(mSwsCtx);
+        mSwsCtx = nullptr;
+    }
 }
 
 void VideoDecoder::pause() {

@@ -14,8 +14,6 @@ AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
 AudioDecoder::~AudioDecoder() {
     stop();
-    if (mSwrCtx) swr_free(&mSwrCtx);
-    if (mCodecCtx) avcodec_free_context(&mCodecCtx);
 }
 
 bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
@@ -95,6 +93,10 @@ void AudioDecoder::stop() {
         avcodec_close(mCodecCtx);
         avcodec_free_context(&mCodecCtx);
         mCodecCtx = nullptr;
+    }
+    if (mSwrCtx) {
+        swr_free(&mSwrCtx);
+        mSwrCtx = nullptr;
     }
 }
 
