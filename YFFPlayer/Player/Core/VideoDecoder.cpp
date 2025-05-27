@@ -69,8 +69,11 @@ void VideoDecoder::resume() {
     mCond.notify_all();
 }
 
-int64_t VideoDecoder::toMs(int64_t pts, AVRational timeBase) {
-    return av_rescale_q(pts, timeBase, AVRational{1, 1000});
+void VideoDecoder::flush() {
+    mFrameQueue->clear();
+    if (mCodecCtx) {
+        avcodec_flush_buffers(mCodecCtx);
+    }
 }
 
 void VideoDecoder::decodeLoop() {

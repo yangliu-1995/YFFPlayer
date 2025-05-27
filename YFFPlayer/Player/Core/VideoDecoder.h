@@ -24,6 +24,7 @@ public:
     void stop() override;
     void pause() override;
     void resume() override;
+    void flush() override;
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;
@@ -37,7 +38,6 @@ private:
     std::condition_variable mCond;
 
     void decodeLoop() override;
-    int64_t toMs(int64_t pts, AVRational timeBase);
 };
 
 } // namespace yffplayer

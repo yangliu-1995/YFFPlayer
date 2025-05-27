@@ -102,6 +102,13 @@ void AudioDecoder::resume() {
     mCond.notify_all();
 }
 
+void AudioDecoder::flush() {
+    mFrameQueue->clear();
+    if (mCodecCtx) {
+        avcodec_flush_buffers(mCodecCtx);
+    }
+}
+
 void AudioDecoder::decodeLoop() {
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();

@@ -18,6 +18,7 @@ public:
     virtual void stop() = 0;
     virtual void pause() = 0;
     virtual void resume() = 0;
+    virtual void flush() = 0;
 
 protected:
     std::atomic<bool> mIsRunning{false};

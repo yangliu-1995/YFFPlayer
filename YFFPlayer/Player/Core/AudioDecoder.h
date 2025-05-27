@@ -26,6 +26,7 @@ public:
     void stop() override;
     void pause() override;
     void resume() override;
+    void flush() override;
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;
