@@ -31,9 +31,11 @@ class ViewController: UIViewController {
     }
     
     @IBAction func pauseAct(_ sender: Any) {
+        player.pause()
     }
     
     @IBAction func resumeAct(_ sender: Any) {
+        player.resume()
     }
 }
 

@@ -90,7 +90,7 @@ void VideoDecoder::decodeLoop() {
         // 处理暂停逻辑
         std::unique_lock<std::mutex> lock(mMutex);
         mCond.wait(lock, [this] {
-            return !mPaused || mIsRunning;
+            return !mPaused;
         });
         lock.unlock();
 
@@ -99,7 +99,10 @@ void VideoDecoder::decodeLoop() {
         }
 
         auto pkt = mPacketQueue->pop();
-        if (!pkt) break;
+        if (!pkt) {
+            continue;
+        }
+
         auto avPacket = pkt->mPacket;
         if (!avPacket) {
             std::cerr << "Received empty packet, skipping\n";

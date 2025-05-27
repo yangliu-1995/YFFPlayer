@@ -38,7 +38,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         mAudioDecoder->open(audioCodecParams, mMediaInfo.mAudioTimeBase);
         avcodec_parameters_free(&audioCodecParams);
 
-        if (!mAudioOutput->initialize(mMediaInfo.mAudioSampleRate, mMediaInfo.mAudiochannels, 4096 * 2 * 2, shared_from_this())) {
+        if (!mAudioOutput->init(mMediaInfo.mAudioSampleRate, mMediaInfo.mAudiochannels)) {
             return false;
         }
     }
@@ -151,13 +151,22 @@ void Player::pause() {
         return; // 已经暂停或未运行
     }
     mPaused = true;
+
+    // 停止解复用和解码线程继续读取数据
     mDemuxer->pause();
     if (mAudioDecoder) {
         mAudioDecoder->pause();
+        mAudioPacketQueue->abort();// 假设你能访问 packetQueue 和 frameQueue
+        mAudioFrameQueue->abort();
     }
     if (mVideoDecoder) {
         mVideoDecoder->pause();
+        mVideoPacketQueue->abort();
+        mVideoFrameQueue->abort();
     }
+
+    // 暂停音频输出
+    mAudioOutput->pause();
 }
 
 void Player::resume() {
@@ -165,17 +174,43 @@ void Player::resume() {
         return; // 未暂停或未运行
     }
     mPaused = false;
+
+    // 解除abort状态，允许继续读取和解码
     mDemuxer->resume();
     if (mAudioDecoder) {
+        mAudioPacketQueue->start();
+        mAudioFrameQueue->start();
         mAudioDecoder->resume();
     }
     if (mVideoDecoder) {
+        mVideoPacketQueue->start();
+        mVideoFrameQueue->start();
         mVideoDecoder->resume();
     }
+
+    // 恢复音频输出
+    mAudioOutput->resume();
 }
+
 
 void Player::audioRenderThread() {
     mAudioOutput->start();
+    while (mRunning) {
+        // 如果暂停状态，则等待一小段时间后继续检查
+        if (mPaused) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+
+        auto audioFrame = mAudioFrameQueue->pop();
+        if (audioFrame) {
+            int64_t pts = audioFrame->mPts;
+            int64_t frameDuration = audioFrame->mDuration;
+            mAudioClock = pts + frameDuration;
+            mAudioOutput->enqueueAudioFrame(*audioFrame);
+        }
+    }
+    mAudioOutput->stop();
 }
 
 void Player::videoRenderThread() {
@@ -221,20 +256,5 @@ void Player::videoRenderThread() {
             }
         }
     }
-}
-
-std::shared_ptr<AudioFrame> Player::getNextAudioFrame() {
-    // 如果播放器处于暂停状态，不返回音频帧
-    if (mPaused) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        return nullptr;
-    }
-    
-    auto audioFrame = mAudioFrameQueue->pop();
-    if (!audioFrame) {
-        return nullptr; // 如果队列为空，返回nullptr
-    }
-    mAudioClock = audioFrame->mPts + audioFrame->mDuration; // 更新音频时钟
-    return audioFrame;
 }
 } // namespace yffplayer

@@ -128,7 +128,7 @@ void AudioDecoder::decodeLoop() {
         // 处理暂停逻辑
         std::unique_lock<std::mutex> lock(mMutex);
         mCond.wait(lock, [this] {
-            return !mPaused || mIsRunning; // 使用!mIsRunning替代mStopped
+            return !mPaused; // 使用!mIsRunning替代mStopped
         });
         lock.unlock();
         
@@ -137,7 +137,9 @@ void AudioDecoder::decodeLoop() {
         }
         
         auto pkt = mPacketQueue->pop();
-        if (!pkt) break; // 队列已关闭
+        if (!pkt) {
+            continue;
+        }
 
         auto avPacket = pkt->mPacket;
         if (!avPacket) {
@@ -196,6 +198,7 @@ void AudioDecoder::decodeLoop() {
 
     av_frame_free(&frame);
     av_packet_free(&packet);
+    std::cerr << "AudioDecoder thread ended" << std::endl;
 }
 
 } // namespace yffplayer

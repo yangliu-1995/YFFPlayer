@@ -16,6 +16,10 @@
 
 - (void)playVideoWithURL:(NSURL *)url;
 
+- (void)pause;
+
+- (void)resume;
+
 //- (void)play;
 
 @end

@@ -1,23 +1,44 @@
 #pragma once
+
 #include "AudioOutput.h"
-#include <Foundation/Foundation.h>
-#include "IOSAudioRender.h"
+#include <AudioToolbox/AudioToolbox.h>
+#include <mutex>
+#include <condition_variable>
+#include <deque>
 
 namespace yffplayer {
-class IOSAudioOutput : public AudioOutput, public std::enable_shared_from_this<IOSAudioOutput> {
+
+class IOSAudioOutput : public AudioOutput {
 public:
     IOSAudioOutput();
-    ~IOSAudioOutput() override;
+    ~IOSAudioOutput();
 
-    bool initialize(int sampleRate, int channels, int frameBytes, std::shared_ptr<AudioOutputFrameProvider> frameProvider) override;
+    bool init(int sampleRate, int channels) override;
     void start() override;
-    void feedAudioFrame(const AudioFrame& frame) override;
     void stop() override;
     void pause() override;
     void resume() override;
+    bool enqueueAudioFrame(const AudioFrame& frame) override;
 
 private:
-    IOSAudioRender* mAudioRender; // Objective-C 对象
-    std::weak_ptr<AudioOutputFrameProvider> mFrameProvider; // 弱引用，避免循环引用
+    static void AudioQueueCallback(void* userData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer);
+    void handleBuffer(AudioQueueBufferRef inBuffer);
+
+    bool mRunning = false;
+    bool mPaused = false;
+
+    int mSampleRate = 0;
+    int mChannels = 0;
+    UInt32 mFrameBytes = 0;
+
+    AudioQueueRef mAudioQueue = nullptr;
+    static constexpr int kNumBuffers = 3;
+    AudioQueueBufferRef mBuffers[kNumBuffers];
+
+    std::mutex mMutex;
+    std::condition_variable mCond;
+    std::deque<AudioFrame> mFrameQueue;
+    const size_t mMaxQueueSize = 20;
 };
+
 } // namespace yffplayer

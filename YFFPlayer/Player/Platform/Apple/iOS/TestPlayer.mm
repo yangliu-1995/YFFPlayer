@@ -35,4 +35,12 @@
     _player->stop();
 }
 
+- (void)pause {
+    _player->pause();
+}
+
+- (void)resume {
+    _player->resume();
+}
+
 @end

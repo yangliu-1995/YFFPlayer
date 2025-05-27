@@ -12,8 +12,7 @@
 #include <memory>
 
 namespace yffplayer {
-class Player: public std::enable_shared_from_this<Player>,
-              public AudioOutputFrameProvider {
+class Player {
 public:
     Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput);
     ~Player();
@@ -23,7 +22,6 @@ public:
     void stop();
     void pause();
     void resume();
-    std::shared_ptr<AudioFrame> getNextAudioFrame() override;
 
 private:
     void audioRenderThread();

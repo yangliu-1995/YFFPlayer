@@ -1,18 +1,19 @@
 #pragma once
 #include <memory>
-#include "AudioOutputFrameProvider.h"
+#include "AudioFrame.h"
 
 namespace yffplayer {
-class AudioFrame;
-
 class AudioOutput {
 public:
     virtual ~AudioOutput() = default;
-    virtual bool initialize(int sampleRate, int channels, int frameBytes, std::shared_ptr<AudioOutputFrameProvider> frameProvider) = 0;
+
+    virtual bool init(int sampleRate, int channels) = 0;
     virtual void start() = 0;
-    virtual void feedAudioFrame(const AudioFrame& frame) = 0;
+    virtual void stop() = 0;
     virtual void pause() = 0;
     virtual void resume() = 0;
-    virtual void stop() = 0;
+
+    // 阻塞式推送音频帧，必要时等待缓冲空间
+    virtual bool enqueueAudioFrame(const AudioFrame& frame) = 0;
 };
-} // namespace yffplayer
+}
