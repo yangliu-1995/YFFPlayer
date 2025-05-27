@@ -2,9 +2,9 @@
 #include <algorithm>
 #include <cstring>
 
-using namespace yffplayer;
-
-IOSAudioOutput::IOSAudioOutput() {}
+IOSAudioOutput::IOSAudioOutput()
+: mVolume(1.0f), mMute(false)
+{}
 
 IOSAudioOutput::~IOSAudioOutput() {
     stop();
@@ -13,7 +13,7 @@ IOSAudioOutput::~IOSAudioOutput() {
 bool IOSAudioOutput::init(int sampleRate, int channels) {
     mSampleRate = sampleRate;
     mChannels = channels;
-    mFrameBytes = (UInt32)(sampleRate * 0.5 * channels * 2); // 0.5s of audio data
+    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2); // 0.5s of audio data
 
     AudioStreamBasicDescription format = {0};
     format.mSampleRate = sampleRate;
@@ -36,6 +36,9 @@ bool IOSAudioOutput::init(int sampleRate, int channels) {
             return false;
         }
     }
+
+    // 初始化音量参数
+    setVolume(mVolume);
 
     return true;
 }
@@ -77,7 +80,7 @@ void IOSAudioOutput::resume() {
     mPaused = false;
 }
 
-bool IOSAudioOutput::enqueueAudioFrame(const AudioFrame& frame) {
+bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
     std::unique_lock<std::mutex> lock(mMutex);
     mCond.wait(lock, [&] { return mFrameQueue.size() < mMaxQueueSize || !mRunning; });
     if (!mRunning) return false;
@@ -92,25 +95,72 @@ void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ, Audi
 }
 
 void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
-    AudioFrame frame;
+    yffplayer::AudioFrame frame;
 
     {
         std::unique_lock<std::mutex> lock(mMutex);
         if (!mRunning) return;
 
         if (mFrameQueue.empty()) {
-            memset(inBuffer->mAudioData, 0, inBuffer->mAudioDataBytesCapacity);
-            inBuffer->mAudioDataByteSize = inBuffer->mAudioDataBytesCapacity;
+            UInt32 silenceBytes = std::min((UInt32)512, inBuffer->mAudioDataBytesCapacity); // 512 bytes ≈ 5.8ms @44.1kHz stereo 16bit
+            memset(inBuffer->mAudioData, 0, silenceBytes);
+            inBuffer->mAudioDataByteSize = silenceBytes;
         } else {
             frame = mFrameQueue.front();
             mFrameQueue.pop_front();
             mCond.notify_all();
 
             size_t dataSize = std::min(frame.mData.size(), (size_t)mFrameBytes);
-            memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
+
+            // 如果静音则填充0，否则复制数据
+            if (mMute) {
+                memset(inBuffer->mAudioData, 0, dataSize);
+            } else if (mVolume < 0.999f) {
+                // 简单音量缩放，16位PCM按样本缩放
+                const int16_t* src = reinterpret_cast<const int16_t*>(frame.mData.data());
+                int16_t* dst = reinterpret_cast<int16_t*>(inBuffer->mAudioData);
+                size_t sampleCount = dataSize / 2; // 2 bytes per sample
+                for (size_t i = 0; i < sampleCount; ++i) {
+                    float sample = src[i] * mVolume;
+                    if (sample > 32767.f) sample = 32767.f;
+                    else if (sample < -32768.f) sample = -32768.f;
+                    dst[i] = static_cast<int16_t>(sample);
+                }
+            } else {
+                memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
+            }
+
             inBuffer->mAudioDataByteSize = (UInt32)dataSize;
         }
     }
 
     AudioQueueEnqueueBuffer(mAudioQueue, inBuffer, 0, nullptr);
+}
+
+void IOSAudioOutput::setVolume(float volume) {
+    if (volume < 0.f) volume = 0.f;
+    if (volume > 1.f) volume = 1.f;
+    mVolume = volume;
+
+    if (mMute) volume = 0.f;
+
+    if (mAudioQueue) {
+        OSStatus status = AudioQueueSetParameter(mAudioQueue, kAudioQueueParam_Volume, volume);
+        if (status != noErr) {
+            // 可选择记录日志
+        }
+    }
+}
+
+void IOSAudioOutput::setMute(bool mute) {
+    mMute = mute;
+
+    float volume = mute ? 0.f : mVolume;
+
+    if (mAudioQueue) {
+        OSStatus status = AudioQueueSetParameter(mAudioQueue, kAudioQueueParam_Volume, volume);
+        if (status != noErr) {
+            // 可选择记录日志
+        }
+    }
 }

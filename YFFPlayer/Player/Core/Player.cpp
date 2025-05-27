@@ -1,8 +1,9 @@
 #include "Player.h"
 #include <chrono>
 #include <thread>
+#include <iostream>
 
-#if TARGET_OS_IOS
+#if defined(__APPLE__)
 #include <pthread.h>
 #endif
 
@@ -30,15 +31,13 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         return false;
     }
     mMediaInfo = mediaInfo;
-
     if (mMediaInfo.mHasAudio) {
         AVCodecParameters* audioCodecParams = avcodec_parameters_alloc();
         avcodec_parameters_copy(audioCodecParams, mMediaInfo.mAudioCodecParameters);
         mAudioDecoder = std::make_shared<AudioDecoder>(mAudioPacketQueue, mAudioFrameQueue);
         mAudioDecoder->open(audioCodecParams, mMediaInfo.mAudioTimeBase);
         avcodec_parameters_free(&audioCodecParams);
-
-        if (!mAudioOutput->init(mMediaInfo.mAudioSampleRate, mMediaInfo.mAudiochannels)) {
+        if (!mAudioOutput->init(44100, 2)) {
             return false;
         }
     }
@@ -49,7 +48,6 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         mVideoDecoder = std::make_shared<VideoDecoder>(mVideoPacketQueue, mVideoFrameQueue);
         mVideoDecoder->open(videoCodecParams, mMediaInfo.mVideoTimeBase);
         avcodec_parameters_free(&videoCodecParams);
-
         if (!mVideoOutput->initialize(mMediaInfo.mVideoWidth, mMediaInfo.mVideoHeight)) {
             return false;
         }
@@ -63,11 +61,11 @@ void Player::start() {
     mDemuxer->start();
     if (mMediaInfo.mHasAudio) {
         mAudioDecoder->start();
-        mAudioRenderThread = std::thread(&Player::audioRenderThread, this);
+        mAudioOutputThread = std::thread(&Player::audioOutputThread, this);
     }
     if (mMediaInfo.mHasVideo) {
         mVideoDecoder->start();
-        mVideoRenderThread = std::thread(&Player::videoRenderThread, this);
+        mVideoOutputThread = std::thread(&Player::videoOutputThread, this);
     }
 }
 
@@ -77,6 +75,7 @@ void Player::stop() {
     }
     mRunning = false;
     mPaused = false;
+    mDroppedVideoFramesCount = 0;
 
     // 先中断所有队列阻塞
     if (mAudioPacketQueue) {
@@ -108,16 +107,16 @@ void Player::stop() {
     if (mAudioOutput) {
         mAudioOutput->stop();
     }
-    if (mAudioRenderThread.joinable()) {
-        mAudioRenderThread.join();
+    if (mAudioOutputThread.joinable()) {
+        mAudioOutputThread.join();
     }
 
     // 停止视频输出，结束视频渲染线程
     if (mVideoOutput) {
         mVideoOutput->stop();
     }
-    if (mVideoRenderThread.joinable()) {
-        mVideoRenderThread.join();
+    if (mVideoOutputThread.joinable()) {
+        mVideoOutputThread.join();
     }
 
     // 停止解复用线程
@@ -193,10 +192,12 @@ void Player::resume() {
 }
 
 
-void Player::audioRenderThread() {
+void Player::audioOutputThread() {
+#if defined(__APPLE__)
+    pthread_setname_np("com.yffplayer.audio_render");
+#endif
     mAudioOutput->start();
     while (mRunning) {
-        // 如果暂停状态，则等待一小段时间后继续检查
         if (mPaused) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
@@ -213,12 +214,11 @@ void Player::audioRenderThread() {
     mAudioOutput->stop();
 }
 
-void Player::videoRenderThread() {
-#if TARGET_OS_IOS
+void Player::videoOutputThread() {
+#if defined(__APPLE__)
     pthread_setname_np("com.yffplayer.video_render");
 #endif
     while (mRunning) {
-        // 如果暂停状态，则等待一小段时间后继续检查
         if (mPaused) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
@@ -237,6 +237,8 @@ void Player::videoRenderThread() {
                     }
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 } else if (diff < -50) {
+                    ++mDroppedVideoFramesCount;
+                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount << std::endl;
                     continue; // 跳过落后太多的帧
                 } else {
                     mVideoOutput->renderVideoFrame(*videoFrame);
@@ -245,9 +247,11 @@ void Player::videoRenderThread() {
                 mVideoOutput->renderVideoFrame(*videoFrame);
                 int64_t frameDuration = videoFrame->mDuration;
                 if (frameDuration <= 0) {
-                    frameDuration = 33; // 默认 30fps
+                    frameDuration = mMediaInfo.mVideoFrameRate;
+                    if (frameDuration <= 0) {
+                        frameDuration = 30;
+                    }
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(frameDuration));
                 int ret = av_usleep(static_cast<unsigned int>(frameDuration * 1000));
                 if (ret != 0) {
                     // 处理中断

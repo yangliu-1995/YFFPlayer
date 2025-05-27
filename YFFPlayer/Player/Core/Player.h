@@ -24,8 +24,8 @@ public:
     void resume();
 
 private:
-    void audioRenderThread();
-    void videoRenderThread();
+    void audioOutputThread();
+    void videoOutputThread();
     void stopThread();
 
     std::shared_ptr<Demuxer> mDemuxer;
@@ -37,13 +37,14 @@ private:
     std::shared_ptr<VideoDecoder> mVideoDecoder;
     std::shared_ptr<AudioOutput> mAudioOutput;
     std::shared_ptr<VideoOutput> mVideoOutput;
-    std::thread mAudioRenderThread;
-    std::thread mVideoRenderThread;
-    std::thread mStopThread;  
+    std::thread mAudioOutputThread;
+    std::thread mVideoOutputThread;
+    std::thread mStopThread;
     std::atomic<int64_t> mAudioClock{0};
     std::atomic<int64_t> mVideoClock{0};
     MediaInfo mMediaInfo;
     std::atomic<bool> mRunning{false};
     std::atomic<bool> mPaused{false};
+    std::atomic<int> mDroppedVideoFramesCount{0};
 };
 } // namespace yffplayer

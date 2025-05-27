@@ -47,7 +47,7 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
         auto codecParams = avcodec_parameters_alloc();
         avcodec_parameters_copy(codecParams, mFormatCtx->streams[mAudioStreamIndex]->codecpar);
         mediaInfo.mAudioCodecParameters = codecParams;
-        mediaInfo.mAudiochannels = mediaInfo.mAudioCodecParameters->ch_layout.nb_channels;
+        mediaInfo.mAudioChannels = mediaInfo.mAudioCodecParameters->ch_layout.nb_channels;
         mediaInfo.mAudioSampleRate = mediaInfo.mAudioCodecParameters->sample_rate;
         mediaInfo.mAudioTimeBase = mFormatCtx->streams[mAudioStreamIndex]->time_base;
     }
@@ -59,6 +59,12 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
         mediaInfo.mVideoWidth = mediaInfo.mVideoCodecParameters->width;
         mediaInfo.mVideoHeight = mediaInfo.mVideoCodecParameters->height;
         mediaInfo.mVideoTimeBase = mFormatCtx->streams[mVideoStreamIndex]->time_base;
+        AVRational frameRate = mFormatCtx->streams[mVideoStreamIndex]->avg_frame_rate;
+        if (frameRate.num == 0 || frameRate.den == 0) {
+            frameRate = mFormatCtx->streams[mVideoStreamIndex]->r_frame_rate;
+        }
+        mediaInfo.mVideoFrameRate = frameRate.num && frameRate.den ?
+                                    static_cast<int>(av_q2d(frameRate) + 0.5) : 0;
     }
 
     return mAudioStreamIndex != -1 || mVideoStreamIndex != -1;
@@ -139,15 +145,9 @@ void Demuxer::demuxLoop() {
 
         if (pkt->stream_index == mVideoStreamIndex) {
             auto packet = std::make_shared<Packet>(av_packet_clone(pkt));
-//            if (!mVideoQueue->push(packet)) {
-//                std::cerr << "Video queue is full, packet dropped, dts: " << pkt->dts << ", pts: " << pkt->pts << "\n";
-//            }
             mVideoQueue->push(packet);
         } else if (pkt->stream_index == mAudioStreamIndex) {
             auto packet = std::make_shared<Packet>(av_packet_clone(pkt));
-//            if (!mAudioQueue->push(packet)) {
-//                std::cerr << "Audio queue is full, packet dropped, dts: " << pkt->dts << ", pts: " << pkt->pts << "\n";
-//            }
             mAudioQueue->push(packet);
         }
         av_packet_unref(pkt);

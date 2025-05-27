@@ -6,9 +6,7 @@
 #include <condition_variable>
 #include <deque>
 
-namespace yffplayer {
-
-class IOSAudioOutput : public AudioOutput {
+class IOSAudioOutput : public yffplayer::AudioOutput {
 public:
     IOSAudioOutput();
     ~IOSAudioOutput();
@@ -18,7 +16,9 @@ public:
     void stop() override;
     void pause() override;
     void resume() override;
-    bool enqueueAudioFrame(const AudioFrame& frame) override;
+    void setVolume(float volume) override;
+    void setMute(bool mute) override;
+    bool enqueueAudioFrame(const yffplayer::AudioFrame& frame) override;
 
 private:
     static void AudioQueueCallback(void* userData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer);
@@ -31,14 +31,15 @@ private:
     int mChannels = 0;
     UInt32 mFrameBytes = 0;
 
+    float mVolume = 1.0f;
+    bool mMute = false;
+
     AudioQueueRef mAudioQueue = nullptr;
     static constexpr int kNumBuffers = 3;
     AudioQueueBufferRef mBuffers[kNumBuffers];
 
     std::mutex mMutex;
     std::condition_variable mCond;
-    std::deque<AudioFrame> mFrameQueue;
+    std::deque<yffplayer::AudioFrame> mFrameQueue;
     const size_t mMaxQueueSize = 20;
 };
-
-} // namespace yffplayer

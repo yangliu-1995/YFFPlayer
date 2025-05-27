@@ -3,14 +3,13 @@
 #import <UIKit/UIKit.h>
 #import "IOSVideoRenderer.h"
 
-namespace yffplayer {
-class IOSVideoOutput : public VideoOutput {
+class IOSVideoOutput : public yffplayer::VideoOutput {
 public:
     IOSVideoOutput(UIView* view);
     ~IOSVideoOutput() override;
 
     bool initialize(int width, int height) override;
-    void renderVideoFrame(const VideoFrame& frame) override;
+    void renderVideoFrame(const yffplayer::VideoFrame& frame) override;
     void stop() override;
     void pause() override;
     void resume() override;
@@ -18,4 +17,3 @@ public:
 private:
     IOSVideoRenderer* mVideoRenderer; // Objective-C 对象
 };
-} // namespace yffplayer
