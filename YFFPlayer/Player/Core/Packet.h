@@ -41,6 +41,10 @@ struct Packet {
         return *this;
     }
 
+    bool isKeyFrame() const {
+        return mPacket->flags & AV_PKT_FLAG_KEY;
+    }
+
     ~Packet() {
         if (mPacket) {
             av_packet_free(&mPacket);

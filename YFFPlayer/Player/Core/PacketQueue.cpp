@@ -24,6 +24,46 @@ bool PacketQueue::try_push(std::shared_ptr<Packet> packet, std::chrono::millisec
     return true;
 }
 
+bool PacketQueue::pop_last() {
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mQueue.empty()) return false;
+
+    std::queue<std::shared_ptr<Packet>> temp;
+    while (mQueue.size() > 1) {
+        temp.push(std::move(mQueue.front()));
+        mQueue.pop();
+    }
+
+    // 丢弃最后一个
+    mQueue.pop();
+    --mSize;
+
+    // 重新入队
+    while (!temp.empty()) {
+        mQueue.push(std::move(temp.front()));
+        temp.pop();
+    }
+
+    mCondFull.notify_one();
+    return true;
+}
+
+
+bool PacketQueue::try_push_with_drop_if_keyframe(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout) {
+    if (try_push(packet, timeout)) {
+        return true;
+    }
+
+    if (packet->isKeyFrame()) {
+        if (pop_last()) {
+            push(std::move(packet)); // 不需要阻塞了
+            return true;
+        }
+    }
+
+    return false; // 不是关键帧也不能推入
+}
+
 void PacketQueue::push(std::shared_ptr<Packet> packet) {
     std::unique_lock<std::mutex> lock(mMutex);
     mCondFull.wait(lock, [this]() { return mSize < mCapacity; });

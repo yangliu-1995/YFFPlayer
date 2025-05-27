@@ -26,6 +26,10 @@ public:
     void push(std::shared_ptr<Packet> packet);
     // 弹出数据包（可能阻塞）
     std::shared_ptr<Packet> pop();
+    // 弹出最后一个数据包（可能阻塞）
+    bool pop_last();
+    // 推入数据包并在非关键帧时丢弃（带超时）
+    bool try_push_with_drop_if_keyframe(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout);
     // 获取当前队列大小
     size_t size() const;
     // 清空队列并释放所有数据包
