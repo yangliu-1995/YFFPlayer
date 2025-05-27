@@ -12,7 +12,9 @@ public:
     bool initialize(int width, int height) override;
     void renderVideoFrame(const VideoFrame& frame) override;
     void stop() override;
-
+    void pause() override;
+    void resume() override;
+    
 private:
     IOSVideoRenderer* mVideoRenderer; // Objective-C 对象
 };

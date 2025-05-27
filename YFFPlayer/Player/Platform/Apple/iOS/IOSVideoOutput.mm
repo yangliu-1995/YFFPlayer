@@ -20,4 +20,10 @@ void IOSVideoOutput::renderVideoFrame(const VideoFrame& frame) {
 void IOSVideoOutput::stop() {
     // 如果需要停止逻辑，添加在此
 }
+
+void IOSVideoOutput::pause() {
+}
+
+void IOSVideoOutput::resume() {
+}
 } // namespace yffplayer

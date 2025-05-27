@@ -13,6 +13,8 @@ public:
     void start() override;
     void feedAudioFrame(const AudioFrame& frame) override;
     void stop() override;
+    void pause() override;
+    void resume() override;
 
 private:
     IOSAudioRender* mAudioRender; // Objective-C 对象

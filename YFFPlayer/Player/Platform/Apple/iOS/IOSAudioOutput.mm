@@ -38,4 +38,10 @@ void IOSAudioOutput::feedAudioFrame(const AudioFrame& frame) {
 void IOSAudioOutput::stop() {
     [mAudioRender stop];
 }
+
+void IOSAudioOutput::pause() {
+}
+
+void IOSAudioOutput::resume() {
+}
 } // namespace yffplayer

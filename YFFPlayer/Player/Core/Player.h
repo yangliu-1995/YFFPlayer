@@ -21,6 +21,8 @@ public:
     bool open(const std::string& url, MediaInfo& mediaInfo);
     void start();
     void stop();
+    void pause();
+    void resume();
     std::shared_ptr<AudioFrame> getNextAudioFrame() override;
 
 private:
@@ -42,5 +44,6 @@ private:
     std::atomic<int64_t> mVideoClock{0};
     MediaInfo mMediaInfo;
     std::atomic<bool> mRunning{false};
+    std::atomic<bool> mPaused{false};
 };
 } // namespace yffplayer

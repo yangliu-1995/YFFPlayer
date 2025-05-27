@@ -10,5 +10,7 @@ public:
     virtual bool initialize(int width, int height) = 0;
     virtual void renderVideoFrame(const VideoFrame& frame) = 0;
     virtual void stop() = 0;
+    virtual void pause() = 0;
+    virtual void resume() = 0;
 };
 } // namespace yffplayer
