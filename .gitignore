@@ -62,4 +62,4 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
-YFFPlayer/Player/FFmpeg/
+YFFPlayer/Player/Vendor/FFmpeg/
