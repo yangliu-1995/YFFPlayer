@@ -35,7 +35,23 @@ class ViewController: UIViewController {
     }
     
     @IBAction func resumeAct(_ sender: Any) {
-        player.testSeek()
+        player.resume()
+    }
+
+    @IBAction func rate_05(_ sender: Any) {
+        player.setPlaybackRate(0.5)
+    }
+
+    @IBAction func rate_10(_ sender: Any) {
+        player.setPlaybackRate(1)
+    }
+
+    @IBAction func rate_15(_ sender: Any) {
+        player.setPlaybackRate(1.5)
+    }
+
+    @IBAction func rate_20(_ sender: Any) {
+        player.setPlaybackRate(2.0)
     }
 }
 

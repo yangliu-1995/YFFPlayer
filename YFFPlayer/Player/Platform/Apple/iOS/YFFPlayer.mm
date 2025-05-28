@@ -71,6 +71,10 @@ private:
     _player->setPlaybackRate(2);
 }
 
+- (void)setPlaybackRate:(float)rate {
+    _player->setPlaybackRate(rate);
+}
+
 - (void)onProgress:(int64_t)current total:(int64_t)total {
 //    if (total == 0) {
 //        return;

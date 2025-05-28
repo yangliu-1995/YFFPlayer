@@ -22,6 +22,8 @@
 
 - (void)testSeek;
 
+- (void)setPlaybackRate:(float)rate;
+
 //- (void)play;
 
 @end
