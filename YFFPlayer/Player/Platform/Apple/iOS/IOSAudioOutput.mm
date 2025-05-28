@@ -111,25 +111,7 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
             mCond.notify_all();
 
             size_t dataSize = std::min(frame.mData.size(), (size_t)mFrameBytes);
-
-            // 如果静音则填充0，否则复制数据
-            if (mMute) {
-                memset(inBuffer->mAudioData, 0, dataSize);
-            } else if (mVolume < 0.999f) {
-                // 简单音量缩放，16位PCM按样本缩放
-                const int16_t* src = reinterpret_cast<const int16_t*>(frame.mData.data());
-                int16_t* dst = reinterpret_cast<int16_t*>(inBuffer->mAudioData);
-                size_t sampleCount = dataSize / 2; // 2 bytes per sample
-                for (size_t i = 0; i < sampleCount; ++i) {
-                    float sample = src[i] * mVolume;
-                    if (sample > 32767.f) sample = 32767.f;
-                    else if (sample < -32768.f) sample = -32768.f;
-                    dst[i] = static_cast<int16_t>(sample);
-                }
-            } else {
-                memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
-            }
-
+            memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
             inBuffer->mAudioDataByteSize = (UInt32)dataSize;
         }
     }
