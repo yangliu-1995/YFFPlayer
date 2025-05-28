@@ -84,6 +84,7 @@ void IOSAudioOutput::flush() {
     std::lock_guard<std::mutex> lock(mMutex);
     mFrameQueue.clear();
     AudioQueueFlush(mAudioQueue);
+    mCond.notify_one();
 }
 
 bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
@@ -115,9 +116,7 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
         if (!mRunning) return;
 
         if (mFrameQueue.empty()) {
-            UInt32 silenceBytes = std::min(
-                (UInt32)512,
-                inBuffer->mAudioDataBytesCapacity);
+            UInt32 silenceBytes = std::min((UInt32)512, inBuffer->mAudioDataBytesCapacity);
             memset(inBuffer->mAudioData, 0, silenceBytes);
             inBuffer->mAudioDataByteSize = silenceBytes;
         } else {

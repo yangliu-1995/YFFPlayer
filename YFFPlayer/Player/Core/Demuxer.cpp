@@ -5,6 +5,10 @@
 #include "MediaInfo.h"
 #include "Packet.h"
 
+#if defined(__APPLE__)
+#include <pthread.h>
+#endif
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -27,13 +31,44 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     int ret = avformat_open_input(&mFormatCtx, url.c_str(), nullptr, nullptr);
     if (ret < 0) {
         std::cerr << "Failed to open input: " << url << "ret: " << ret << "\n";
+        if (auto callback = mCallback.lock()) {
+            Error error(ErrorCode::FILE_OPEN_FAILED, "Failed to open input file: " + url + ", error code: " + std::to_string(ret));
+            callback->onReadError(error);
+        }
         return false;
     }
 
     ret = avformat_find_stream_info(mFormatCtx, nullptr);
     if (ret < 0) {
         std::cerr << "Failed to find stream info\n";
+        if (auto callback = mCallback.lock()) {
+            Error error(ErrorCode::STREAM_INFO_FAILED, "Failed to find stream info, error code: " + std::to_string(ret));
+            callback->onReadError(error);
+        }
         return false;
+    }
+
+    mediaInfo.mIsLiveStream = false;
+    if (mFormatCtx->duration == AV_NOPTS_VALUE || mFormatCtx->duration <= 0) {
+        mediaInfo.mIsLiveStream = true;
+    }
+
+    if (mFormatCtx->iformat && mFormatCtx->iformat->name) {
+        std::string formatName = mFormatCtx->iformat->name;
+        if (formatName.find("rtmp") != std::string::npos ||
+            formatName.find("rtsp") != std::string::npos ||
+            formatName.find("hls") != std::string::npos ||
+            formatName.find("dash") != std::string::npos) {
+            mediaInfo.mIsLiveStream = true;
+        }
+    }
+
+    if (url.find("rtmp://") == 0 || url.find("rtsp://") == 0 ||
+        url.find("http://") == 0 || url.find("https://") == 0) {
+        // 对于网络流，进一步检查是否为直播
+        if (mFormatCtx->duration == AV_NOPTS_VALUE) {
+            mediaInfo.mIsLiveStream = true;
+        }
     }
 
     if (mFormatCtx->duration != AV_NOPTS_VALUE) {
@@ -68,7 +103,15 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
             frameRate.num && frameRate.den ? static_cast<int>(av_q2d(frameRate) + 0.5) : 0;
     }
 
-    return mAudioStreamIndex != -1 || mVideoStreamIndex != -1;
+    bool hasStreams = mAudioStreamIndex != -1 || mVideoStreamIndex != -1;
+    if (!hasStreams) {
+        if (auto callback = mCallback.lock()) {
+            Error error(ErrorCode::NO_STREAMS_FOUND, "No audio or video streams found in the media file");
+            callback->onReadError(error);
+        }
+    }
+    
+    return hasStreams;
 }
 
 void Demuxer::start() {
@@ -76,16 +119,32 @@ void Demuxer::start() {
     mStopRequested = false;
     mRunning = true;
     mThread = std::thread(&Demuxer::demuxLoop, this);
+    
+    if (auto callback = mCallback.lock()) {
+        callback->onDemuxStarted();
+    }
 }
 
-void Demuxer::pause() { mPaused = true; }
+void Demuxer::pause() { 
+    mPaused = true;
+    if (auto callback = mCallback.lock()) {
+        callback->onDemuxPaused();
+    }
+}
 
 void Demuxer::resume() {
     mPaused = false;
     mCond.notify_all();
+    if (auto callback = mCallback.lock()) {
+        callback->onDemuxResumed();
+    }
 }
 
 bool Demuxer::seek(int64_t timestampMs) {
+    if (auto callback = mCallback.lock()) {
+        callback->onSeekStarted(timestampMs);
+    }
+    
     std::lock_guard<std::mutex> lock(mMutex);
     mSeeking = true;
 
@@ -93,6 +152,11 @@ bool Demuxer::seek(int64_t timestampMs) {
     int ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, seekTarget, INT64_MAX, 0);
     if (ret < 0) {
         std::cerr << "av_seek_frame failed: " << ret << std::endl;
+        if (auto callback = mCallback.lock()) {
+            Error error(ErrorCode::SEEK_FAILED, "Seek operation failed, error code: " + std::to_string(ret));
+            callback->onSeekFailed(timestampMs, error);
+        }
+        mSeeking = false;
         return false;
     }
     avformat_flush(mFormatCtx);
@@ -102,6 +166,10 @@ bool Demuxer::seek(int64_t timestampMs) {
     mVideoQueue->clear();
 
     mSeeking = false;
+    
+    if (auto callback = mCallback.lock()) {
+        callback->onSeekCompleted(timestampMs);
+    }
     return true;
 }
 
@@ -119,10 +187,32 @@ void Demuxer::stop() {
         mFormatCtx = nullptr;
     }
     mRunning = false;
+    
+    if (auto callback = mCallback.lock()) {
+        callback->onDemuxStopped();
+    }
+}
+
+void Demuxer::setCallback(std::shared_ptr<DemuxerCallback> callback) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    mCallback = callback;
 }
 
 void Demuxer::demuxLoop() {
+#if defined(__APPLE__)
+    pthread_setname_np("com.yffplayer.demuxer");
+#endif
     AVPacket* pkt = av_packet_alloc();
+    if (!pkt) {
+        if (auto callback = mCallback.lock()) {
+            Error error(ErrorCode::PACKET_ALLOCATION_FAILED, "Failed to allocate AVPacket");
+            callback->onReadError(error);
+        }
+        return;
+    }
+
+    int64_t lastProgressTime = 0;
+    const int64_t progressInterval = 1000; // 每秒报告一次进度
 
     while (!mStopRequested) {
         // 暂停逻辑
@@ -139,10 +229,41 @@ void Demuxer::demuxLoop() {
         if (ret < 0) {
             if (ret == AVERROR_EOF) {
                 std::cerr << "End of file\n";
+                if (auto callback = mCallback.lock()) {
+                    callback->onEndOfFile();
+                }
                 break;
+            } else if (ret == AVERROR(ETIMEDOUT)) {
+                if (auto callback = mCallback.lock()) {
+                    Error error(ErrorCode::NETWORK_TIMEOUT, "Network timeout while reading frame");
+                    callback->onNetworkError(error);
+                }
+            } else {
+                if (auto callback = mCallback.lock()) {
+                    Error error(ErrorCode::READ_FRAME_FAILED, "Failed to read frame, error code: " + std::to_string(ret));
+                    callback->onReadError(error);
+                }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
+        }
+
+        // 报告进度
+        if (auto callback = mCallback.lock()) {
+            if (pkt->pts != AV_NOPTS_VALUE) {
+                int64_t currentTime = 0;
+                if (pkt->stream_index == mVideoStreamIndex && mVideoStreamIndex >= 0) {
+                    currentTime = av_rescale_q(pkt->pts, mFormatCtx->streams[mVideoStreamIndex]->time_base, AV_TIME_BASE_Q) / 1000;
+                } else if (pkt->stream_index == mAudioStreamIndex && mAudioStreamIndex >= 0) {
+                    currentTime = av_rescale_q(pkt->pts, mFormatCtx->streams[mAudioStreamIndex]->time_base, AV_TIME_BASE_Q) / 1000;
+                }
+                
+                if (currentTime - lastProgressTime >= progressInterval) {
+                    int64_t duration = mFormatCtx->duration != AV_NOPTS_VALUE ? mFormatCtx->duration / (AV_TIME_BASE / 1000) : 0;
+                    callback->onDemuxProgress(currentTime, duration);
+                    lastProgressTime = currentTime;
+                }
+            }
         }
 
         if (pkt->stream_index == mVideoStreamIndex) {

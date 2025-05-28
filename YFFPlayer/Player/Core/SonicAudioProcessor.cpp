@@ -1,4 +1,5 @@
 #include "SonicAudioProcessor.h"
+
 #include <algorithm>
 #include <cstring>
 #include <iostream>
@@ -6,12 +7,11 @@
 namespace yffplayer {
 
 SonicAudioProcessor::SonicAudioProcessor()
-    : mSonicStream(nullptr)
-    , mSampleRate(0)
-    , mChannels(0)
-    , mCurrentRate(1.0f)
-    , mInitialized(false) {
-}
+    : mSonicStream(nullptr),
+      mSampleRate(0),
+      mChannels(0),
+      mCurrentRate(1.0f),
+      mInitialized(false) {}
 
 SonicAudioProcessor::~SonicAudioProcessor() {
     if (mSonicStream) {
@@ -24,20 +24,20 @@ bool SonicAudioProcessor::initialize(int sampleRate, int channels) {
     if (mSonicStream) {
         sonicDestroyStream(mSonicStream);
     }
-    
+
     mSampleRate = sampleRate;
     mChannels = channels;
-    
+
     mSonicStream = sonicCreateStream(sampleRate, channels);
     if (!mSonicStream) {
         std::cerr << "Failed to create Sonic stream" << std::endl;
         return false;
     }
-    
+
     // 设置默认参数
     sonicSetSpeed(mSonicStream, mCurrentRate);
     sonicSetPitch(mSonicStream, 1.0f);  // 保持音调不变
-    
+
     mInitialized = true;
     return true;
 }
@@ -46,7 +46,7 @@ void SonicAudioProcessor::setPlaybackRate(float rate) {
     if (!mInitialized || !mSonicStream) {
         return;
     }
-    
+
     mCurrentRate = rate;
     sonicSetSpeed(mSonicStream, rate);
 }
@@ -55,7 +55,7 @@ void SonicAudioProcessor::setPitch(float pitch) {
     if (!mInitialized || !mSonicStream) {
         return;
     }
-    
+
     sonicSetPitch(mSonicStream, pitch);
 }
 
@@ -63,7 +63,7 @@ std::unique_ptr<AudioFrame> SonicAudioProcessor::processAudioFrame(const AudioFr
     if (!mInitialized || !mSonicStream) {
         return nullptr;
     }
-    
+
     // 如果播放倍率接近1.0，直接返回原始帧的拷贝
     if (std::abs(mCurrentRate - 1.0f) < 0.01f) {
         auto outputFrame = std::make_unique<AudioFrame>();
@@ -78,11 +78,9 @@ std::unique_ptr<AudioFrame> SonicAudioProcessor::processAudioFrame(const AudioFr
 
     int inputSamples = inputFrame.mNbSamples;
     short* inputData = (short*)inputFrame.mData.data();
-    
+
     // 写入 Sonic 流
-    int samplesWritten = sonicWriteShortToStream(mSonicStream, 
-                                                inputData,
-                                                inputSamples);
+    int samplesWritten = sonicWriteShortToStream(mSonicStream, inputData, inputSamples);
 
     int availableSamples = sonicSamplesAvailable(mSonicStream);
     if (availableSamples <= 0) {
@@ -91,11 +89,10 @@ std::unique_ptr<AudioFrame> SonicAudioProcessor::processAudioFrame(const AudioFr
 
     int totalOutputSamples = availableSamples * inputFrame.mChannels;
     mOutputBuffer.resize(totalOutputSamples);
-    
-    int samplesRead = sonicReadShortFromStream(mSonicStream, 
-                                              mOutputBuffer.data(), 
-                                              availableSamples);
-    
+
+    int samplesRead =
+        sonicReadShortFromStream(mSonicStream, mOutputBuffer.data(), availableSamples);
+
     if (samplesRead <= 0) {
         return nullptr;
     }
@@ -109,9 +106,9 @@ std::unique_ptr<AudioFrame> SonicAudioProcessor::processAudioFrame(const AudioFr
 
     size_t dataSize = samplesRead * inputFrame.mChannels * sizeof(int16_t);
     outputFrame->mData.resize(dataSize);
-    
+
     std::memcpy(outputFrame->mData.data(), mOutputBuffer.data(), dataSize);
-    
+
     return outputFrame;
 }
 

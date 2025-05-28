@@ -17,6 +17,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
                std::shared_ptr<PlayerCallback> callback)
     : mAudioOutput(audioOutput),
       mVideoOutput(videoOutput),
+      mCallback(callback),
       mAudioPacketQueue(std::make_shared<PacketQueue>(100)),
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
       mAudioFrameQueue(std::make_shared<FrameQueue<AudioFrame>>(100)),
@@ -29,6 +30,7 @@ Player::~Player() { stop(); }
 
 bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
     stop();
+    mDemuxer->setCallback(shared_from_this());
     if (!mDemuxer->open(url, mediaInfo)) {
         return false;
     }
@@ -240,7 +242,7 @@ bool Player::seek(int64_t positionMs) {
 
 void Player::audioOutputThread() {
 #if defined(__APPLE__)
-    pthread_setname_np("com.yffplayer.audio_render");
+    pthread_setname_np("com.yffplayer.output.audio");
 #endif
 
     if (mAudioProcessor && mMediaInfo.mHasAudio) {
@@ -285,7 +287,7 @@ void Player::audioOutputThread() {
 
 void Player::videoOutputThread() {
 #if defined(__APPLE__)
-    pthread_setname_np("com.yffplayer.video_render");
+    pthread_setname_np("com.yffplayer.output.video");
 #endif
     while (mRunning) {
         if (mPaused) {
@@ -339,20 +341,33 @@ void Player::videoOutputThread() {
 }
 
 void Player::setPlaybackRate(float rate) {
-    if (rate <= 0.0f) return;  // 防止无效倍率
+    if (rate <= 0.0f) return;
+    if (rate == mPlaybackRate) return;
 
     rate = std::max(0.25f, std::min(4.0f, rate));
     
-    mPlaybackRate.store(rate);
-    
-    // 设置音频处理器的播放倍率
     if (mAudioProcessor) {
+        mAudioProcessor->flush();
         mAudioProcessor->setPlaybackRate(rate);
     }
+    mPlaybackRate.store(rate);
+    mAudioOutput->flush();
 }
 
 float Player::getPlaybackRate() const {
     return mPlaybackRate.load();
 }
+
+void Player::onDemuxStarted() {}
+void Player::onDemuxPaused() {}
+void Player::onDemuxResumed() {}
+void Player::onDemuxStopped() {}
+void Player::onReadError(const Error& error) {}
+void Player::onEndOfFile() {}
+void Player::onNetworkError(const Error& error) {}
+void Player::onSeekStarted(int64_t targetTimestampMs) {}
+void Player::onSeekCompleted(int64_t actualTimestampMs) {}
+void Player::onSeekFailed(int64_t targetTimestampMs, const Error& error) {}
+void Player::onDemuxProgress(int64_t currentTimestampMs, int64_t durationMs) {}
 
 }  // namespace yffplayer

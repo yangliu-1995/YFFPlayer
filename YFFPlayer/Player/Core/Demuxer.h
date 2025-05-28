@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 
+#include "DemuxerCallback.h"
 #include "PacketQueue.h"
 
 extern "C" {
@@ -27,6 +28,7 @@ public:
     void pause();
     void resume();
     bool seek(int64_t timestampMs);
+    void setCallback(std::shared_ptr<DemuxerCallback> callback);
 
 private:
     void demuxLoop();
@@ -43,10 +45,11 @@ private:
     std::mutex mMutex;
     std::condition_variable mCond;
 
-    // FFmpeg context forward declarations
     AVFormatContext* mFormatCtx = nullptr;
     int mAudioStreamIndex = -1;
     int mVideoStreamIndex = -1;
+
+    std::weak_ptr<DemuxerCallback> mCallback;
 };
 
 }  // namespace yffplayer

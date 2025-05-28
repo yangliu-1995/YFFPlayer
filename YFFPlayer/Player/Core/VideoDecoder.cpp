@@ -3,6 +3,10 @@
 #include <iostream>
 #include <vector>
 
+#if defined(__APPLE__)
+#include <pthread.h>
+#endif
+
 #include "Packet.h"
 
 namespace yffplayer {
@@ -84,6 +88,9 @@ void VideoDecoder::flush() {
 }
 
 void VideoDecoder::decodeLoop() {
+#if defined(__APPLE__)
+    pthread_setname_np("com.yffplayer.decoder.video");
+#endif
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
     AVFrame* rgbFrame = av_frame_alloc();

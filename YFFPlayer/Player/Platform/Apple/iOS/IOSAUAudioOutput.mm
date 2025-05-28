@@ -128,10 +128,12 @@ void IOSAUAudioOutput::resume() {
 }
 
 void IOSAUAudioOutput::flush() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    mFrameQueue.clear();
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mFrameQueue.clear();
+        mCond.notify_one();
+    }
     if (mAudioUnit) {
-        AudioOutputUnitStop(mAudioUnit);
         AudioUnitReset(mAudioUnit, kAudioUnitScope_Global, 0);
     }
 }
@@ -153,7 +155,6 @@ void IOSAUAudioOutput::setVolume(float volume) {
 
 void IOSAUAudioOutput::setMute(bool mute) {
     mMute = mute;
-
     if (mAudioUnit) {
         float vol = mMute ? 0.0f : mVolume;
         OSStatus status = AudioUnitSetParameter(mAudioUnit, kHALOutputParam_Volume,

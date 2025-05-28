@@ -12,10 +12,11 @@
 #include "PlayerCallback.h"
 #include "VideoDecoder.h"
 #include "VideoOutput.h"
-#include "SonicAudioProcessor.h"  // 添加这行
+#include "SonicAudioProcessor.h"
+#include "DemuxerCallback.h"
 
 namespace yffplayer {
-class Player {
+class Player: public DemuxerCallback, public std::enable_shared_from_this<Player> {
 public:
     Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput,
            std::shared_ptr<PlayerCallback> callback);
@@ -29,6 +30,19 @@ public:
     bool seek(int64_t positionMs);
     void setPlaybackRate(float rate);  // 设置播放倍率
     float getPlaybackRate() const;     // 获取当前播放倍率
+
+    // demuxer callback
+    void onDemuxStarted() override;
+    void onDemuxPaused() override;
+    void onDemuxResumed() override;
+    void onDemuxStopped() override;
+    void onReadError(const Error& error) override;
+    void onEndOfFile() override;
+    void onNetworkError(const Error& error) override;
+    void onSeekStarted(int64_t targetTimestampMs) override;
+    void onSeekCompleted(int64_t actualTimestampMs) override;
+    void onSeekFailed(int64_t targetTimestampMs, const Error& error) override;
+    void onDemuxProgress(int64_t currentTimestampMs, int64_t durationMs) override;
 
 private:
     void audioOutputThread();
