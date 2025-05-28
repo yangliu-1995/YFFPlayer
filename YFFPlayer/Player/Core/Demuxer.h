@@ -22,10 +22,10 @@ public:
 
     bool open(const std::string& url, MediaInfo& mediaInfo);
     void start();
+    void stop();
     void pause();
     void resume();
-    void seek(int64_t timestampMs);
-    void stop();
+    bool seek(int64_t timestampMs);
 
 private:
     void demuxLoop();

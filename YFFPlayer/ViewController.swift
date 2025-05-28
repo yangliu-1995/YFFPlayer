@@ -35,7 +35,7 @@ class ViewController: UIViewController {
     }
     
     @IBAction func resumeAct(_ sender: Any) {
-        player.resume()
+        player.testSeek()
     }
 }
 

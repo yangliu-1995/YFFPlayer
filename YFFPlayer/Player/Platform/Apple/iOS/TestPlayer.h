@@ -20,6 +20,8 @@
 
 - (void)resume;
 
+- (void)testSeek;
+
 //- (void)play;
 
 @end

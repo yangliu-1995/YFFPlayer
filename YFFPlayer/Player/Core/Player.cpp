@@ -191,6 +191,44 @@ void Player::resume() {
     mAudioOutput->resume();
 }
 
+bool Player::seek(int64_t positionMs) {
+    if (!mRunning) return false;
+
+    pause(); // 暂停所有模块，避免数据冲突
+
+    // 设置所有队列进入 abort 状态以终止阻塞
+    mAudioPacketQueue->abort(); mVideoPacketQueue->abort();
+    mAudioFrameQueue->abort(); mVideoFrameQueue->abort();
+
+    // 清空队列数据
+    mAudioPacketQueue->clear(); mVideoPacketQueue->clear();
+    mAudioFrameQueue->clear(); mVideoFrameQueue->clear();
+
+    // 通知解复用器跳转
+    if (!mDemuxer->seek(positionMs)) {
+        resume(); // 恢复播放状态
+        return false;
+    }
+
+    // 刷新解码器内部状态（丢弃之前缓冲的帧）
+    if (mAudioDecoder) mAudioDecoder->flush();
+    if (mVideoDecoder) mVideoDecoder->flush();
+
+    // 重置时钟（以便同步）
+    mAudioClock = positionMs;
+
+    // 音视频输出模块同步清理（如果有缓存）
+//    mAudioOutput->flush();
+//    mVideoOutput->flush();
+
+    // 解除 abort 状态，恢复继续解码和播放
+    mAudioPacketQueue->start(); mVideoPacketQueue->start();
+    mAudioFrameQueue->start(); mVideoFrameQueue->start();
+
+    resume(); // 恢复播放
+    return true;
+}
+
 
 void Player::audioOutputThread() {
 #if defined(__APPLE__)

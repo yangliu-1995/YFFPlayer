@@ -22,6 +22,7 @@ public:
     void stop();
     void pause();
     void resume();
+    bool seek(int64_t positionMs);
 
 private:
     void audioOutputThread();

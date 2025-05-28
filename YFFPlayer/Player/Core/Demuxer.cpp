@@ -86,12 +86,16 @@ void Demuxer::resume() {
     mCond.notify_all();
 }
 
-void Demuxer::seek(int64_t timestampMs) {
+bool Demuxer::seek(int64_t timestampMs) {
     std::lock_guard<std::mutex> lock(mMutex);
     mSeeking = true;
 
     int64_t seekTarget = static_cast<int64_t>(timestampMs * AV_TIME_BASE / 1000);
-    avformat_seek_file(mFormatCtx, -1, INT64_MIN, seekTarget, INT64_MAX, 0);
+    int ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, seekTarget, INT64_MAX, 0);
+    if (ret < 0) {
+        std::cerr << "av_seek_frame failed: " << ret << std::endl;
+        return false;
+    }
     avformat_flush(mFormatCtx);
 
     // 清空队列避免旧数据
@@ -99,6 +103,7 @@ void Demuxer::seek(int64_t timestampMs) {
     mVideoQueue->clear();
 
     mSeeking = false;
+    return true;
 }
 
 void Demuxer::stop() {

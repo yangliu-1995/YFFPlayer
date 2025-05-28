@@ -44,4 +44,8 @@
     _player->resume();
 }
 
+- (void)testSeek {
+    _player->seek(120 * 1000);
+}
+
 @end
