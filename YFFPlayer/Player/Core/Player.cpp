@@ -220,7 +220,7 @@ bool Player::seek(int64_t positionMs) {
     mAudioClock = positionMs;
 
     // 音视频输出模块同步清理（如果有缓存）
-    //    mAudioOutput->flush();
+    mAudioOutput->flush();
     //    mVideoOutput->flush();
 
     // 解除 abort 状态，恢复继续解码和播放

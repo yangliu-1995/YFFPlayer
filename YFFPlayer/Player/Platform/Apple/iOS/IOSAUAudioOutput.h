@@ -21,6 +21,7 @@ public:
     void stop() override;
     void pause() override;
     void resume() override;
+    void flush() override;
     void setVolume(float volume) override;
     void setMute(bool mute) override;
     bool enqueueAudioFrame(const yffplayer::AudioFrame& frame) override;

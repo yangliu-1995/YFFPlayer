@@ -15,7 +15,7 @@
 - (instancetype)initWithVideoRenderView:(UIView *)videoRenderView {
     self = [super init];
     if (self) {
-        auto audioOutput = std::make_shared<IOSAudioOutput>();
+        auto audioOutput = std::make_shared<IOSAUAudioOutput>();
         auto videoOutput = std::make_shared<IOSVideoOutput>(videoRenderView);
         _player = std::make_shared<yffplayer::Player>(audioOutput, videoOutput);
     }

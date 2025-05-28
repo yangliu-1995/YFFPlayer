@@ -99,28 +99,41 @@ void IOSAUAudioOutput::start() {
 }
 
 void IOSAUAudioOutput::stop() {
-    if (!mIsRunning.load()) return;
-
+    if (!mIsRunning) return;
+    // 先停止AudioUnit
     AudioOutputUnitStop(mAudioUnit);
+    mIsRunning = false;  // 设置状态
+    // 清理资源
     AudioUnitUninitialize(mAudioUnit);
     AudioComponentInstanceDispose(mAudioUnit);
     mAudioUnit = nullptr;
 
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        mFrameQueue.clear();
-    }
-    mIsRunning.store(false);
+    std::lock_guard<std::mutex> lock(mMutex);
+    mFrameQueue.clear();
+    mCond.notify_one();
 }
 
 void IOSAUAudioOutput::pause() {
-    if (!mIsRunning.load()) return;
-    mIsPaused.store(true);
+    if (!mIsRunning) return;
+    AudioOutputUnitStop(mAudioUnit);
+    mIsPaused = true;
 }
 
 void IOSAUAudioOutput::resume() {
-    if (!mIsRunning.load()) return;
-    mIsPaused.store(false);
+    if (!mIsRunning) return;
+    mIsPaused = false;
+    AudioOutputUnitStart(mAudioUnit);
+    std::lock_guard<std::mutex> lock(mMutex);
+    mCond.notify_one();
+}
+
+void IOSAUAudioOutput::flush() {
+    std::lock_guard<std::mutex> lock(mMutex);
+    mFrameQueue.clear();
+    if (mAudioUnit) {
+        AudioOutputUnitStop(mAudioUnit);
+        AudioUnitReset(mAudioUnit, kAudioUnitScope_Global, 0);
+    }
 }
 
 void IOSAUAudioOutput::setVolume(float volume) {
@@ -152,13 +165,9 @@ void IOSAUAudioOutput::setMute(bool mute) {
 }
 
 bool IOSAUAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
-    if (!mIsRunning.load()) return false;
-
     std::unique_lock<std::mutex> lock(mMutex);
-    mCond.wait(lock, [this]() { return mFrameQueue.size() < 50 || !mIsRunning.load(); });
-
-    if (!mIsRunning.load()) return false;
-
+    mCond.wait(lock, [this]() { return mFrameQueue.size() < 50 || !mIsRunning; });
+    if (!mIsRunning) return false;
     mFrameQueue.push_back(std::make_shared<yffplayer::AudioFrame>(frame));
     mCond.notify_one();
     return true;
@@ -205,7 +214,7 @@ void IOSAUAudioOutput::fillBuffer(AudioBufferList* ioData, UInt32 inNumberFrames
             frame->mData.erase(frame->mData.begin(), frame->mData.begin() + copySize);
         } else {
             mFrameQueue.pop_front();
-            mCond.notify_all();
+            mCond.notify_one();
         }
         copiedBytes += copySize;
     }

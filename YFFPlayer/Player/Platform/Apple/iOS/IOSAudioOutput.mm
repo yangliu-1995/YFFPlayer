@@ -63,6 +63,7 @@ void IOSAudioOutput::stop() {
 
     std::lock_guard<std::mutex> lock(mMutex);
     mFrameQueue.clear();
+    mCond.notify_one();
 }
 
 void IOSAudioOutput::pause() {
@@ -75,6 +76,14 @@ void IOSAudioOutput::resume() {
     if (!mPaused || !mRunning) return;
     AudioQueueStart(mAudioQueue, nullptr);
     mPaused = false;
+    std::lock_guard<std::mutex> lock(mMutex);
+    mCond.notify_one();
+}
+
+void IOSAudioOutput::flush() {
+    std::lock_guard<std::mutex> lock(mMutex);
+    mFrameQueue.clear();
+    AudioQueueFlush(mAudioQueue);
 }
 
 bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
@@ -82,7 +91,7 @@ bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
     mCond.wait(lock, [&] { return mFrameQueue.size() < mMaxQueueSize || !mRunning; });
     if (!mRunning) return false;
     mFrameQueue.push_back(frame);
-    mCond.notify_all();
+    mCond.notify_one();
     return true;
 }
 
@@ -108,7 +117,7 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
         } else {
             frame = mFrameQueue.front();
             mFrameQueue.pop_front();
-            mCond.notify_all();
+            mCond.notify_one();
 
             size_t dataSize = std::min(frame.mData.size(), (size_t)mFrameBytes);
             memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
