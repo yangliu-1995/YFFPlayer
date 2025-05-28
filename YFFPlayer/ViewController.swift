@@ -26,7 +26,8 @@ class ViewController: UIViewController {
     }
 
     @IBAction func playAct(_ sender: Any) {
-        let url = Bundle.main.url(forResource: "m", withExtension: "avi")
+//        let url = Bundle.main.url(forResource: "m", withExtension: "avi")
+        let url = Bundle.main.url(forResource: "m_264", withExtension: "mp4")
         player.playVideo(with: url)
     }
     

@@ -13,7 +13,19 @@ namespace yffplayer {
 
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<VideoFrame>> frameQueue)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
+    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {
+        const AVCodec *codec = NULL;
+        void *iter = NULL;
+        while ((codec = av_codec_iterate(&iter))) {
+            if (av_codec_is_decoder(codec) && codec->name) {
+                if (strcmp(codec->name, "h264_videotoolbox") == 0) {
+                    printf("VideoToolbox is available (h264_videotoolbox found).\n");
+                }
+            }
+        }
+
+        printf("VideoToolbox is NOT available (h264_videotoolbox not found).\n");
+    }
 
 VideoDecoder::~VideoDecoder() {
     stop();
@@ -24,6 +36,31 @@ VideoDecoder::~VideoDecoder() {
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     mTimeBase = timeBase;
 
+    // 检查是否为 H.264 编码
+    bool isH264 = (codecParams->codec_id == AV_CODEC_ID_H264);
+    
+#if defined(__APPLE__)
+    // 如果是 H.264，优先尝试使用 VideoToolbox 硬件解码
+    if (isH264) {
+        const AVCodec* vtCodec = avcodec_find_decoder_by_name("h264_videotoolbox");
+        if (vtCodec) {
+            mCodecCtx = avcodec_alloc_context3(vtCodec);
+            if (mCodecCtx) {
+                if (avcodec_parameters_to_context(mCodecCtx, codecParams) >= 0) {
+                    if (avcodec_open2(mCodecCtx, vtCodec, nullptr) >= 0) {
+                        std::cout << "Using VideoToolbox hardware decoder for H.264" << std::endl;
+                        return true;
+                    }
+                }
+                // VideoToolbox 初始化失败，清理并回退到软件解码
+                avcodec_free_context(&mCodecCtx);
+                std::cout << "VideoToolbox failed, falling back to software decoder" << std::endl;
+            }
+        }
+    }
+#endif
+
+    // 使用软件解码器（原有逻辑）
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
         std::cerr << "Video codec not found" << std::endl;
