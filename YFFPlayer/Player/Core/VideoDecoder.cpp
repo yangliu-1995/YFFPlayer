@@ -50,30 +50,6 @@ VideoDecoder::~VideoDecoder() {
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     mTimeBase = timeBase;
 
-    // 检查是否为 H.264 编码
-    bool isH264 = (codecParams->codec_id == AV_CODEC_ID_H264);
-    
-#if defined(__APPLE__)
-    // 如果是 H.264，优先尝试使用 VideoToolbox 硬件解码
-    if (isH264) {
-        const AVCodec* vtCodec = avcodec_find_decoder_by_name("h264_videotoolbox");
-        if (vtCodec) {
-            mCodecCtx = avcodec_alloc_context3(vtCodec);
-            if (mCodecCtx) {
-                if (avcodec_parameters_to_context(mCodecCtx, codecParams) >= 0) {
-                    if (avcodec_open2(mCodecCtx, vtCodec, nullptr) >= 0) {
-                        std::cout << "Using VideoToolbox hardware decoder for H.264" << std::endl;
-                        return true;
-                    }
-                }
-                // VideoToolbox 初始化失败，清理并回退到软件解码
-                avcodec_free_context(&mCodecCtx);
-                std::cout << "VideoToolbox failed, falling back to software decoder" << std::endl;
-            }
-        }
-    }
-#endif
-
     mCodecCtx = avcodec_alloc_context3(nullptr);
     if (!mCodecCtx) {
         std::cerr << "Failed to allocate video codec context" << std::endl;
