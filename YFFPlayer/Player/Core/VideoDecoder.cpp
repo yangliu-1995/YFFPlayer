@@ -9,6 +9,20 @@
 
 #include "Packet.h"
 
+static enum AVPixelFormat SGCodecContextGetFormat(struct AVCodecContext *s, const enum AVPixelFormat *fmt) {
+    for (int i = 0; fmt[i] != AV_PIX_FMT_NONE; i++) {
+        if (fmt[i] == AV_PIX_FMT_VIDEOTOOLBOX) {
+            AVBufferRef *device_ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VIDEOTOOLBOX);
+            if (!device_ctx) {
+                break;
+            }
+            s->hw_device_ctx = device_ctx;
+            return fmt[i];
+        }
+    }
+    return fmt[0];
+}
+
 namespace yffplayer {
 
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
@@ -60,14 +74,7 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     }
 #endif
 
-    // 使用软件解码器（原有逻辑）
-    const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
-    if (!codec) {
-        std::cerr << "Video codec not found" << std::endl;
-        return false;
-    }
-
-    mCodecCtx = avcodec_alloc_context3(codec);
+    mCodecCtx = avcodec_alloc_context3(nullptr);
     if (!mCodecCtx) {
         std::cerr << "Failed to allocate video codec context" << std::endl;
         return false;
@@ -77,6 +84,16 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         std::cerr << "Failed to copy codec parameters" << std::endl;
         return false;
     }
+
+    mCodecCtx->get_format = SGCodecContextGetFormat;
+
+    const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
+    if (!codec) {
+        std::cerr << "Video codec not found" << std::endl;
+        return false;
+    }
+
+    mCodecCtx->codec_id = codec->id;
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
         std::cerr << "Failed to open codec" << std::endl;
