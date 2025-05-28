@@ -1,7 +1,7 @@
 #pragma once
 
-#include <thread>
 #include <atomic>
+#include <thread>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -27,4 +27,4 @@ protected:
     virtual void decodeLoop() = 0;
 };
 
-} // namespace yffplayer
+}  // namespace yffplayer

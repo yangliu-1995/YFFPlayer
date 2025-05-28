@@ -13,4 +13,4 @@ public:
     virtual void pause() = 0;
     virtual void resume() = 0;
 };
-} // namespace yffplayer
+}  // namespace yffplayer

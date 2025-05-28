@@ -2,18 +2,14 @@
 #include <algorithm>
 #include <cstring>
 
-IOSAudioOutput::IOSAudioOutput()
-: mVolume(1.0f), mMute(false)
-{}
+IOSAudioOutput::IOSAudioOutput() : mVolume(1.0f), mMute(false) {}
 
-IOSAudioOutput::~IOSAudioOutput() {
-    stop();
-}
+IOSAudioOutput::~IOSAudioOutput() { stop(); }
 
 bool IOSAudioOutput::init(int sampleRate, int channels) {
     mSampleRate = sampleRate;
     mChannels = channels;
-    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2); // 0.5s of audio data
+    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.5s of audio data
 
     AudioStreamBasicDescription format = {0};
     format.mSampleRate = sampleRate;
@@ -25,7 +21,8 @@ bool IOSAudioOutput::init(int sampleRate, int channels) {
     format.mBytesPerFrame = channels * 2;
     format.mBytesPerPacket = channels * 2;
 
-    OSStatus status = AudioQueueNewOutput(&format, AudioQueueCallback, this, nullptr, nullptr, 0, &mAudioQueue);
+    OSStatus status =
+        AudioQueueNewOutput(&format, AudioQueueCallback, this, nullptr, nullptr, 0, &mAudioQueue);
     if (status != noErr) {
         return false;
     }
@@ -89,7 +86,8 @@ bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
     return true;
 }
 
-void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer) {
+void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ,
+                                        AudioQueueBufferRef inBuffer) {
     auto* output = static_cast<IOSAudioOutput*>(userData);
     output->handleBuffer(inBuffer);
 }
@@ -102,7 +100,9 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
         if (!mRunning) return;
 
         if (mFrameQueue.empty()) {
-            UInt32 silenceBytes = std::min((UInt32)512, inBuffer->mAudioDataBytesCapacity); // 512 bytes ≈ 5.8ms @44.1kHz stereo 16bit
+            UInt32 silenceBytes = std::min(
+                (UInt32)512,
+                inBuffer->mAudioDataBytesCapacity);  // 512 bytes ≈ 5.8ms @44.1kHz stereo 16bit
             memset(inBuffer->mAudioData, 0, silenceBytes);
             inBuffer->mAudioDataByteSize = silenceBytes;
         } else {

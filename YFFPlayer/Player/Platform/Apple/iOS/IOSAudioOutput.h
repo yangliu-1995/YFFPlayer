@@ -1,10 +1,12 @@
 #pragma once
 
-#include "AudioOutput.h"
 #include <AudioToolbox/AudioToolbox.h>
-#include <mutex>
+
 #include <condition_variable>
 #include <deque>
+#include <mutex>
+
+#include "AudioOutput.h"
 
 class IOSAudioOutput : public yffplayer::AudioOutput {
 public:
@@ -21,7 +23,8 @@ public:
     bool enqueueAudioFrame(const yffplayer::AudioFrame& frame) override;
 
 private:
-    static void AudioQueueCallback(void* userData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer);
+    static void AudioQueueCallback(void* userData, AudioQueueRef inAQ,
+                                   AudioQueueBufferRef inBuffer);
     void handleBuffer(AudioQueueBufferRef inBuffer);
 
     bool mRunning = false;

@@ -1,7 +1,5 @@
 {
     "files.associations": {
-        "atomic": "cpp",
-        "queue": "cpp",
         "__bit_reference": "cpp",
         "__hash_table": "cpp",
         "__locale": "cpp",
@@ -29,6 +27,7 @@
         "memory": "cpp",
         "forward_list": "cpp",
         "initializer_list": "cpp",
+        "iomanip": "cpp",
         "ios": "cpp",
         "iosfwd": "cpp",
         "iostream": "cpp",
@@ -39,6 +38,7 @@
         "new": "cpp",
         "optional": "cpp",
         "print": "cpp",
+        "queue": "cpp",
         "ratio": "cpp",
         "sstream": "cpp",
         "stack": "cpp",
@@ -52,5 +52,15 @@
         "vector": "cpp",
         "algorithm": "cpp"
     },
-    "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, IndentWidth: 4, TabWidth: 4, UseTab: Never, BraceWrapping: { AfterClass: false, AfterControlStatement: false, AfterEnum: false, AfterFunction: false, AfterNamespace: false, AfterStruct: false, AfterUnion: false, BeforeCatch: false, BeforeElse: false, IndentBraces: false } }"
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/YFFPlayer/Player/Core",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libavcodec.xcframework/ios-arm64/libavcodec.framework/Headers",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libavdevice.xcframework/ios-arm64/libavdevice.framework/Headers",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libavfilter.xcframework/ios-arm64/libavfilter.framework/Headers",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libavformat.xcframework/ios-arm64/libavformat.framework/Headers",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libavutil.xcframework/ios-arm64/libavutil.framework/Headers",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libswresample.xcframework/ios-arm64/libswresample.framework/Headers",
+        "${workspaceFolder}/YFFPlayer/Player/FFmpeg/libswscale.xcframework/ios-arm64/libswscale.framework/Headers",
+    ]
 }

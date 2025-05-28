@@ -4,12 +4,16 @@
 #include <iostream>
 
 IOSAUAudioOutput::IOSAUAudioOutput()
-    : mAudioUnit(nullptr), mSampleRate(0), mChannels(0), mBytesPerFrame(0),
-      mIsRunning(false), mIsPaused(false), mVolume(1.0f), mMute(false) {}
+    : mAudioUnit(nullptr),
+      mSampleRate(0),
+      mChannels(0),
+      mBytesPerFrame(0),
+      mIsRunning(false),
+      mIsPaused(false),
+      mVolume(1.0f),
+      mMute(false) {}
 
-IOSAUAudioOutput::~IOSAUAudioOutput() {
-    stop();
-}
+IOSAUAudioOutput::~IOSAUAudioOutput() { stop(); }
 
 bool IOSAUAudioOutput::init(int sampleRate, int channels) {
     mSampleRate = sampleRate;
@@ -48,12 +52,8 @@ bool IOSAUAudioOutput::init(int sampleRate, int channels) {
     audioFormat.mBytesPerPacket = mBytesPerFrame;
     audioFormat.mReserved = 0;
 
-    status = AudioUnitSetProperty(mAudioUnit,
-                                  kAudioUnitProperty_StreamFormat,
-                                  kAudioUnitScope_Input,
-                                  0,
-                                  &audioFormat,
-                                  sizeof(audioFormat));
+    status = AudioUnitSetProperty(mAudioUnit, kAudioUnitProperty_StreamFormat,
+                                  kAudioUnitScope_Input, 0, &audioFormat, sizeof(audioFormat));
     if (status != noErr) {
         std::cerr << "AudioUnitSetProperty(StreamFormat) failed: " << status << std::endl;
         AudioComponentInstanceDispose(mAudioUnit);
@@ -65,12 +65,9 @@ bool IOSAUAudioOutput::init(int sampleRate, int channels) {
     callbackStruct.inputProc = AudioUnitRenderCallback;
     callbackStruct.inputProcRefCon = this;
 
-    status = AudioUnitSetProperty(mAudioUnit,
-                                  kAudioUnitProperty_SetRenderCallback,
-                                  kAudioUnitScope_Input,
-                                  0,
-                                  &callbackStruct,
-                                  sizeof(callbackStruct));
+    status =
+        AudioUnitSetProperty(mAudioUnit, kAudioUnitProperty_SetRenderCallback,
+                             kAudioUnitScope_Input, 0, &callbackStruct, sizeof(callbackStruct));
     if (status != noErr) {
         std::cerr << "AudioUnitSetProperty(SetRenderCallback) failed: " << status << std::endl;
         AudioComponentInstanceDispose(mAudioUnit);
@@ -132,12 +129,9 @@ void IOSAUAudioOutput::setVolume(float volume) {
     mVolume = volume;
 
     if (mAudioUnit) {
-        OSStatus status = AudioUnitSetParameter(mAudioUnit,
-                                                kHALOutputParam_Volume,
-                                                kAudioUnitScope_Global,
-                                                0,
-                                                mMute ? 0.0f : mVolume,
-                                                0);
+        OSStatus status =
+            AudioUnitSetParameter(mAudioUnit, kHALOutputParam_Volume, kAudioUnitScope_Global, 0,
+                                  mMute ? 0.0f : mVolume, 0);
         if (status != noErr) {
             // 失败时不处理，也可以考虑日志
         }
@@ -149,12 +143,8 @@ void IOSAUAudioOutput::setMute(bool mute) {
 
     if (mAudioUnit) {
         float vol = mMute ? 0.0f : mVolume;
-        OSStatus status = AudioUnitSetParameter(mAudioUnit,
-                                                kHALOutputParam_Volume,
-                                                kAudioUnitScope_Global,
-                                                0,
-                                                vol,
-                                                0);
+        OSStatus status = AudioUnitSetParameter(mAudioUnit, kHALOutputParam_Volume,
+                                                kAudioUnitScope_Global, 0, vol, 0);
         if (status != noErr) {
             // 同上
         }
@@ -165,9 +155,7 @@ bool IOSAUAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
     if (!mIsRunning.load()) return false;
 
     std::unique_lock<std::mutex> lock(mMutex);
-    mCond.wait(lock, [this]() {
-        return mFrameQueue.size() < 50 || !mIsRunning.load();
-    });
+    mCond.wait(lock, [this]() { return mFrameQueue.size() < 50 || !mIsRunning.load(); });
 
     if (!mIsRunning.load()) return false;
 
@@ -179,8 +167,7 @@ bool IOSAUAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
 OSStatus IOSAUAudioOutput::AudioUnitRenderCallback(void* inRefCon,
                                                    AudioUnitRenderActionFlags* ioActionFlags,
                                                    const AudioTimeStamp* inTimeStamp,
-                                                   UInt32 inBusNumber,
-                                                   UInt32 inNumberFrames,
+                                                   UInt32 inBusNumber, UInt32 inNumberFrames,
                                                    AudioBufferList* ioData) {
     auto* output = static_cast<IOSAUAudioOutput*>(inRefCon);
     output->fillBuffer(ioData, inNumberFrames);

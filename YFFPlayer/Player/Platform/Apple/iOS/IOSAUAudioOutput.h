@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AudioOutput.h"
 #include <AudioToolbox/AudioToolbox.h>
+
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -9,6 +9,7 @@
 #include <mutex>
 
 #include "AudioFrame.h"
+#include "AudioOutput.h"
 
 class IOSAUAudioOutput : public yffplayer::AudioOutput {
 public:
@@ -27,10 +28,8 @@ public:
 private:
     static OSStatus AudioUnitRenderCallback(void* inRefCon,
                                             AudioUnitRenderActionFlags* ioActionFlags,
-                                            const AudioTimeStamp* inTimeStamp,
-                                            UInt32 inBusNumber,
-                                            UInt32 inNumberFrames,
-                                            AudioBufferList* ioData);
+                                            const AudioTimeStamp* inTimeStamp, UInt32 inBusNumber,
+                                            UInt32 inNumberFrames, AudioBufferList* ioData);
 
     void fillBuffer(AudioBufferList* ioData, UInt32 inNumberFrames);
 

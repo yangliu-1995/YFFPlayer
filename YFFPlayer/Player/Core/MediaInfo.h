@@ -3,8 +3,8 @@
 #include <string>
 
 extern "C" {
-#include <libavutil/avutil.h>
 #include <libavcodec/avcodec.h>
+#include <libavutil/avutil.h>
 struct AVCodecParameters;
 }
 
@@ -29,4 +29,4 @@ struct MediaInfo {
         avcodec_parameters_free(&mVideoCodecParameters);
     };
 };
-}
+}  // namespace yffplayer

@@ -1,7 +1,8 @@
 #include "Player.h"
+
 #include <chrono>
-#include <thread>
 #include <iostream>
+#include <thread>
 
 #if defined(__APPLE__)
 #include <pthread.h>
@@ -13,7 +14,8 @@ extern "C" {
 
 namespace yffplayer {
 Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput)
-    : mAudioOutput(audioOutput), mVideoOutput(videoOutput),
+    : mAudioOutput(audioOutput),
+      mVideoOutput(videoOutput),
       mAudioPacketQueue(std::make_shared<PacketQueue>(100)),
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
       mAudioFrameQueue(std::make_shared<FrameQueue<AudioFrame>>(100)),
@@ -21,9 +23,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
     mDemuxer = std::make_shared<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
 }
 
-Player::~Player() {
-    stop();
-}
+Player::~Player() { stop(); }
 
 bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
     stop();
@@ -139,15 +139,13 @@ void Player::stop() {
     }
 }
 
-
 void Player::stopThread() {
     // 原stop方法的主体逻辑移到这里
-
 }
 
 void Player::pause() {
     if (!mRunning || mPaused) {
-        return; // 已经暂停或未运行
+        return;  // 已经暂停或未运行
     }
     mPaused = true;
 
@@ -155,7 +153,7 @@ void Player::pause() {
     mDemuxer->pause();
     if (mAudioDecoder) {
         mAudioDecoder->pause();
-        mAudioPacketQueue->abort();// 假设你能访问 packetQueue 和 frameQueue
+        mAudioPacketQueue->abort();  // 假设你能访问 packetQueue 和 frameQueue
         mAudioFrameQueue->abort();
     }
     if (mVideoDecoder) {
@@ -170,7 +168,7 @@ void Player::pause() {
 
 void Player::resume() {
     if (!mRunning || !mPaused) {
-        return; // 未暂停或未运行
+        return;  // 未暂停或未运行
     }
     mPaused = false;
 
@@ -194,19 +192,23 @@ void Player::resume() {
 bool Player::seek(int64_t positionMs) {
     if (!mRunning) return false;
 
-    pause(); // 暂停所有模块，避免数据冲突
+    pause();  // 暂停所有模块，避免数据冲突
 
     // 设置所有队列进入 abort 状态以终止阻塞
-    mAudioPacketQueue->abort(); mVideoPacketQueue->abort();
-    mAudioFrameQueue->abort(); mVideoFrameQueue->abort();
+    mAudioPacketQueue->abort();
+    mVideoPacketQueue->abort();
+    mAudioFrameQueue->abort();
+    mVideoFrameQueue->abort();
 
     // 清空队列数据
-    mAudioPacketQueue->clear(); mVideoPacketQueue->clear();
-    mAudioFrameQueue->clear(); mVideoFrameQueue->clear();
+    mAudioPacketQueue->clear();
+    mVideoPacketQueue->clear();
+    mAudioFrameQueue->clear();
+    mVideoFrameQueue->clear();
 
     // 通知解复用器跳转
     if (!mDemuxer->seek(positionMs)) {
-        resume(); // 恢复播放状态
+        resume();  // 恢复播放状态
         return false;
     }
 
@@ -218,17 +220,18 @@ bool Player::seek(int64_t positionMs) {
     mAudioClock = positionMs;
 
     // 音视频输出模块同步清理（如果有缓存）
-//    mAudioOutput->flush();
-//    mVideoOutput->flush();
+    //    mAudioOutput->flush();
+    //    mVideoOutput->flush();
 
     // 解除 abort 状态，恢复继续解码和播放
-    mAudioPacketQueue->start(); mVideoPacketQueue->start();
-    mAudioFrameQueue->start(); mVideoFrameQueue->start();
+    mAudioPacketQueue->start();
+    mVideoPacketQueue->start();
+    mAudioFrameQueue->start();
+    mVideoFrameQueue->start();
 
-    resume(); // 恢复播放
+    resume();  // 恢复播放
     return true;
 }
-
 
 void Player::audioOutputThread() {
 #if defined(__APPLE__)
@@ -261,7 +264,7 @@ void Player::videoOutputThread() {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
         }
-        
+
         auto videoFrame = mVideoFrameQueue->pop();
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
@@ -276,8 +279,9 @@ void Player::videoOutputThread() {
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 } else if (diff < -50) {
                     ++mDroppedVideoFramesCount;
-                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount << std::endl;
-                    continue; // 跳过落后太多的帧
+                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount
+                              << std::endl;
+                    continue;  // 跳过落后太多的帧
                 } else {
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 }
@@ -299,4 +303,4 @@ void Player::videoOutputThread() {
         }
     }
 }
-} // namespace yffplayer
+}  // namespace yffplayer

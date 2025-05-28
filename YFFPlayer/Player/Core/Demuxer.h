@@ -1,10 +1,11 @@
 #pragma once
 
-#include <thread>
 #include <atomic>
-#include <mutex>
 #include <condition_variable>
 #include <memory>
+#include <mutex>
+#include <thread>
+
 #include "PacketQueue.h"
 
 extern "C" {
@@ -48,4 +49,4 @@ private:
     int mVideoStreamIndex = -1;
 };
 
-} // namespace yffplayer
+}  // namespace yffplayer

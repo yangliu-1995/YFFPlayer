@@ -1,12 +1,13 @@
+#include "Demuxer.h"
+
 #include <iostream>
 
-#include "Demuxer.h"
-#include "Packet.h"
 #include "MediaInfo.h"
+#include "Packet.h"
 
 extern "C" {
-#include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
 }
 
@@ -63,8 +64,8 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
         if (frameRate.num == 0 || frameRate.den == 0) {
             frameRate = mFormatCtx->streams[mVideoStreamIndex]->r_frame_rate;
         }
-        mediaInfo.mVideoFrameRate = frameRate.num && frameRate.den ?
-                                    static_cast<int>(av_q2d(frameRate) + 0.5) : 0;
+        mediaInfo.mVideoFrameRate =
+            frameRate.num && frameRate.den ? static_cast<int>(av_q2d(frameRate) + 0.5) : 0;
     }
 
     return mAudioStreamIndex != -1 || mVideoStreamIndex != -1;
@@ -77,9 +78,7 @@ void Demuxer::start() {
     mThread = std::thread(&Demuxer::demuxLoop, this);
 }
 
-void Demuxer::pause() {
-    mPaused = true;
-}
+void Demuxer::pause() { mPaused = true; }
 
 void Demuxer::resume() {
     mPaused = false;
@@ -128,9 +127,7 @@ void Demuxer::demuxLoop() {
     while (!mStopRequested) {
         // 暂停逻辑
         std::unique_lock<std::mutex> lock(mMutex);
-        mCond.wait(lock, [this] {
-            return !mPaused || mStopRequested;
-        });
+        mCond.wait(lock, [this] { return !mPaused || mStopRequested; });
         lock.unlock();
 
         if (mStopRequested || mSeeking) {
@@ -161,4 +158,4 @@ void Demuxer::demuxLoop() {
     av_packet_free(&pkt);
 }
 
-} // namespace yffplayer
+}  // namespace yffplayer

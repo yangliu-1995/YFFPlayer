@@ -1,15 +1,15 @@
 #pragma once
 
-#include <queue>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
-#include <condition_variable>
-#include <chrono>
-#include <atomic>
+#include <queue>
 
 namespace yffplayer {
 
-template<typename T>
+template <typename T>
 class FrameQueue {
 public:
     explicit FrameQueue(size_t capacity);
@@ -36,4 +36,4 @@ private:
     std::atomic<bool> mAborted;
 };
 
-} // namespace yffplayer
+}  // namespace yffplayer

@@ -16,11 +16,9 @@ struct Packet {
         }
     }
 
-    Packet(Packet &&other) noexcept : mPacket(other.mPacket) {
-        other.mPacket = nullptr;
-    }
+    Packet(Packet &&other) noexcept : mPacket(other.mPacket) { other.mPacket = nullptr; }
 
-    Packet& operator=(const Packet &other) {
+    Packet &operator=(const Packet &other) {
         if (this != &other) {
             if (mPacket) {
                 av_packet_free(&mPacket);
@@ -30,7 +28,7 @@ struct Packet {
         return *this;
     }
 
-    Packet& operator=(Packet &&other) noexcept {
+    Packet &operator=(Packet &&other) noexcept {
         if (this != &other) {
             if (mPacket) {
                 av_packet_free(&mPacket);
@@ -41,9 +39,7 @@ struct Packet {
         return *this;
     }
 
-    bool isKeyFrame() const {
-        return mPacket->flags & AV_PKT_FLAG_KEY;
-    }
+    bool isKeyFrame() const { return mPacket->flags & AV_PKT_FLAG_KEY; }
 
     ~Packet() {
         if (mPacket) {
@@ -51,4 +47,4 @@ struct Packet {
         }
     }
 };
-} // namespace yffplayer
+}  // namespace yffplayer

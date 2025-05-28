@@ -1,15 +1,16 @@
 #pragma once
-#include "Demuxer.h"
-#include "PacketQueue.h"
-#include "FrameQueue.h"
-#include "AudioDecoder.h"
-#include "VideoDecoder.h"
-#include "AudioOutput.h"
-#include "VideoOutput.h"
-#include "MediaInfo.h"
 #include <atomic>
-#include <thread>
 #include <memory>
+#include <thread>
+
+#include "AudioDecoder.h"
+#include "AudioOutput.h"
+#include "Demuxer.h"
+#include "FrameQueue.h"
+#include "MediaInfo.h"
+#include "PacketQueue.h"
+#include "VideoDecoder.h"
+#include "VideoOutput.h"
 
 namespace yffplayer {
 class Player {
@@ -48,4 +49,4 @@ private:
     std::atomic<bool> mPaused{false};
     std::atomic<int> mDroppedVideoFramesCount{0};
 };
-} // namespace yffplayer
+}  // namespace yffplayer

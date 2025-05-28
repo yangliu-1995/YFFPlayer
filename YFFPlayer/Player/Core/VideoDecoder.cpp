@@ -1,4 +1,5 @@
 #include "VideoDecoder.h"
+
 #include <iostream>
 #include <vector>
 
@@ -8,8 +9,7 @@ namespace yffplayer {
 
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<VideoFrame>> frameQueue)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {
-}
+    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
 
 VideoDecoder::~VideoDecoder() {
     stop();
@@ -19,7 +19,7 @@ VideoDecoder::~VideoDecoder() {
 
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     mTimeBase = timeBase;
-    
+
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
         std::cerr << "Video codec not found" << std::endl;
@@ -31,17 +31,17 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         std::cerr << "Failed to allocate video codec context" << std::endl;
         return false;
     }
-    
+
     if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
         std::cerr << "Failed to copy codec parameters" << std::endl;
         return false;
     }
-    
+
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
         std::cerr << "Failed to open codec" << std::endl;
         return false;
     }
-    
+
     return true;
 }
 
@@ -54,7 +54,7 @@ void VideoDecoder::start() {
 
 void VideoDecoder::stop() {
     mIsRunning = false;
-    resume(); // 防止线程阻塞在暂停状态
+    resume();  // 防止线程阻塞在暂停状态
     if (mDecodeThread.joinable()) {
         mDecodeThread.join();
     }
@@ -69,9 +69,7 @@ void VideoDecoder::stop() {
     }
 }
 
-void VideoDecoder::pause() {
-    mPaused = true;
-}
+void VideoDecoder::pause() { mPaused = true; }
 
 void VideoDecoder::resume() {
     mPaused = false;
@@ -93,9 +91,7 @@ void VideoDecoder::decodeLoop() {
     while (mIsRunning) {
         // 处理暂停逻辑
         std::unique_lock<std::mutex> lock(mMutex);
-        mCond.wait(lock, [this] {
-            return !mPaused;
-        });
+        mCond.wait(lock, [this] { return !mPaused; });
         lock.unlock();
 
         if (!mIsRunning) {
@@ -127,15 +123,17 @@ void VideoDecoder::decodeLoop() {
                 // 解码器内部缓冲区满了，你应该先调用 avcodec_receive_frame 读掉旧帧
                 // 然后重新 send_packet（也可以 continue，但必须说明）
                 // 建议日志提示
-                av_log(NULL, AV_LOG_WARNING, "Decoder is full, need to receive frames before sending more packets.\n");
+                av_log(NULL, AV_LOG_WARNING,
+                       "Decoder is full, need to receive frames before sending more packets.\n");
                 continue;
             } else if (ret == AVERROR_EOF) {
                 // 解码器已经 flush 完成，不能再发送数据
                 av_log(NULL, AV_LOG_INFO, "Decoder has been fully flushed.\n");
-                break; // 或 return，根据你的状态判断
+                break;  // 或 return，根据你的状态判断
             } else {
                 // 其他错误，比如解码器内部错误、内存问题等
-                av_log(NULL, AV_LOG_ERROR, "Failed to send packet to decoder: %s\n", av_err2str(ret));
+                av_log(NULL, AV_LOG_ERROR, "Failed to send packet to decoder: %s\n",
+                       av_err2str(ret));
                 // 可选中断或继续
                 continue;
             }
@@ -155,25 +153,26 @@ void VideoDecoder::decodeLoop() {
             std::vector<uint8_t> data;
             PixelFormat pixelFormat;
 
-            if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 && sourceFormat != AV_PIX_FMT_RGB24) {
+            if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 &&
+                sourceFormat != AV_PIX_FMT_RGB24) {
                 if (!mSwsCtx) {
-                    mSwsCtx = sws_getContext(
-                        frame->width, frame->height, sourceFormat,
-                        frame->width, frame->height, AV_PIX_FMT_RGB24,
-                        SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
-                    av_image_alloc(rgbFrame->data, rgbFrame->linesize, frame->width, frame->height, AV_PIX_FMT_RGB24, 1);
+                    mSwsCtx = sws_getContext(frame->width, frame->height, sourceFormat,
+                                             frame->width, frame->height, AV_PIX_FMT_RGB24,
+                                             SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+                    av_image_alloc(rgbFrame->data, rgbFrame->linesize, frame->width, frame->height,
+                                   AV_PIX_FMT_RGB24, 1);
                 }
-                sws_scale(mSwsCtx, frame->data, frame->linesize, 0, frame->height,
-                          rgbFrame->data, rgbFrame->linesize);
+                sws_scale(mSwsCtx, frame->data, frame->linesize, 0, frame->height, rgbFrame->data,
+                          rgbFrame->linesize);
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
-                lineSize = { linesizes[0], 0, 0 };
+                lineSize = {linesizes[0], 0, 0};
 
-                int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+                int bufferSize =
+                    av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
                 data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize,
-                                        rgbFrame->data, rgbFrame->linesize,
+                av_image_copy_to_buffer(data.data(), bufferSize, rgbFrame->data, rgbFrame->linesize,
                                         AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
 
                 pixelFormat = PixelFormat::RGB24;
@@ -182,51 +181,54 @@ void VideoDecoder::decodeLoop() {
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_YUV420P, frame->width);
-                lineSize = { linesizes[0], linesizes[1], linesizes[2] };
+                lineSize = {linesizes[0], linesizes[1], linesizes[2]};
 
-                int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, frame->width, frame->height, 1);
+                int bufferSize =
+                    av_image_get_buffer_size(AV_PIX_FMT_YUV420P, frame->width, frame->height, 1);
                 data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize,
-                                        frame->data, frame->linesize,
+                av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
                                         AV_PIX_FMT_YUV420P, frame->width, frame->height, 1);
             } else if (sourceFormat == AV_PIX_FMT_NV12) {
                 pixelFormat = PixelFormat::NV12;
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_NV12, frame->width);
-                lineSize = { linesizes[0], linesizes[1], 0 };
+                lineSize = {linesizes[0], linesizes[1], 0};
 
-                int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_NV12, frame->width, frame->height, 1);
+                int bufferSize =
+                    av_image_get_buffer_size(AV_PIX_FMT_NV12, frame->width, frame->height, 1);
                 data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize,
-                                        frame->data, frame->linesize,
+                av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
                                         AV_PIX_FMT_NV12, frame->width, frame->height, 1);
             } else if (sourceFormat == AV_PIX_FMT_RGB24) {
                 pixelFormat = PixelFormat::RGB24;
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
-                lineSize = { linesizes[0], 0, 0 };
+                lineSize = {linesizes[0], 0, 0};
 
-                int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+                int bufferSize =
+                    av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
                 data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize,
-                                        frame->data, frame->linesize,
+                av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
                                         AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
             } else {
                 pixelFormat = PixelFormat::RGB24;
                 data.clear();
             }
 
-            int64_t pts = (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+            int64_t pts =
+                (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
             pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-            int64_t dur = (frame->duration == AV_NOPTS_VALUE) ? 0 : frame->duration * av_q2d(mTimeBase) * 1000;
+            int64_t dur = (frame->duration == AV_NOPTS_VALUE)
+                              ? 0
+                              : frame->duration * av_q2d(mTimeBase) * 1000;
             bool isKey = frame->key_frame == 1;
 
-            mFrameQueue->push(std::make_shared<VideoFrame>(
-                pts, dur, frame->width, frame->height, pixelFormat, std::move(data), lineSize, isKey));
+            mFrameQueue->push(std::make_shared<VideoFrame>(pts, dur, frame->width, frame->height,
+                                                           pixelFormat, std::move(data), lineSize,
+                                                           isKey));
         }
-
     }
 
     av_freep(&rgbFrame->data[0]);
@@ -235,4 +237,4 @@ void VideoDecoder::decodeLoop() {
     av_packet_free(&packet);
 }
 
-} // namespace yffplayer
+}  // namespace yffplayer

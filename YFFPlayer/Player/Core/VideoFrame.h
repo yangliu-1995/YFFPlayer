@@ -5,11 +5,7 @@
 
 namespace yffplayer {
 
-enum class PixelFormat {
-    YUV420P,
-    NV12,
-    RGB24
-};
+enum class PixelFormat { YUV420P, NV12, RGB24 };
 
 struct VideoFrame {
     int64_t mPts = 0;
@@ -23,10 +19,16 @@ struct VideoFrame {
 
     VideoFrame() = default;
 
-    VideoFrame(int64_t pts, int64_t duration, int width, int height,
-               PixelFormat format, std::vector<uint8_t> data, const std::array<int, 3>& linesize, bool isKeyFrame)
-        : mPts(pts), mDuration(duration), mWidth(width), mHeight(height),
-    mFormat(format), mData(std::move(data)), mLinesize(linesize), mIsKeyFrame(isKeyFrame) {}
+    VideoFrame(int64_t pts, int64_t duration, int width, int height, PixelFormat format,
+               std::vector<uint8_t> data, const std::array<int, 3>& linesize, bool isKeyFrame)
+        : mPts(pts),
+          mDuration(duration),
+          mWidth(width),
+          mHeight(height),
+          mFormat(format),
+          mData(std::move(data)),
+          mLinesize(linesize),
+          mIsKeyFrame(isKeyFrame) {}
 };
 
-} // namespace yffplayer
+}  // namespace yffplayer

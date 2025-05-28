@@ -1,5 +1,6 @@
 // AudioDecoder.cpp
 #include "AudioDecoder.h"
+
 #include <iostream>
 #include <vector>
 
@@ -9,16 +10,13 @@ namespace yffplayer {
 
 AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<AudioFrame>> frameQueue)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {
-}
+    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
 
-AudioDecoder::~AudioDecoder() {
-    stop();
-}
+AudioDecoder::~AudioDecoder() { stop(); }
 
 bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     mTimeBase = timeBase;
-    
+
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
         std::cerr << "Audio codec not found" << std::endl;
@@ -57,10 +55,8 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
 
-    if (swr_alloc_set_opts2(&mSwrCtx,
-                            &outLayout, AV_SAMPLE_FMT_S16, 44100,
-                            &mCodecCtx->ch_layout, mCodecCtx->sample_fmt, mCodecCtx->sample_rate,
-                            0, nullptr) < 0) {
+    if (swr_alloc_set_opts2(&mSwrCtx, &outLayout, AV_SAMPLE_FMT_S16, 44100, &mCodecCtx->ch_layout,
+                            mCodecCtx->sample_fmt, mCodecCtx->sample_rate, 0, nullptr) < 0) {
         std::cerr << "swr_alloc_set_opts2 failed" << std::endl;
         return false;
     }
@@ -72,7 +68,7 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 
     // 注意 outLayout 是栈上临时变量，拷贝后记得释放
     av_channel_layout_uninit(&outLayout);
-    
+
     return true;
 }
 
@@ -85,7 +81,7 @@ void AudioDecoder::start() {
 
 void AudioDecoder::stop() {
     mIsRunning = false;
-    resume(); // 防止线程阻塞在暂停状态
+    resume();  // 防止线程阻塞在暂停状态
     if (mDecodeThread.joinable()) {
         mDecodeThread.join();
     }
@@ -100,9 +96,7 @@ void AudioDecoder::stop() {
     }
 }
 
-void AudioDecoder::pause() {
-    mPaused = true;
-}
+void AudioDecoder::pause() { mPaused = true; }
 
 void AudioDecoder::resume() {
     mPaused = false;
@@ -126,18 +120,18 @@ void AudioDecoder::decodeLoop() {
         return;
     }
 
-    while (mIsRunning) { // 使用mIsRunning替代!mStopped
+    while (mIsRunning) {  // 使用mIsRunning替代!mStopped
         // 处理暂停逻辑
         std::unique_lock<std::mutex> lock(mMutex);
         mCond.wait(lock, [this] {
-            return !mPaused; // 使用!mIsRunning替代mStopped
+            return !mPaused;  // 使用!mIsRunning替代mStopped
         });
         lock.unlock();
-        
-        if (!mIsRunning) { // 使用!mIsRunning替代mStopped
+
+        if (!mIsRunning) {  // 使用!mIsRunning替代mStopped
             break;
         }
-        
+
         auto pkt = mPacketQueue->pop();
         if (!pkt) {
             continue;
@@ -145,7 +139,7 @@ void AudioDecoder::decodeLoop() {
 
         auto avPacket = pkt->mPacket;
         if (!avPacket) {
-            av_packet_unref(pkt->mPacket); // 清理 Packet 内的 AVPacket
+            av_packet_unref(pkt->mPacket);  // 清理 Packet 内的 AVPacket
             continue;
         }
 
@@ -161,41 +155,42 @@ void AudioDecoder::decodeLoop() {
             if (ret == 0) {
                 // 计算重采样输出大小
                 int outSamples = av_rescale_rnd(
-                    swr_get_delay(mSwrCtx, mCodecCtx->sample_rate) + frame->nb_samples,
-                    44100, mCodecCtx->sample_rate, AV_ROUND_UP);
+                    swr_get_delay(mSwrCtx, mCodecCtx->sample_rate) + frame->nb_samples, 44100,
+                    mCodecCtx->sample_rate, AV_ROUND_UP);
                 int outChannels = 2;
                 int bytesPerSample = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
                 int outBufferSize = outSamples * outChannels * bytesPerSample;
                 std::vector<uint8_t> buffer(outBufferSize);
-                uint8_t* out[] = { buffer.data() };
+                uint8_t* out[] = {buffer.data()};
 
                 // 重采样
-                int samples = swr_convert(mSwrCtx, out, outSamples,
-                                        (const uint8_t**)frame->data, frame->nb_samples);
+                int samples = swr_convert(mSwrCtx, out, outSamples, (const uint8_t**)frame->data,
+                                          frame->nb_samples);
                 if (samples < 0) {
                     std::cerr << "swr_convert failed: " << samples << std::endl;
                     continue;
                 }
 
                 // 检查时间戳
-                int64_t pts = (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+                int64_t pts =
+                    (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
                 pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
                 int64_t dur = samples * 1000 / 44100;
 
                 // 推送到 FrameQueue
-                mFrameQueue->push(std::make_shared<AudioFrame>(
-                    pts, dur, 44100, 2, samples, std::move(buffer)));
+                mFrameQueue->push(
+                    std::make_shared<AudioFrame>(pts, dur, 44100, 2, samples, std::move(buffer)));
             } else if (ret == AVERROR(EAGAIN)) {
-                break; // 需要更多输入
+                break;  // 需要更多输入
             } else if (ret == AVERROR_EOF) {
-                break; // 解码结束
+                break;  // 解码结束
             } else {
                 std::cerr << "Failed to receive frame: " << av_err2str(ret) << std::endl;
                 break;
             }
         }
 
-        av_packet_unref(avPacket); // 清理当前包
+        av_packet_unref(avPacket);  // 清理当前包
     }
 
     av_frame_free(&frame);
@@ -203,4 +198,4 @@ void AudioDecoder::decodeLoop() {
     std::cerr << "AudioDecoder thread ended" << std::endl;
 }
 
-} // namespace yffplayer
+}  // namespace yffplayer

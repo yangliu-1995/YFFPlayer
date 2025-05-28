@@ -1,9 +1,10 @@
 #pragma once
 
 #include <memory>
+
 #include "Decoder.h"
-#include "PacketQueue.h"
 #include "FrameQueue.h"
+#include "PacketQueue.h"
 #include "VideoFrame.h"
 
 extern "C" {
@@ -40,4 +41,4 @@ private:
     void decodeLoop() override;
 };
 
-} // namespace yffplayer
+}  // namespace yffplayer
