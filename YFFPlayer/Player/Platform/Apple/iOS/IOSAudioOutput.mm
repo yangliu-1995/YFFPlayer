@@ -1,6 +1,7 @@
 #include "IOSAudioOutput.h"
 #include <algorithm>
 #include <cstring>
+#import <AVFoundation/AVFoundation.h>
 
 IOSAudioOutput::IOSAudioOutput() : mVolume(1.0f), mMute(false) {}
 
@@ -10,6 +11,8 @@ bool IOSAudioOutput::init(int sampleRate, int channels) {
     mSampleRate = sampleRate;
     mChannels = channels;
     mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.2s of audio data
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+    [[AVAudioSession sharedInstance] setActive:YES error:nil];
 
     AudioStreamBasicDescription format = {0};
     format.mSampleRate = sampleRate;
