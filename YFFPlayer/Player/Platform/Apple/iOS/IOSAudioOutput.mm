@@ -9,7 +9,7 @@ IOSAudioOutput::~IOSAudioOutput() { stop(); }
 bool IOSAudioOutput::init(int sampleRate, int channels) {
     mSampleRate = sampleRate;
     mChannels = channels;
-    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.5s of audio data
+    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.2s of audio data
 
     AudioStreamBasicDescription format = {0};
     format.mSampleRate = sampleRate;
@@ -95,6 +95,11 @@ bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
     return true;
 }
 
+void IOSAudioOutput::setPlaybackCallback(yffplayer::AudioPlaybackCallback callback) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    mPlaybackCallback = callback;
+}
+
 void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ,
                                         AudioQueueBufferRef inBuffer) {
     auto* output = static_cast<IOSAudioOutput*>(userData);
@@ -103,6 +108,7 @@ void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ,
 
 void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
     yffplayer::AudioFrame frame;
+    bool hasFrame = false;
 
     {
         std::unique_lock<std::mutex> lock(mMutex);
@@ -111,21 +117,26 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
         if (mFrameQueue.empty()) {
             UInt32 silenceBytes = std::min(
                 (UInt32)512,
-                inBuffer->mAudioDataBytesCapacity);  // 512 bytes ≈ 5.8ms @44.1kHz stereo 16bit
+                inBuffer->mAudioDataBytesCapacity);
             memset(inBuffer->mAudioData, 0, silenceBytes);
             inBuffer->mAudioDataByteSize = silenceBytes;
         } else {
             frame = mFrameQueue.front();
             mFrameQueue.pop_front();
             mCond.notify_one();
+            hasFrame = true;
 
             size_t dataSize = std::min(frame.mData.size(), (size_t)mFrameBytes);
             memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
             inBuffer->mAudioDataByteSize = (UInt32)dataSize;
         }
+        AudioQueueEnqueueBuffer(mAudioQueue, inBuffer, 0, nullptr);
     }
 
-    AudioQueueEnqueueBuffer(mAudioQueue, inBuffer, 0, nullptr);
+    // 在锁外调用回调，避免死锁
+    if (hasFrame && mPlaybackCallback) {
+        mPlaybackCallback(frame.mPts, frame.mDuration);
+    }
 }
 
 void IOSAudioOutput::setVolume(float volume) {

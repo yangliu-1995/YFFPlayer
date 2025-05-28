@@ -25,6 +25,7 @@ public:
     void setVolume(float volume) override;
     void setMute(bool mute) override;
     bool enqueueAudioFrame(const yffplayer::AudioFrame& frame) override;
+    void setPlaybackCallback(yffplayer::AudioPlaybackCallback callback) override;
 
 private:
     static OSStatus AudioUnitRenderCallback(void* inRefCon,
@@ -49,4 +50,5 @@ private:
     std::mutex mMutex;
     std::condition_variable mCond;
     std::deque<std::shared_ptr<yffplayer::AudioFrame>> mFrameQueue;
+    yffplayer::AudioPlaybackCallback mPlaybackCallback;
 };

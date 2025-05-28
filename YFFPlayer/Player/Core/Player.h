@@ -9,13 +9,16 @@
 #include "FrameQueue.h"
 #include "MediaInfo.h"
 #include "PacketQueue.h"
+#include "PlayerCallback.h"
 #include "VideoDecoder.h"
 #include "VideoOutput.h"
+#include "SonicAudioProcessor.h"  // 添加这行
 
 namespace yffplayer {
 class Player {
 public:
-    Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput);
+    Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput,
+           std::shared_ptr<PlayerCallback> callback);
     ~Player();
 
     bool open(const std::string& url, MediaInfo& mediaInfo);
@@ -24,11 +27,13 @@ public:
     void pause();
     void resume();
     bool seek(int64_t positionMs);
+    void setPlaybackRate(float rate);  // 设置播放倍率
+    float getPlaybackRate() const;     // 获取当前播放倍率
 
 private:
     void audioOutputThread();
     void videoOutputThread();
-    void stopThread();
+    void notifyProgressChanged();
 
     std::shared_ptr<Demuxer> mDemuxer;
     std::shared_ptr<PacketQueue> mAudioPacketQueue;
@@ -48,5 +53,8 @@ private:
     std::atomic<bool> mRunning{false};
     std::atomic<bool> mPaused{false};
     std::atomic<int> mDroppedVideoFramesCount{0};
+    std::atomic<float> mPlaybackRate{1.0f};  // 播放倍率
+    std::shared_ptr<PlayerCallback> mCallback;
+    std::unique_ptr<SonicAudioProcessor> mAudioProcessor;
 };
 }  // namespace yffplayer

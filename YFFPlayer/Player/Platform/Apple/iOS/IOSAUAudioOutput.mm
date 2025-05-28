@@ -204,7 +204,6 @@ void IOSAUAudioOutput::fillBuffer(AudioBufferList* ioData, UInt32 inNumberFrames
         }
 
         auto frame = mFrameQueue.front();
-
         size_t frameSize = frame->mData.size();
         size_t copySize = std::min(frameSize, requestedBytes - copiedBytes);
 
@@ -213,9 +212,16 @@ void IOSAUAudioOutput::fillBuffer(AudioBufferList* ioData, UInt32 inNumberFrames
         if (copySize < frameSize) {
             frame->mData.erase(frame->mData.begin(), frame->mData.begin() + copySize);
         } else {
+            if (mPlaybackCallback) {
+                mPlaybackCallback(frame->mPts, frame->mDuration);
+            }
             mFrameQueue.pop_front();
             mCond.notify_one();
         }
         copiedBytes += copySize;
     }
+}
+
+void IOSAUAudioOutput::setPlaybackCallback(yffplayer::AudioPlaybackCallback callback) {
+    mPlaybackCallback = callback;
 }

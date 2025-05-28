@@ -46,23 +46,23 @@
 		030F15E42DE5582100C6CF04 /* Exceptions for "YFFPlayer" folder in "Embed Frameworks" phase from "YFFPlayer" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			attributesByRelativePath = {
-				Player/FFmpeg/libavcodec.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
-				Player/FFmpeg/libavdevice.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
-				Player/FFmpeg/libavfilter.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
-				Player/FFmpeg/libavformat.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
-				Player/FFmpeg/libavutil.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
-				Player/FFmpeg/libswresample.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
-				Player/FFmpeg/libswscale.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libavcodec.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libavdevice.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libavfilter.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libavformat.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libavutil.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libswresample.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
+				Player/Vendor/FFmpeg/libswscale.xcframework = (CodeSignOnCopy, RemoveHeadersOnCopy, );
 			};
 			buildPhase = 037EBF062DCCB3A700A0D27F /* Embed Frameworks */;
 			membershipExceptions = (
-				Player/FFmpeg/libavcodec.xcframework,
-				Player/FFmpeg/libavdevice.xcframework,
-				Player/FFmpeg/libavfilter.xcframework,
-				Player/FFmpeg/libavformat.xcframework,
-				Player/FFmpeg/libavutil.xcframework,
-				Player/FFmpeg/libswresample.xcframework,
-				Player/FFmpeg/libswscale.xcframework,
+				Player/Vendor/FFmpeg/libavcodec.xcframework,
+				Player/Vendor/FFmpeg/libavdevice.xcframework,
+				Player/Vendor/FFmpeg/libavfilter.xcframework,
+				Player/Vendor/FFmpeg/libavformat.xcframework,
+				Player/Vendor/FFmpeg/libavutil.xcframework,
+				Player/Vendor/FFmpeg/libswresample.xcframework,
+				Player/Vendor/FFmpeg/libswscale.xcframework,
 			);
 		};
 		030F15F72DE55D3100C6CF04 /* Exceptions for "YFFPlayer" folder in "Copy Bundle Resources" phase from "YFFPlayer" target */ = {

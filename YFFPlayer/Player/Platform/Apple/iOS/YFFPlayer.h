@@ -8,7 +8,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-@interface TestPlayer : NSObject
+@interface YFFPlayer : NSObject
 
 @property (nonatomic, strong) UIView *videoRenderView;
 

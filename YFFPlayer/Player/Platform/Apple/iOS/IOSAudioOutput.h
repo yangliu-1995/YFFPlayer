@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <functional>
 
 #include "AudioOutput.h"
 
@@ -22,6 +23,7 @@ public:
     void setVolume(float volume) override;
     void setMute(bool mute) override;
     bool enqueueAudioFrame(const yffplayer::AudioFrame& frame) override;
+    void setPlaybackCallback(yffplayer::AudioPlaybackCallback callback) override;
 
 private:
     static void AudioQueueCallback(void* userData, AudioQueueRef inAQ,
@@ -45,5 +47,6 @@ private:
     std::mutex mMutex;
     std::condition_variable mCond;
     std::deque<yffplayer::AudioFrame> mFrameQueue;
-    const size_t mMaxQueueSize = 20;
+    const size_t mMaxQueueSize = 50;
+    yffplayer::AudioPlaybackCallback mPlaybackCallback;
 };

@@ -9,8 +9,8 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    lazy var player: TestPlayer = {
-        let player = TestPlayer(videoRenderView: pV)!
+    lazy var player: YFFPlayer = {
+        let player = YFFPlayer(videoRenderView: pV)!
         return player
     }()
 

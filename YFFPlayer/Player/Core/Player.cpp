@@ -13,13 +13,15 @@ extern "C" {
 }
 
 namespace yffplayer {
-Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput)
+Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput,
+               std::shared_ptr<PlayerCallback> callback)
     : mAudioOutput(audioOutput),
       mVideoOutput(videoOutput),
       mAudioPacketQueue(std::make_shared<PacketQueue>(100)),
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
       mAudioFrameQueue(std::make_shared<FrameQueue<AudioFrame>>(100)),
-      mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)) {
+      mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
+      mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
     mDemuxer = std::make_shared<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
 }
 
@@ -139,8 +141,10 @@ void Player::stop() {
     }
 }
 
-void Player::stopThread() {
-    // 原stop方法的主体逻辑移到这里
+void Player::notifyProgressChanged() {
+    if (mCallback) {
+        mCallback->onProgress(mAudioClock, mMediaInfo.mDurationMs);
+    }
 }
 
 void Player::pause() {
@@ -220,6 +224,7 @@ bool Player::seek(int64_t positionMs) {
     mAudioClock = positionMs;
 
     // 音视频输出模块同步清理（如果有缓存）
+    mAudioProcessor->flush();
     mAudioOutput->flush();
     //    mVideoOutput->flush();
 
@@ -237,6 +242,22 @@ void Player::audioOutputThread() {
 #if defined(__APPLE__)
     pthread_setname_np("com.yffplayer.audio_render");
 #endif
+
+    if (mAudioProcessor && mMediaInfo.mHasAudio) {
+        if (!mAudioProcessor->initialize(mMediaInfo.mAudioSampleRate, mMediaInfo.mAudioChannels)) {
+            std::cerr << "Failed to initialize audio processor" << std::endl;
+            return;
+        }
+        mAudioProcessor->setPlaybackRate(mPlaybackRate.load());
+    }
+
+    mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
+        float rate = mPlaybackRate.load();
+        // 根据播放倍率调整时钟更新
+        mAudioClock = pts + static_cast<int64_t>(duration / rate);
+        notifyProgressChanged();
+    });
+    
     mAudioOutput->start();
     while (mRunning) {
         if (mPaused) {
@@ -246,10 +267,17 @@ void Player::audioOutputThread() {
 
         auto audioFrame = mAudioFrameQueue->pop();
         if (audioFrame) {
-            int64_t pts = audioFrame->mPts;
-            int64_t frameDuration = audioFrame->mDuration;
-            mAudioClock = pts + frameDuration;
-            mAudioOutput->enqueueAudioFrame(*audioFrame);
+            // 修改这里的判断条件
+            if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
+                auto processedFrame = mAudioProcessor->processAudioFrame(*audioFrame);
+                if (processedFrame) {
+                    mAudioOutput->enqueueAudioFrame(*processedFrame);
+                }
+            } else {
+                mAudioOutput->enqueueAudioFrame(*audioFrame);
+            }
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
     mAudioOutput->stop();
@@ -268,20 +296,22 @@ void Player::videoOutputThread() {
         auto videoFrame = mVideoFrameQueue->pop();
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
+            float playbackRate = mPlaybackRate.load();
+            
             if (mMediaInfo.mHasAudio) {
                 int64_t audioClock = mAudioClock.load();
                 int64_t diff = pts - audioClock;
                 if (diff > 50) {
-                    int ret = av_usleep(static_cast<unsigned int>(diff * 1000));
+                    int64_t adjustedDiff = static_cast<int64_t>(diff / playbackRate);
+                    int ret = av_usleep(static_cast<unsigned int>(adjustedDiff * 1000));
                     if (ret != 0) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(diff));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(adjustedDiff));
                     }
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 } else if (diff < -50) {
                     ++mDroppedVideoFramesCount;
-                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount
-                              << std::endl;
-                    continue;  // 跳过落后太多的帧
+                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount << std::endl;
+                    continue;
                 } else {
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 }
@@ -294,13 +324,35 @@ void Player::videoOutputThread() {
                         frameDuration = 30;
                     }
                 }
-                int ret = av_usleep(static_cast<unsigned int>(frameDuration * 1000));
+                
+                int64_t adjustedDuration = static_cast<int64_t>(frameDuration / playbackRate);
+                mAudioClock = videoFrame->mPts + videoFrame->mDuration;
+                notifyProgressChanged();
+                
+                int ret = av_usleep(static_cast<unsigned int>(adjustedDuration * 1000));
                 if (ret != 0) {
-                    // 处理中断
-                    std::this_thread::sleep_for(std::chrono::milliseconds(frameDuration));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(adjustedDuration));
                 }
             }
         }
     }
 }
+
+void Player::setPlaybackRate(float rate) {
+    if (rate <= 0.0f) return;  // 防止无效倍率
+
+    rate = std::max(0.25f, std::min(4.0f, rate));
+    
+    mPlaybackRate.store(rate);
+    
+    // 设置音频处理器的播放倍率
+    if (mAudioProcessor) {
+        mAudioProcessor->setPlaybackRate(rate);
+    }
+}
+
+float Player::getPlaybackRate() const {
+    return mPlaybackRate.load();
+}
+
 }  // namespace yffplayer
