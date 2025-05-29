@@ -186,12 +186,12 @@ void VideoDecoder::decodeLoop() {
                 break;
             }
             AVPixelFormat sourceFormat = (AVPixelFormat)frame->format;
-            std::array<int, 3> lineSize;
+            std::array<int, 4> lineSize;
             std::vector<uint8_t> data;
             PixelFormat pixelFormat;
 
             if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 &&
-                sourceFormat != AV_PIX_FMT_RGB24) {
+                sourceFormat != AV_PIX_FMT_RGB24 && sourceFormat != AV_PIX_FMT_VIDEOTOOLBOX) {
                 if (!mSwsCtx) {
                     mSwsCtx = sws_getContext(frame->width, frame->height, sourceFormat,
                                              frame->width, frame->height, AV_PIX_FMT_RGB24,
@@ -204,7 +204,7 @@ void VideoDecoder::decodeLoop() {
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
-                lineSize = {linesizes[0], 0, 0};
+                lineSize = {linesizes[0], 0, 0, 0};
 
                 int bufferSize =
                     av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
@@ -213,24 +213,29 @@ void VideoDecoder::decodeLoop() {
                                         AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
 
                 pixelFormat = PixelFormat::RGB24;
-            } else if (sourceFormat == AV_PIX_FMT_YUV420P) {
-                pixelFormat = PixelFormat::YUV420P;
+            } else if (sourceFormat == AV_PIX_FMT_YUV420P || sourceFormat == AV_PIX_FMT_VIDEOTOOLBOX) {
 
                 int linesizes[4] = {0};
-                av_image_fill_linesizes(linesizes, AV_PIX_FMT_YUV420P, frame->width);
-                lineSize = {linesizes[0], linesizes[1], linesizes[2]};
-
-                int bufferSize =
-                    av_image_get_buffer_size(AV_PIX_FMT_YUV420P, frame->width, frame->height, 1);
-                data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
-                                        AV_PIX_FMT_YUV420P, frame->width, frame->height, 1);
+                av_image_fill_linesizes(linesizes, sourceFormat, frame->width);
+                if (sourceFormat == AV_PIX_FMT_YUV420P) {
+                    lineSize = {linesizes[0], linesizes[1], linesizes[2], 0};
+                    pixelFormat = PixelFormat::YUV420P;
+                    int bufferSize =
+                        av_image_get_buffer_size(sourceFormat, frame->width, frame->height, 1);
+                    data.resize(bufferSize);
+                    av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
+                                            sourceFormat, frame->width, frame->height, 1);
+                } else {
+                    lineSize = {0, 0, 0, linesizes[3]};
+                    pixelFormat = PixelFormat::VIDEOTOOLBOX;
+                    
+                }
             } else if (sourceFormat == AV_PIX_FMT_NV12) {
                 pixelFormat = PixelFormat::NV12;
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_NV12, frame->width);
-                lineSize = {linesizes[0], linesizes[1], 0};
+                lineSize = {linesizes[0], linesizes[1], 0, 0};
 
                 int bufferSize =
                     av_image_get_buffer_size(AV_PIX_FMT_NV12, frame->width, frame->height, 1);
@@ -242,7 +247,7 @@ void VideoDecoder::decodeLoop() {
 
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
-                lineSize = {linesizes[0], 0, 0};
+                lineSize = {linesizes[0], 0, 0, 0};
 
                 int bufferSize =
                     av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
