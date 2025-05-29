@@ -226,9 +226,30 @@ void VideoDecoder::decodeLoop() {
                     av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
                                             sourceFormat, frame->width, frame->height, 1);
                 } else {
-                    lineSize = {0, 0, 0, linesizes[3]};
+                    // VideoToolbox 格式 - 直接传递 CVPixelBufferRef
                     pixelFormat = PixelFormat::VIDEOTOOLBOX;
+                    lineSize = {0, 0, 0, 0};
                     
+                    #if defined(__APPLE__)
+                    int64_t pts =
+                        (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+                    pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
+                    int64_t dur = (frame->duration == AV_NOPTS_VALUE)
+                                      ? 0
+                                      : frame->duration * av_q2d(mTimeBase) * 1000;
+                    bool isKey = frame->key_frame == 1;
+                    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame->data[3];
+                    auto videoFrame = std::make_shared<VideoFrame>(pts, dur, frame->width, frame->height,
+                                                                   pixelFormat, std::move(data), lineSize,
+                                                                   isKey);
+                    if (pixelBuffer) {
+                        CFRetain(pixelBuffer);
+                        videoFrame->mPixelBuffer = pixelBuffer;
+                        mFrameQueue->push(videoFrame);
+                    }
+
+                    data.clear();
+                    #endif
                 }
             } else if (sourceFormat == AV_PIX_FMT_NV12) {
                 pixelFormat = PixelFormat::NV12;

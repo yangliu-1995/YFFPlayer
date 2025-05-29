@@ -7,7 +7,9 @@
     MTKView *_mtkView;
     id<MTLDevice> _device;
     id<MTLCommandQueue> _commandQueue;
+    dispatch_queue_t _pixelBufferQueue;
     id<MTLRenderPipelineState> _pipelineState;
+    id<MTLRenderPipelineState> _nv12PipelineState;
     vector_uint2 _viewportSize;
 }
 
@@ -42,8 +44,9 @@
 
         _commandQueue = [_device newCommandQueue];
 
-        [self setupPipeline];
+        [self setupMetal]; // 改为调用 setupMetal
     }
+    
     return self;
 }
 
@@ -73,11 +76,6 @@
 #pragma mark - Public
 
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame {
-    if (frame.mFormat != yffplayer::PixelFormat::YUV420P) {
-        NSLog(@"Only YUV420P format is supported");
-        return;
-    }
-
     dispatch_sync(_pixelBufferQueue, ^{
       [self createOrUpdatePixelBufferWithFrame:frame];
       _viewportSize = (vector_uint2){(uint32_t)CVPixelBufferGetWidth(self->_pixelBuffer),
@@ -94,6 +92,21 @@
     int width = frame.mWidth;
     int height = frame.mHeight;
 
+    // 如果是 VideoToolbox 格式，直接使用传入的 CVPixelBufferRef
+    if (frame.mFormat == yffplayer::PixelFormat::VIDEOTOOLBOX) {
+        if (frame.mPixelBuffer) {
+            // 释放旧的 pixelBuffer
+            if (_pixelBuffer) {
+                CVPixelBufferRelease(_pixelBuffer);
+            }
+            // 直接使用 VideoToolbox 解码的 CVPixelBufferRef
+            _pixelBuffer = frame.mPixelBuffer;
+            CFRetain(_pixelBuffer); // 增加引用计数
+        }
+        return;
+    }
+
+    // 原有的软件解码逻辑保持不变
     NSDictionary *pixelBufferAttrs = @{
         (NSString *)kCVPixelBufferIOSurfacePropertiesKey : @{},
         (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_420YpCbCr8Planar),
@@ -167,15 +180,44 @@
         return nil;
     }
 
+    // 获取像素格式和平面数量
+    OSType pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer);
+    size_t planeCount = CVPixelBufferGetPlaneCount(pixelBuffer);
+    
+    // 检查平面索引是否有效
+    if (planeIndex >= planeCount) {
+        NSLog(@"Invalid plane index %zu for pixel format %d with %zu planes", 
+              planeIndex, pixelFormatType, planeCount);
+        return nil;
+    }
+
     size_t width = CVPixelBufferGetWidthOfPlane(pixelBuffer, planeIndex);
     size_t height = CVPixelBufferGetHeightOfPlane(pixelBuffer, planeIndex);
-    OSType pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer);
 
+    // 根据像素格式和平面索引确定 Metal 像素格式
     MTLPixelFormat pixelFormat = MTLPixelFormatR8Unorm;
-    if (planeIndex == 0) {
-        pixelFormat = MTLPixelFormatR8Unorm;
-    } else if (planeIndex == 1 || planeIndex == 2) {
-        pixelFormat = MTLPixelFormatR8Unorm;
+    
+    switch (pixelFormatType) {
+        case kCVPixelFormatType_420YpCbCr8Planar: // YUV420P (3 planes)
+            pixelFormat = MTLPixelFormatR8Unorm; // Y, U, V 都是单通道
+            break;
+            
+        case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange: // NV12 (2 planes)
+        case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+            if (planeIndex == 0) {
+                pixelFormat = MTLPixelFormatR8Unorm; // Y plane
+            } else if (planeIndex == 1) {
+                pixelFormat = MTLPixelFormatRG8Unorm; // UV plane (interleaved)
+            }
+            break;
+            
+        case kCVPixelFormatType_32BGRA:
+            pixelFormat = MTLPixelFormatBGRA8Unorm;
+            break;
+            
+        default:
+            NSLog(@"Unsupported pixel format: %d", pixelFormatType);
+            return nil;
     }
 
     CVMetalTextureRef textureRef = NULL;
@@ -183,7 +225,7 @@
                                                              pixelBuffer, NULL, pixelFormat, width,
                                                              height, planeIndex, &textureRef);
     if (ret != kCVReturnSuccess) {
-        NSLog(@"Failed to create Metal texture from pixel buffer");
+        NSLog(@"Failed to create Metal texture from pixel buffer, error: %d", ret);
         return nil;
     }
 
@@ -220,23 +262,48 @@
         return;
     }
 
+    // 根据像素格式创建相应的纹理
+    OSType pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBufferCopy);
+    
     id<MTLTexture> textureY = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:0];
-    id<MTLTexture> textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1];
-    id<MTLTexture> textureV = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:2];
+    id<MTLTexture> textureU = nil;
+    id<MTLTexture> textureV = nil;
+    
+    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar) {
+        // YUV420P: 3个分离平面
+        textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1]; // U plane
+        textureV = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:2]; // V plane
+    } else if (pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
+               pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+        // NV12: 2个平面，第二个平面是UV交错
+        textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1]; // UV plane
+        // 对于NV12，需要使用不同的shader
+    }
 
-    if (!textureY || !textureU || !textureV) {
+    if (!textureY || (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar && (!textureU || !textureV))) {
         [commandBuffer commit];
         CVPixelBufferRelease(pixelBufferCopy);
         return;
     }
 
+    // 创建render encoder
     id<MTLRenderCommandEncoder> renderEncoder =
         [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-    [renderEncoder setRenderPipelineState:_pipelineState];
+    
+    // 根据格式选择pipeline
+    id<MTLRenderPipelineState> pipelineToUse;
+    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
+        pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+        pipelineToUse = _nv12PipelineState; // 使用NV12 shader
+    } else {
+        pipelineToUse = _pipelineState; // 使用YUV420P shader
+    }
+    
+    [renderEncoder setRenderPipelineState:pipelineToUse];
 
     [renderEncoder setFragmentTexture:textureY atIndex:0];
-    [renderEncoder setFragmentTexture:textureU atIndex:1];
-    [renderEncoder setFragmentTexture:textureV atIndex:2];
+    if (textureU) [renderEncoder setFragmentTexture:textureU atIndex:1];
+    if (textureV) [renderEncoder setFragmentTexture:textureV atIndex:2];
 
     [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:6];
     [renderEncoder endEncoding];
@@ -247,4 +314,25 @@
     CVPixelBufferRelease(pixelBufferCopy);
 }
 
+#pragma mark - Metal
+
+- (void)setupMetal {
+    // 创建两个不同的pipeline state
+    id<MTLLibrary> library = [_device newDefaultLibrary];
+    id<MTLFunction> vertexFunction = [library newFunctionWithName:@"vertexShader"];
+    id<MTLFunction> yuvFragmentFunction = [library newFunctionWithName:@"yuvToRGBFragmentShader"];
+    id<MTLFunction> nv12FragmentFunction = [library newFunctionWithName:@"nv12ToRGBFragmentShader"];
+    
+    MTLRenderPipelineDescriptor *pipelineDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+    pipelineDescriptor.vertexFunction = vertexFunction;
+    pipelineDescriptor.fragmentFunction = yuvFragmentFunction; // 默认使用YUV
+    pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    
+    NSError *error;
+    _pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+    
+    // 创建NV12 pipeline
+    pipelineDescriptor.fragmentFunction = nv12FragmentFunction;
+    _nv12PipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+}
 @end

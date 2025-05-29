@@ -2,7 +2,7 @@
 #include "VideoFrame.h"
 
 IOSVideoOutput::IOSVideoOutput(UIView* view) {
-    mVideoRenderer = [[IOSVideoRenderer alloc] initWithView:view];
+    mVideoRenderer = [[IOSCVPixelBufferVideoRenderer alloc] initWithView:view];
 }
 
 IOSVideoOutput::~IOSVideoOutput() {

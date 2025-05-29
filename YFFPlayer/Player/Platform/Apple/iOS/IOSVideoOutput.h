@@ -2,6 +2,7 @@
 #include "VideoOutput.h"
 #import <UIKit/UIKit.h>
 #import "IOSVideoRenderer.h"
+#import "IOSCVPixelBufferVideoRenderer.h"
 
 class IOSVideoOutput : public yffplayer::VideoOutput {
 public:
@@ -15,5 +16,5 @@ public:
     void resume() override;
     
 private:
-    IOSVideoRenderer* mVideoRenderer; // Objective-C 对象
+    IOSCVPixelBufferVideoRenderer* mVideoRenderer; // Objective-C 对象
 };
