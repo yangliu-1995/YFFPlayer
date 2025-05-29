@@ -31,7 +31,7 @@
         _renderQueue = dispatch_queue_create("com.yffplayer.cvpixelbuffer.render", DISPATCH_QUEUE_SERIAL);
         
         // 设置默认颜色调节参数
-        _brightness = 0.7f;
+        _brightness = 0.0f;
         _contrast = 1.0f;
         _saturation = 1.0f;
         

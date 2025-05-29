@@ -70,5 +70,11 @@ private:
     std::atomic<float> mPlaybackRate{1.0f};  // 播放倍率
     std::shared_ptr<PlayerCallback> mCallback;
     std::unique_ptr<SonicAudioProcessor> mAudioProcessor;
+    int64_t mLastPts = 0;
+    int64_t mExpectedFrameDuration = 40000;  // 假设 25fps，单位微秒
+    int mPtsErrorCount = 0;      // PTS 倒序计数
+    int mPtsDuplicateCount = 0;  // PTS 重复计数
+    int mPtsJumpCount = 0;       // PTS 跳跃计数
+    int mTotalFrameCount = 0;    // 总帧数
 };
 }  // namespace yffplayer

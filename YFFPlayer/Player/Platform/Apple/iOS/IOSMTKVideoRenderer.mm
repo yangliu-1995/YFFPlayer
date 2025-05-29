@@ -38,6 +38,7 @@ typedef struct {
 @property (nonatomic, assign) CGSize videoSize;
 
 @property (nonatomic) dispatch_queue_t renderQueue;
+@property (nonatomic) CVPixelBufferRef currentPixelBuffer;
 
 @end
 
@@ -331,30 +332,34 @@ typedef struct {
 }
 
 - (void)createVTNV12Textures:(const yffplayer::VideoFrame&)frame {
-    // Get CVPixelBufferRef from VideoToolbox hardware decoder
     CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.mData[3];
     if (!pixelBuffer) {
         NSLog(@"Error: CVPixelBufferRef is null");
         return;
     }
-    
-    // Create texture cache if not exists
-    static CVMetalTextureCacheRef textureCache = NULL;
-    if (!textureCache) {
-        CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
-        if (result != kCVReturnSuccess) {
-            NSLog(@"Error creating CVMetalTextureCache: %d", result);
-            return;
-        }
+
+    // 释放之前的pixelBuffer
+    if (self.currentPixelBuffer) {
+        CVPixelBufferRelease(self.currentPixelBuffer);
     }
-    
-    // Get pixel buffer dimensions
+
+    // 保持新的pixelBuffer引用
+    self.currentPixelBuffer = CVPixelBufferRetain(pixelBuffer);
+
+    // 创建纹理缓存（每次重新创建以避免缓存问题）
+    CVMetalTextureCacheRef textureCache = NULL;
+    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
+    if (result != kCVReturnSuccess) {
+        NSLog(@"Error creating CVMetalTextureCache: %d", result);
+        return;
+    }
+
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
-    
-    // Create Y texture (luminance plane)
+
+    // 创建Y纹理
     CVMetalTextureRef yTextureRef = NULL;
-    CVReturn result = CVMetalTextureCacheCreateTextureFromImage(
+    result = CVMetalTextureCacheCreateTextureFromImage(
         kCFAllocatorDefault,
         textureCache,
         pixelBuffer,
@@ -362,18 +367,17 @@ typedef struct {
         MTLPixelFormatR8Unorm,
         width,
         height,
-        0, // plane index for Y
+        0,
         &yTextureRef
     );
-    
+
     if (result != kCVReturnSuccess || !yTextureRef) {
         NSLog(@"Error creating Y texture from CVPixelBuffer: %d", result);
+        CFRelease(textureCache);
         return;
     }
-    
-    self.yTexture = CVMetalTextureGetTexture(yTextureRef);
-    
-    // Create UV texture (chroma plane)
+
+    // 创建UV纹理
     CVMetalTextureRef uvTextureRef = NULL;
     result = CVMetalTextureCacheCreateTextureFromImage(
         kCFAllocatorDefault,
@@ -383,21 +387,32 @@ typedef struct {
         MTLPixelFormatRG8Unorm,
         width / 2,
         height / 2,
-        1, // plane index for UV
+        1,
         &uvTextureRef
     );
-    
+
     if (result != kCVReturnSuccess || !uvTextureRef) {
         NSLog(@"Error creating UV texture from CVPixelBuffer: %d", result);
         CFRelease(yTextureRef);
+        CFRelease(textureCache);
         return;
     }
-    
+
+    // 获取Metal纹理（这些纹理会保持对CVPixelBuffer的引用）
+    self.yTexture = CVMetalTextureGetTexture(yTextureRef);
     self.uvTexture = CVMetalTextureGetTexture(uvTextureRef);
-    
-    // Release texture references (textures are retained by Metal)
+
+    // 清理临时引用
     CFRelease(yTextureRef);
     CFRelease(uvTextureRef);
+    CFRelease(textureCache);
+}
+
+- (void)dealloc {
+    if (self.currentPixelBuffer) {
+        CVPixelBufferRelease(self.currentPixelBuffer);
+        self.currentPixelBuffer = NULL;
+    }
 }
 
 - (void)updateUniforms {

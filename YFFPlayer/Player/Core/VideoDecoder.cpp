@@ -174,7 +174,6 @@ void VideoDecoder::decodeLoop() {
                 break;
             }
             AVPixelFormat sourceFormat = (AVPixelFormat)frame->format;
-
             // 计算时间戳
             int64_t pts =
                 (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
