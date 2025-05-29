@@ -80,7 +80,7 @@ std::unique_ptr<AudioFrame> SonicAudioProcessor::processAudioFrame(const AudioFr
     short* inputData = (short*)inputFrame.mData.data();
 
     // 写入 Sonic 流
-    int samplesWritten = sonicWriteShortToStream(mSonicStream, inputData, inputSamples);
+    __unused int samplesWritten = sonicWriteShortToStream(mSonicStream, inputData, inputSamples);
 
     int availableSamples = sonicSamplesAvailable(mSonicStream);
     if (availableSamples <= 0) {
