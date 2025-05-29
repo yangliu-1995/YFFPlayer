@@ -53,7 +53,7 @@ typedef struct {
         _saturation = 1.0f;
         _currentFormat = yffplayer::PixelFormat::YUV420P;
         _videoSize = CGSizeZero;
-        _renderQueue = dispatch_queue_create("com.example.iosvideorenderer.renderqueue", DISPATCH_QUEUE_SERIAL);
+        _renderQueue = dispatch_queue_create("com.yffplayer.render.video", DISPATCH_QUEUE_SERIAL);
         // Setup MTKView
         [self setupMTKViewWithParentView:view];
         
@@ -220,7 +220,7 @@ typedef struct {
         // Update uniform buffer
         [self updateUniforms];
 
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
             [self.mtkView setNeedsDisplay];
         });
     });
@@ -228,24 +228,27 @@ typedef struct {
 
 - (void)createYUV420PTextures:(const yffplayer::VideoFrame&)frame {
     // Y plane texture
-    MTLTextureDescriptor *yDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                                                                           width:frame.mWidth
-                                                                                          height:frame.mHeight
-                                                                                       mipmapped:NO];
+    MTLTextureDescriptor *yDescriptor = [MTLTextureDescriptor
+            texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                         width:frame.mWidth
+                                        height:frame.mHeight
+                                     mipmapped:NO];
     yDescriptor.usage = MTLTextureUsageShaderRead;
     
     // U plane texture
-    MTLTextureDescriptor *uDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                                                                            width:frame.mWidth / 2
-                                                                                           height:frame.mHeight / 2
-                                                                                        mipmapped:NO];
+    MTLTextureDescriptor *uDescriptor = [MTLTextureDescriptor
+            texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                         width:frame.mWidth / 2
+                                        height:frame.mHeight / 2
+                                     mipmapped:NO];
     uDescriptor.usage = MTLTextureUsageShaderRead;
     
     // V plane texture
-    MTLTextureDescriptor *vDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                                                                            width:frame.mWidth / 2
-                                                                                           height:frame.mHeight / 2
-                                                                                        mipmapped:NO];
+    MTLTextureDescriptor *vDescriptor = [MTLTextureDescriptor
+            texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                         width:frame.mWidth / 2
+                                        height:frame.mHeight / 2
+                                     mipmapped:NO];
     vDescriptor.usage = MTLTextureUsageShaderRead;
     
     self.yTexture = [self.device newTextureWithDescriptor:yDescriptor];
@@ -273,10 +276,11 @@ typedef struct {
 
 - (void)createNV12Textures:(const yffplayer::VideoFrame &)frame {
     // Create Y texture
-    MTLTextureDescriptor *yDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                                                                           width:frame.mWidth
-                                                                                          height:frame.mHeight
-                                                                                       mipmapped:NO];
+    MTLTextureDescriptor *yDescriptor = [MTLTextureDescriptor
+            texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                         width:frame.mWidth
+                                        height:frame.mHeight
+                                     mipmapped:NO];
     yDescriptor.usage = MTLTextureUsageShaderRead;
     self.yTexture = [self.device newTextureWithDescriptor:yDescriptor];
     
@@ -286,10 +290,11 @@ typedef struct {
                      bytesPerRow:frame.mLinesize[0]];
     
     // Create UV texture (already interleaved in NV12)
-    MTLTextureDescriptor *uvDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRG8Unorm
-                                                                                            width:frame.mWidth / 2
-                                                                                           height:frame.mHeight / 2
-                                                                                        mipmapped:NO];
+    MTLTextureDescriptor *uvDescriptor = [MTLTextureDescriptor
+             texture2DDescriptorWithPixelFormat:MTLPixelFormatRG8Unorm
+                                          width:frame.mWidth / 2
+                                         height:frame.mHeight / 2
+                                      mipmapped:NO];
     uvDescriptor.usage = MTLTextureUsageShaderRead;
     self.uvTexture = [self.device newTextureWithDescriptor:uvDescriptor];
     
@@ -316,10 +321,11 @@ typedef struct {
         }
     }
     
-    MTLTextureDescriptor *rgbDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
-                                                                                             width:frame.mWidth
-                                                                                            height:frame.mHeight
-                                                                                         mipmapped:NO];
+    MTLTextureDescriptor *rgbDescriptor = [MTLTextureDescriptor
+              texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                           width:frame.mWidth
+                                          height:frame.mHeight
+                                       mipmapped:NO];
     rgbDescriptor.usage = MTLTextureUsageShaderRead;
     self.rgbTexture = [self.device newTextureWithDescriptor:rgbDescriptor];
     

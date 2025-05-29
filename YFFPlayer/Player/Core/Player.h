@@ -6,17 +6,18 @@
 #include "AudioDecoder.h"
 #include "AudioOutput.h"
 #include "Demuxer.h"
+#include "DemuxerCallback.h"
 #include "FrameQueue.h"
 #include "MediaInfo.h"
 #include "PacketQueue.h"
 #include "PlayerCallback.h"
+#include "SonicAudioProcessor.h"
+#include "SyncManager.h"
 #include "VideoDecoder.h"
 #include "VideoOutput.h"
-#include "SonicAudioProcessor.h"
-#include "DemuxerCallback.h"
 
 namespace yffplayer {
-class Player: public DemuxerCallback, public std::enable_shared_from_this<Player> {
+class Player : public DemuxerCallback, public std::enable_shared_from_this<Player> {
 public:
     Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput,
            std::shared_ptr<PlayerCallback> callback);
@@ -49,6 +50,7 @@ private:
     void videoOutputThread();
     void notifyProgressChanged();
 
+    std::unique_ptr<SyncManager> mSyncManager;
     std::shared_ptr<Demuxer> mDemuxer;
     std::shared_ptr<PacketQueue> mAudioPacketQueue;
     std::shared_ptr<PacketQueue> mVideoPacketQueue;
@@ -61,8 +63,6 @@ private:
     std::thread mAudioOutputThread;
     std::thread mVideoOutputThread;
     std::thread mStopThread;
-    std::atomic<int64_t> mAudioClock{0};
-    std::atomic<int64_t> mVideoClock{0};
     MediaInfo mMediaInfo;
     std::atomic<bool> mRunning{false};
     std::atomic<bool> mPaused{false};
@@ -72,9 +72,9 @@ private:
     std::unique_ptr<SonicAudioProcessor> mAudioProcessor;
     int64_t mLastPts = 0;
     int64_t mExpectedFrameDuration = 40000;  // 假设 25fps，单位微秒
-    int mPtsErrorCount = 0;      // PTS 倒序计数
-    int mPtsDuplicateCount = 0;  // PTS 重复计数
-    int mPtsJumpCount = 0;       // PTS 跳跃计数
-    int mTotalFrameCount = 0;    // 总帧数
+    int mPtsErrorCount = 0;                  // PTS 倒序计数
+    int mPtsDuplicateCount = 0;              // PTS 重复计数
+    int mPtsJumpCount = 0;                   // PTS 跳跃计数
+    int mTotalFrameCount = 0;                // 总帧数
 };
 }  // namespace yffplayer

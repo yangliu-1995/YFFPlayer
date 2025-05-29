@@ -18,6 +18,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
     : mAudioOutput(audioOutput),
       mVideoOutput(videoOutput),
       mCallback(callback),
+      mSyncManager(std::make_unique<SyncManager>()),
       mAudioPacketQueue(std::make_shared<PacketQueue>(100)),
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
       mAudioFrameQueue(std::make_shared<FrameQueue<AudioFrame>>(100)),
@@ -145,7 +146,7 @@ void Player::stop() {
 
 void Player::notifyProgressChanged() {
     if (mCallback) {
-        mCallback->onProgress(mAudioClock, mMediaInfo.mDurationMs);
+        mCallback->onProgress(mSyncManager->getClock(), mMediaInfo.mDurationMs);
     }
 }
 
@@ -223,7 +224,7 @@ bool Player::seek(int64_t positionMs) {
     if (mVideoDecoder) mVideoDecoder->flush();
 
     // 重置时钟（以便同步）
-    mAudioClock = positionMs;
+    mSyncManager->updateClock(positionMs, 0);
 
     // 音视频输出模块同步清理（如果有缓存）
     mAudioProcessor->flush();
@@ -255,11 +256,10 @@ void Player::audioOutputThread() {
 
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         float rate = mPlaybackRate.load();
-        // 根据播放倍率调整时钟更新
-        mAudioClock = pts + static_cast<int64_t>(duration / rate);
+        mSyncManager->updateClock(pts, duration);
         notifyProgressChanged();
     });
-    
+
     mAudioOutput->start();
     while (mRunning) {
         if (mPaused) {
@@ -300,12 +300,12 @@ void Player::videoOutputThread() {
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
             float playbackRate = mPlaybackRate.load();
-            
+
             // 检测各种 PTS 异常情况
             if (mLastPts != 0) {  // 跳过第一帧
                 if (pts < mLastPts) {
                     // PTS 倒序
-                    std::cerr << "[PTS ERROR] Backward PTS: " << pts << " < " << mLastPts 
+                    std::cerr << "[PTS ERROR] Backward PTS: " << pts << " < " << mLastPts
                               << " (diff: " << (mLastPts - pts) << ")" << std::endl;
                     mPtsErrorCount++;
                 } else if (pts == mLastPts) {
@@ -314,28 +314,26 @@ void Player::videoOutputThread() {
                     mPtsDuplicateCount++;
                 } else if (pts - mLastPts > mExpectedFrameDuration * 2) {
                     // PTS 跳跃过大（可能丢帧）
-                    std::cerr << "[PTS WARNING] Large PTS jump: " << mLastPts << " -> " << pts 
+                    std::cerr << "[PTS WARNING] Large PTS jump: " << mLastPts << " -> " << pts
                               << " (diff: " << (pts - mLastPts) << ")" << std::endl;
                     mPtsJumpCount++;
                 }
             }
-            
+
             mLastPts = pts;  // 总是更新，用于下次比较
             if (mMediaInfo.mHasAudio) {
-                int64_t audioClock = mAudioClock.load();
-                int64_t diff = pts - audioClock;
-                if (diff > 50) {
-                    int64_t adjustedDiff = static_cast<int64_t>(diff / playbackRate);
-                    int ret = av_usleep(static_cast<unsigned int>(adjustedDiff * 1000));
-                    if (ret != 0) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(adjustedDiff));
-                    }
-                    mVideoOutput->renderVideoFrame(*videoFrame);
-                } else if (diff < -50) {
+                bool shouldDropFrame = false;
+                int64_t delay = mSyncManager->calculateDelay(pts, shouldDropFrame);
+                if (shouldDropFrame) {
                     ++mDroppedVideoFramesCount;
-                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount << std::endl;
+                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount
+                              << std::endl;
                     continue;
                 } else {
+                    int ret = av_usleep(static_cast<unsigned int>(delay * 1000));
+                    if (ret != 0) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+                    }
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 }
             } else {
@@ -347,11 +345,9 @@ void Player::videoOutputThread() {
                         frameDuration = 30;
                     }
                 }
-                
                 int64_t adjustedDuration = static_cast<int64_t>(frameDuration / playbackRate);
-                mAudioClock = videoFrame->mPts + videoFrame->mDuration;
+                mSyncManager->updateClock(pts, frameDuration);
                 notifyProgressChanged();
-                
                 int ret = av_usleep(static_cast<unsigned int>(adjustedDuration * 1000));
                 if (ret != 0) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(adjustedDuration));
@@ -366,7 +362,8 @@ void Player::setPlaybackRate(float rate) {
     if (rate == mPlaybackRate) return;
 
     rate = std::max(0.25f, std::min(4.0f, rate));
-    
+    mSyncManager->setSpeed(rate);
+
     if (mAudioProcessor) {
         mAudioProcessor->flush();
         mAudioProcessor->setPlaybackRate(rate);
@@ -375,9 +372,7 @@ void Player::setPlaybackRate(float rate) {
     mAudioOutput->flush();
 }
 
-float Player::getPlaybackRate() const {
-    return mPlaybackRate.load();
-}
+float Player::getPlaybackRate() const { return mPlaybackRate.load(); }
 
 void Player::onDemuxStarted() {}
 void Player::onDemuxPaused() {}
