@@ -1,7 +1,6 @@
 #include "VideoDecoder.h"
 
 #include <iostream>
-#include <vector>
 
 #if defined(__APPLE__)
 #include <pthread.h>
@@ -9,10 +8,13 @@
 
 #include "Packet.h"
 
-static enum AVPixelFormat SGCodecContextGetFormat(struct AVCodecContext *s, const enum AVPixelFormat *fmt) {
+namespace yffplayer {
+
+static enum AVPixelFormat CodecContextGetFormat(struct AVCodecContext* s,
+                                                const enum AVPixelFormat* fmt) {
     for (int i = 0; fmt[i] != AV_PIX_FMT_NONE; i++) {
         if (fmt[i] == AV_PIX_FMT_VIDEOTOOLBOX) {
-            AVBufferRef *device_ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VIDEOTOOLBOX);
+            AVBufferRef* device_ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VIDEOTOOLBOX);
             if (!device_ctx) {
                 break;
             }
@@ -23,23 +25,21 @@ static enum AVPixelFormat SGCodecContextGetFormat(struct AVCodecContext *s, cons
     return fmt[0];
 }
 
-namespace yffplayer {
-
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<VideoFrame>> frameQueue)
     : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {
-        const AVCodec *codec = NULL;
-        void *iter = NULL;
-        while ((codec = av_codec_iterate(&iter))) {
-            if (av_codec_is_decoder(codec) && codec->name) {
-                if (strcmp(codec->name, "h264_videotoolbox") == 0) {
-                    printf("VideoToolbox is available (h264_videotoolbox found).\n");
-                }
+    const AVCodec* codec = NULL;
+    void* iter = NULL;
+    while ((codec = av_codec_iterate(&iter))) {
+        if (av_codec_is_decoder(codec) && codec->name) {
+            if (strcmp(codec->name, "h264_videotoolbox") == 0) {
+                printf("VideoToolbox is available (h264_videotoolbox found).\n");
             }
         }
-
-        printf("VideoToolbox is NOT available (h264_videotoolbox not found).\n");
     }
+
+    printf("VideoToolbox is NOT available (h264_videotoolbox not found).\n");
+}
 
 VideoDecoder::~VideoDecoder() {
     stop();
@@ -67,7 +67,7 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
     if (codecParams->codec_id == AV_CODEC_ID_H264 || codecParams->codec_id == AV_CODEC_ID_HEVC) {
-        mCodecCtx->get_format = SGCodecContextGetFormat;
+        mCodecCtx->get_format = CodecContextGetFormat;
         mCodecCtx->codec_id = codec->id;
     }
 
@@ -186,11 +186,14 @@ void VideoDecoder::decodeLoop() {
                 break;
             }
             AVPixelFormat sourceFormat = (AVPixelFormat)frame->format;
-            
+
             // 计算时间戳
-            int64_t pts = (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+            int64_t pts =
+                (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
             pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-            int64_t dur = (frame->duration == AV_NOPTS_VALUE) ? 0 : frame->duration * av_q2d(mTimeBase) * 1000;
+            int64_t dur = (frame->duration == AV_NOPTS_VALUE)
+                              ? 0
+                              : frame->duration * av_q2d(mTimeBase) * 1000;
 
             // 对于不支持的格式，需要转换为RGB24
             if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 &&
@@ -210,7 +213,8 @@ void VideoDecoder::decodeLoop() {
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
                 lineSize = {linesizes[0], 0, 0, 0};
 
-                int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+                int bufferSize =
+                    av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
                 std::vector<uint8_t> data(bufferSize);
                 av_image_copy_to_buffer(data.data(), bufferSize, rgbFrame->data, rgbFrame->linesize,
                                         AV_PIX_FMT_RGB24, frame->width, frame->height, 1);

@@ -25,13 +25,9 @@ struct VideoFrame {
     
     // 简化的构造函数，只接受句柄，内部解析所有信息
     explicit VideoFrame(void* frameHandle);
-    
-    ~VideoFrame() {
-        if (mFrameHandle) {
-            releaseFrameHandle(mFrameHandle);
-        }
-    }
-    
+
+    ~VideoFrame();
+
     // 移动语义支持
     VideoFrame(VideoFrame&& other) noexcept;
     

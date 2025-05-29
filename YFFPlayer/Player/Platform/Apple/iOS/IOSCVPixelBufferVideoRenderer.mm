@@ -2,6 +2,7 @@
 #import <CoreVideo/CoreVideo.h>
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
+#import "VideoFrame.h"
 
 @interface IOSCVPixelBufferVideoRenderer () <MTKViewDelegate> {
     MTKView *_mtkView;
@@ -267,14 +268,11 @@
     id<MTLTexture> textureV = nil;
     
     if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar) {
-        // YUV420P: 3个分离平面
         textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1]; // U plane
         textureV = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:2]; // V plane
     } else if (pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
                pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
-        // NV12: 2个平面，第二个平面是UV交错
         textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1]; // UV plane
-        // 对于NV12，需要使用不同的shader
     }
 
     if (!textureY || (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar && (!textureU || !textureV))) {

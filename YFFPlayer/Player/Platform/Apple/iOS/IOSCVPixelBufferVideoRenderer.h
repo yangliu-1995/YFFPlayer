@@ -1,11 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-#import "VideoFrame.h"
+#import "IOSVideoRendererProtocol.h"
 
-@interface IOSCVPixelBufferVideoRenderer : NSObject
-
-- (instancetype)initWithView:(UIView *)view;
-- (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame;
-
+@interface IOSCVPixelBufferVideoRenderer : NSObject<IOSVideoRendererProtocol>
 @end

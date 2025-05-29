@@ -1,20 +1,19 @@
 #pragma once
-#include "VideoOutput.h"
 #import <UIKit/UIKit.h>
-#import "IOSVideoRenderer.h"
-#import "IOSCVPixelBufferVideoRenderer.h"
+#import "IOSVideoRendererProtocol.h"
+#include "VideoOutput.h"
 
 class IOSVideoOutput : public yffplayer::VideoOutput {
 public:
     IOSVideoOutput(UIView* view);
-    ~IOSVideoOutput() override;
+    ~IOSVideoOutput() override = default;
 
     bool initialize(int width, int height) override;
     void renderVideoFrame(const yffplayer::VideoFrame& frame) override;
     void stop() override;
     void pause() override;
     void resume() override;
-    
+
 private:
-    IOSCVPixelBufferVideoRenderer* mVideoRenderer; // Objective-C 对象
+    id<IOSVideoRendererProtocol> mVideoRenderer;
 };

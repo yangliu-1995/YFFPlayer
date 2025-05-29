@@ -1,6 +1,9 @@
 #import "IOSVideoRenderer.h"
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
+#import <AVFoundation/AVFoundation.h>
+
+#import "VideoFrame.h"
 
 @interface IOSVideoRenderer () <MTKViewDelegate>
 {
@@ -12,6 +15,7 @@
     id<MTLTexture> _uTexture;
     id<MTLTexture> _vTexture;
     vector_uint2 _viewportSize;
+    AVSampleBufferDisplayLayer *_sampleBufferDisplayLayer;
 }
 
 @property (nonatomic, strong) UIView *containerView;
@@ -47,7 +51,17 @@
         [_mtkView.bottomAnchor constraintEqualToAnchor:_containerView.bottomAnchor]
     ]];
 
+    _mtkView.hidden = YES;
     _commandQueue = [_device newCommandQueue];
+
+    _sampleBufferDisplayLayer = [[AVSampleBufferDisplayLayer alloc] init];
+    CMTimebaseRef controlTimebase = NULL;
+        CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &controlTimebase);
+    _sampleBufferDisplayLayer.controlTimebase = controlTimebase;
+        CMTimebaseSetTime(controlTimebase, kCMTimeZero); // 设置初始时间
+        CMTimebaseSetRate(controlTimebase, 1.0); // 设置播放速率
+    _sampleBufferDisplayLayer.frame = _containerView.bounds;
+    [_containerView.layer addSublayer:_sampleBufferDisplayLayer];
 
     [self setupPipeline];
 }
@@ -72,18 +86,61 @@
 }
 
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame {
-    if (frame.mFormat != yffplayer::PixelFormat::YUV420P) {
-        NSLog(@"Only YUV420P format is supported");
-        return;
-    }
+    if (frame.mFormat == yffplayer::PixelFormat::VIDEOTOOLBOX) {
+        dispatch_sync(_renderQueue, ^{
+            CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.mData[3];
+            if (!pixelBuffer) {
+                return;
+            }
+            CMVideoFormatDescriptionRef videoInfo = NULL;
+            OSStatus status = CMVideoFormatDescriptionCreateForImageBuffer(
+                                                                           NULL,
+                                                                           pixelBuffer,
+                                                                           &videoInfo
+                                                                           );
+            if (status != noErr) {
+                // 错误处理
+            }
 
-    dispatch_sync(_renderQueue, ^{
-        [self createTexturesForFrame:frame];
-        self->_viewportSize = (vector_uint2){(uint32_t)frame.mWidth, (uint32_t)frame.mHeight};
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self->_mtkView setNeedsDisplay];
+            // 3. 创建 CMSampleTimingInfo
+            CMSampleTimingInfo timing = {
+                .duration = CMTimeMakeWithSeconds(frame.mDuration / 1000.0, 1000),
+                .presentationTimeStamp = CMTimeMakeWithSeconds(frame.mPts / 1000.0, 1000),
+                .decodeTimeStamp = kCMTimeInvalid
+            };
+
+            // 4. 创建 CMSampleBuffer
+            CMSampleBufferRef sampleBuffer = NULL;
+            status = CMSampleBufferCreateForImageBuffer(
+                                                        kCFAllocatorDefault,
+                                                        pixelBuffer,
+                                                        true,          // dataReady
+                                                        NULL,          // makeDataReadyCallback
+                                                        NULL,          // refcon
+                                                        videoInfo,
+                                                        &timing,
+                                                        &sampleBuffer
+                                                        );
+            CFRelease(videoInfo);
+
+            if (status != noErr) {
+                // 错误处理
+            }
+
+            [_sampleBufferDisplayLayer enqueueSampleBuffer:sampleBuffer];
+
+            CFRelease(sampleBuffer);
+
         });
-    });
+    } else if (frame.mFormat == yffplayer::PixelFormat::YUV420P) {
+        dispatch_sync(_renderQueue, ^{
+            [self createTexturesForFrame:frame];
+            self->_viewportSize = (vector_uint2){(uint32_t)frame.mWidth, (uint32_t)frame.mHeight};
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self->_mtkView setNeedsDisplay];
+            });
+        });
+    }
 }
 
 - (void)createTexturesForFrame:(const yffplayer::VideoFrame &)frame {
@@ -136,7 +193,7 @@
 
         if (renderPassDescriptor && self->_yTexture && self->_uTexture && self->_vTexture) {
             id<MTLRenderCommandEncoder> renderEncoder =
-                [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+            [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
             [renderEncoder setRenderPipelineState:self->_pipelineState];
             [renderEncoder setFragmentTexture:self->_yTexture atIndex:0];

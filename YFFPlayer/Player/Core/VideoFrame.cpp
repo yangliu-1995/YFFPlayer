@@ -1,10 +1,10 @@
 #include "VideoFrame.h"
 
+#include <iostream>
+
 extern "C" {
 #include <libavutil/frame.h>
 }
-
-
 
 namespace yffplayer {
 
@@ -12,6 +12,14 @@ VideoFrame::VideoFrame(void* frameHandle) : mFrameHandle(frameHandle) {
     if (mFrameHandle) {
         setupDataPointers();
     }
+}
+
+VideoFrame::~VideoFrame() {
+    if (mFrameHandle) {
+        releaseFrameHandle(mFrameHandle);
+        mFrameHandle = nullptr;
+    }
+    std::cerr << "VideoFrame released" << std::endl;
 }
 
 void VideoFrame::setupDataPointers() {
