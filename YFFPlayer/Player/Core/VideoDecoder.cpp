@@ -61,15 +61,15 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
 
-    mCodecCtx->get_format = SGCodecContextGetFormat;
-
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
         std::cerr << "Video codec not found" << std::endl;
         return false;
     }
-
-    mCodecCtx->codec_id = codec->id;
+    if (codecParams->codec_id == AV_CODEC_ID_H264 || codecParams->codec_id == AV_CODEC_ID_HEVC) {
+        mCodecCtx->get_format = SGCodecContextGetFormat;
+        mCodecCtx->codec_id = codec->id;
+    }
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
         std::cerr << "Failed to open codec" << std::endl;
@@ -186,10 +186,13 @@ void VideoDecoder::decodeLoop() {
                 break;
             }
             AVPixelFormat sourceFormat = (AVPixelFormat)frame->format;
-            std::array<int, 4> lineSize;
-            std::vector<uint8_t> data;
-            PixelFormat pixelFormat;
+            
+            // 计算时间戳
+            int64_t pts = (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+            pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
+            int64_t dur = (frame->duration == AV_NOPTS_VALUE) ? 0 : frame->duration * av_q2d(mTimeBase) * 1000;
 
+            // 对于不支持的格式，需要转换为RGB24
             if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 &&
                 sourceFormat != AV_PIX_FMT_RGB24 && sourceFormat != AV_PIX_FMT_VIDEOTOOLBOX) {
                 if (!mSwsCtx) {
@@ -202,95 +205,28 @@ void VideoDecoder::decodeLoop() {
                 sws_scale(mSwsCtx, frame->data, frame->linesize, 0, frame->height, rgbFrame->data,
                           rgbFrame->linesize);
 
+                std::array<int, 4> lineSize;
                 int linesizes[4] = {0};
                 av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
                 lineSize = {linesizes[0], 0, 0, 0};
 
-                int bufferSize =
-                    av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
-                data.resize(bufferSize);
+                int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+                std::vector<uint8_t> data(bufferSize);
                 av_image_copy_to_buffer(data.data(), bufferSize, rgbFrame->data, rgbFrame->linesize,
                                         AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
 
-                pixelFormat = PixelFormat::RGB24;
-            } else if (sourceFormat == AV_PIX_FMT_YUV420P || sourceFormat == AV_PIX_FMT_VIDEOTOOLBOX) {
-
-                int linesizes[4] = {0};
-                av_image_fill_linesizes(linesizes, sourceFormat, frame->width);
-                if (sourceFormat == AV_PIX_FMT_YUV420P) {
-                    lineSize = {linesizes[0], linesizes[1], linesizes[2], 0};
-                    pixelFormat = PixelFormat::YUV420P;
-                    int bufferSize =
-                        av_image_get_buffer_size(sourceFormat, frame->width, frame->height, 1);
-                    data.resize(bufferSize);
-                    av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
-                                            sourceFormat, frame->width, frame->height, 1);
-                } else {
-                    // VideoToolbox 格式 - 直接传递 CVPixelBufferRef
-                    pixelFormat = PixelFormat::VIDEOTOOLBOX;
-                    lineSize = {0, 0, 0, 0};
-                    
-                    #if defined(__APPLE__)
-                    int64_t pts =
-                        (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
-                    pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-                    int64_t dur = (frame->duration == AV_NOPTS_VALUE)
-                                      ? 0
-                                      : frame->duration * av_q2d(mTimeBase) * 1000;
-                    bool isKey = frame->key_frame == 1;
-                    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame->data[3];
-                    auto videoFrame = std::make_shared<VideoFrame>(pts, dur, frame->width, frame->height,
-                                                                   pixelFormat, std::move(data), lineSize,
-                                                                   isKey);
-                    if (pixelBuffer) {
-                        CFRetain(pixelBuffer);
-                        videoFrame->mPixelBuffer = pixelBuffer;
-                        mFrameQueue->push(videoFrame);
-                    }
-
-                    data.clear();
-                    #endif
-                }
-            } else if (sourceFormat == AV_PIX_FMT_NV12) {
-                pixelFormat = PixelFormat::NV12;
-
-                int linesizes[4] = {0};
-                av_image_fill_linesizes(linesizes, AV_PIX_FMT_NV12, frame->width);
-                lineSize = {linesizes[0], linesizes[1], 0, 0};
-
-                int bufferSize =
-                    av_image_get_buffer_size(AV_PIX_FMT_NV12, frame->width, frame->height, 1);
-                data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
-                                        AV_PIX_FMT_NV12, frame->width, frame->height, 1);
-            } else if (sourceFormat == AV_PIX_FMT_RGB24) {
-                pixelFormat = PixelFormat::RGB24;
-
-                int linesizes[4] = {0};
-                av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
-                lineSize = {linesizes[0], 0, 0, 0};
-
-                int bufferSize =
-                    av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
-                data.resize(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize, frame->data, frame->linesize,
-                                        AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+                rgbFrame->pts = pts;
+                rgbFrame->duration = dur;
+                mFrameQueue->push(std::make_shared<VideoFrame>(rgbFrame));
             } else {
-                pixelFormat = PixelFormat::RGB24;
-                data.clear();
+                AVFrame* clonedFrame = av_frame_clone(frame);
+                if (clonedFrame) {
+                    clonedFrame->pts = pts;
+                    clonedFrame->duration = dur;
+                    auto videoFrame = std::make_shared<VideoFrame>(clonedFrame);
+                    mFrameQueue->push(videoFrame);
+                }
             }
-
-            int64_t pts =
-                (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
-            pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-            int64_t dur = (frame->duration == AV_NOPTS_VALUE)
-                              ? 0
-                              : frame->duration * av_q2d(mTimeBase) * 1000;
-            bool isKey = frame->key_frame == 1;
-
-            mFrameQueue->push(std::make_shared<VideoFrame>(pts, dur, frame->width, frame->height,
-                                                           pixelFormat, std::move(data), lineSize,
-                                                           isKey));
         }
     }
 

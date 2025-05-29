@@ -93,10 +93,6 @@
     }
 
     MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
-    const uint8_t *data = frame.mData.data();
-
-    size_t ySize = frame.mWidth * frame.mHeight;
-    size_t uSize = (frame.mWidth / 2) * (frame.mHeight / 2);
 
     textureDescriptor.pixelFormat = MTLPixelFormatR8Unorm;
     textureDescriptor.width = frame.mWidth;
@@ -106,7 +102,7 @@
     _yTexture = [_device newTextureWithDescriptor:textureDescriptor];
     [_yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth, frame.mHeight)
                  mipmapLevel:0
-                   withBytes:data
+                   withBytes:frame.mData[0]
                  bytesPerRow:frame.mLinesize[0]];
 
     textureDescriptor.width = frame.mWidth / 2;
@@ -115,13 +111,13 @@
     _uTexture = [_device newTextureWithDescriptor:textureDescriptor];
     [_uTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
                  mipmapLevel:0
-                   withBytes:data + ySize
+                   withBytes:frame.mData[1]
                  bytesPerRow:frame.mLinesize[1]];
 
     _vTexture = [_device newTextureWithDescriptor:textureDescriptor];
     [_vTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
                  mipmapLevel:0
-                   withBytes:data + ySize + uSize
+                   withBytes:frame.mData[2]
                  bytesPerRow:frame.mLinesize[2]];
 }
 

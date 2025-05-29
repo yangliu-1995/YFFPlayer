@@ -3,9 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#if defined(__APPLE__)
-#include <CoreVideo/CoreVideo.h>
-#endif
+#define NUM_DATA_POINTERS 8
 
 namespace yffplayer {
 
@@ -17,77 +15,41 @@ struct VideoFrame {
     int mWidth = 0;
     int mHeight = 0;
     PixelFormat mFormat = PixelFormat::YUV420P;
-    std::vector<uint8_t> mData;
     bool mIsKeyFrame = false;
-    std::array<int, 4> mLinesize;
-    
-#if defined(__APPLE__)
-    // VideoToolbox 专用字段
-    CVPixelBufferRef mPixelBuffer = nullptr;
-#endif
+    int mLinesize[NUM_DATA_POINTERS];
+
+    void* mFrameHandle = nullptr;
+    uint8_t* mData[NUM_DATA_POINTERS] = {nullptr};
 
     VideoFrame() = default;
-
-    VideoFrame(int64_t pts, int64_t duration, int width, int height, PixelFormat format,
-               std::vector<uint8_t> data, const std::array<int, 4>& linesize, bool isKeyFrame)
-        : mPts(pts),
-          mDuration(duration),
-          mWidth(width),
-          mHeight(height),
-          mFormat(format),
-          mData(std::move(data)),
-          mLinesize(linesize),
-          mIsKeyFrame(isKeyFrame) {}
-          
-#if defined(__APPLE__)
-    // 析构函数中释放 CVPixelBufferRef
+    
+    // 简化的构造函数，只接受句柄，内部解析所有信息
+    explicit VideoFrame(void* frameHandle);
+    
     ~VideoFrame() {
-        if (mPixelBuffer) {
-            CFRelease(mPixelBuffer);
-            mPixelBuffer = nullptr;
+        if (mFrameHandle) {
+            releaseFrameHandle(mFrameHandle);
         }
     }
     
-    // 拷贝构造函数
-    VideoFrame(const VideoFrame& other) 
-        : mPts(other.mPts),
-          mDuration(other.mDuration),
-          mWidth(other.mWidth),
-          mHeight(other.mHeight),
-          mFormat(other.mFormat),
-          mData(other.mData),
-          mLinesize(other.mLinesize),
-          mIsKeyFrame(other.mIsKeyFrame),
-          mPixelBuffer(other.mPixelBuffer) {
-        if (mPixelBuffer) {
-            CFRetain(mPixelBuffer);
-        }
-    }
+    // 移动语义支持
+    VideoFrame(VideoFrame&& other) noexcept;
     
-    // 赋值操作符
-    VideoFrame& operator=(const VideoFrame& other) {
-        if (this != &other) {
-            if (mPixelBuffer) {
-                CFRelease(mPixelBuffer);
-            }
-            
-            mPts = other.mPts;
-            mDuration = other.mDuration;
-            mWidth = other.mWidth;
-            mHeight = other.mHeight;
-            mFormat = other.mFormat;
-            mData = other.mData;
-            mLinesize = other.mLinesize;
-            mIsKeyFrame = other.mIsKeyFrame;
-            mPixelBuffer = other.mPixelBuffer;
-            
-            if (mPixelBuffer) {
-                CFRetain(mPixelBuffer);
-            }
-        }
-        return *this;
-    }
-#endif
+    // 移动赋值操作符
+    VideoFrame& operator=(VideoFrame&& other) noexcept;
+    
+    // 辅助方法
+    uint8_t* getData(int plane) const;
+    int getLinesize(int plane) const;
+    bool isValid() const;
+    
+private:
+    void setupDataPointers();
+    void releaseFrameHandle(void* handle);
+    
+    // 禁用拷贝，避免复杂的引用计数管理
+    VideoFrame(const VideoFrame&) = delete;
+    VideoFrame& operator=(const VideoFrame&) = delete;
 };
 
 }  // namespace yffplayer

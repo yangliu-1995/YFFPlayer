@@ -92,15 +92,16 @@
     int width = frame.mWidth;
     int height = frame.mHeight;
 
-    // 如果是 VideoToolbox 格式，直接使用传入的 CVPixelBufferRef
+    // 如果是 VideoToolbox 格式，直接从 frame.mData[3] 获取 CVPixelBufferRef
     if (frame.mFormat == yffplayer::PixelFormat::VIDEOTOOLBOX) {
-        if (frame.mPixelBuffer) {
+        CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.mData[3];
+        if (pixelBuffer) {
             // 释放旧的 pixelBuffer
             if (_pixelBuffer) {
                 CVPixelBufferRelease(_pixelBuffer);
             }
             // 直接使用 VideoToolbox 解码的 CVPixelBufferRef
-            _pixelBuffer = frame.mPixelBuffer;
+            _pixelBuffer = pixelBuffer;
             CFRetain(_pixelBuffer); // 增加引用计数
         }
         return;
@@ -137,7 +138,7 @@
     uint8_t *baseAddressY = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(_pixelBuffer, 0);
     int bytesPerRowY = (int)CVPixelBufferGetBytesPerRowOfPlane(_pixelBuffer, 0);
     for (int i = 0; i < height; ++i) {
-        memcpy(baseAddressY + i * bytesPerRowY, frame.mData.data() + i * frame.mLinesize[0], width);
+        memcpy(baseAddressY + i * bytesPerRowY, frame.mData[0] + i * frame.mLinesize[0], width);
     }
 
     // U 平面
@@ -145,19 +146,15 @@
     int bytesPerRowU = (int)CVPixelBufferGetBytesPerRowOfPlane(_pixelBuffer, 1);
     int halfHeight = height / 2;
     int halfWidth = width / 2;
-    size_t ySize = width * height;
     for (int i = 0; i < halfHeight; ++i) {
-        memcpy(baseAddressU + i * bytesPerRowU, frame.mData.data() + ySize + i * frame.mLinesize[1],
-               halfWidth);
+        memcpy(baseAddressU + i * bytesPerRowU, frame.mData[1] + i * frame.mLinesize[1], halfWidth);
     }
 
     // V 平面
     uint8_t *baseAddressV = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(_pixelBuffer, 2);
     int bytesPerRowV = (int)CVPixelBufferGetBytesPerRowOfPlane(_pixelBuffer, 2);
-    size_t uSize = (width / 2) * (height / 2);
     for (int i = 0; i < halfHeight; ++i) {
-        memcpy(baseAddressV + i * bytesPerRowV,
-               frame.mData.data() + ySize + uSize + i * frame.mLinesize[2], halfWidth);
+        memcpy(baseAddressV + i * bytesPerRowV, frame.mData[2] + i * frame.mLinesize[2], halfWidth);
     }
 
     CVPixelBufferUnlockBaseAddress(_pixelBuffer, 0);
