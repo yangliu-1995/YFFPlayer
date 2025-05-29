@@ -27,19 +27,7 @@ static enum AVPixelFormat CodecContextGetFormat(struct AVCodecContext* s,
 
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<VideoFrame>> frameQueue)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {
-    const AVCodec* codec = NULL;
-    void* iter = NULL;
-    while ((codec = av_codec_iterate(&iter))) {
-        if (av_codec_is_decoder(codec) && codec->name) {
-            if (strcmp(codec->name, "h264_videotoolbox") == 0) {
-                printf("VideoToolbox is available (h264_videotoolbox found).\n");
-            }
-        }
-    }
-
-    printf("VideoToolbox is NOT available (h264_videotoolbox not found).\n");
-}
+    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
 
 VideoDecoder::~VideoDecoder() {
     stop();

@@ -1,22 +1,24 @@
 #import "IOSCVPixelBufferVideoRenderer.h"
-#import <CoreVideo/CoreVideo.h>
-#import <Metal/Metal.h>
-#import <MetalKit/MetalKit.h>
+#import <AVFoundation/AVFoundation.h>
+#import <CoreImage/CoreImage.h>
+#import <VideoToolbox/VideoToolbox.h>
 #import "VideoFrame.h"
 
-@interface IOSCVPixelBufferVideoRenderer () <MTKViewDelegate> {
-    MTKView *_mtkView;
-    id<MTLDevice> _device;
-    id<MTLCommandQueue> _commandQueue;
-    dispatch_queue_t _pixelBufferQueue;
-    id<MTLRenderPipelineState> _pipelineState;
-    id<MTLRenderPipelineState> _nv12PipelineState;
-    vector_uint2 _viewportSize;
+@interface IOSCVPixelBufferVideoRenderer ()
+{
+    AVSampleBufferDisplayLayer *_displayLayer;
+    UIView *_containerView;
+    dispatch_queue_t _renderQueue;
+    
+    // Core Image相关
+    CIContext *_ciContext;
+    CIFilter *_colorControlsFilter;
+    
+    // 颜色调节参数
+    float _brightness;  // -1.0 到 1.0
+    float _contrast;    // 0.0 到 2.0
+    float _saturation;  // 0.0 到 2.0
 }
-
-// 线程安全访问 CVPixelBuffer
-@property(nonatomic, strong) dispatch_queue_t pixelBufferQueue;
-@property(nonatomic, assign) CVPixelBufferRef pixelBuffer;
 
 @end
 
@@ -25,309 +27,305 @@
 - (instancetype)initWithView:(UIView *)view {
     self = [super init];
     if (self) {
-        _pixelBufferQueue =
-            dispatch_queue_create("com.yourapp.pixelbuffer.queue", DISPATCH_QUEUE_SERIAL);
-        _device = MTLCreateSystemDefaultDevice();
-
-        _mtkView = [[MTKView alloc] initWithFrame:view.bounds device:_device];
-        _mtkView.delegate = self;
-        _mtkView.preferredFramesPerSecond = 60;
-        _mtkView.framebufferOnly = NO;
-        _mtkView.contentMode = UIViewContentModeScaleAspectFit;
-        _mtkView.translatesAutoresizingMaskIntoConstraints = NO;
-        [view addSubview:_mtkView];
-        [NSLayoutConstraint activateConstraints:@[
-            [_mtkView.leadingAnchor constraintEqualToAnchor:view.leadingAnchor],
-            [_mtkView.trailingAnchor constraintEqualToAnchor:view.trailingAnchor],
-            [_mtkView.topAnchor constraintEqualToAnchor:view.topAnchor],
-            [_mtkView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
-        ]];
-
-        _commandQueue = [_device newCommandQueue];
-
-        [self setupMetal]; // 改为调用 setupMetal
+        _containerView = view;
+        _renderQueue = dispatch_queue_create("com.yffplayer.cvpixelbuffer.render", DISPATCH_QUEUE_SERIAL);
+        
+        // 设置默认颜色调节参数
+        _brightness = 0.7f;
+        _contrast = 1.0f;
+        _saturation = 1.0f;
+        
+        [self setupDisplayLayer];
+        [self setupCoreImage];
     }
-    
     return self;
 }
 
-- (void)setupPipeline {
-    id<MTLLibrary> defaultLibrary = [_device newDefaultLibrary];
-    MTLRenderPipelineDescriptor *pipelineDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-    pipelineDescriptor.label = @"YUVToRGBPipeline";
-    pipelineDescriptor.vertexFunction = [defaultLibrary newFunctionWithName:@"vertexShader"];
-    pipelineDescriptor.fragmentFunction =
-        [defaultLibrary newFunctionWithName:@"yuvToRGBFragmentShader"];
-    pipelineDescriptor.colorAttachments[0].pixelFormat = _mtkView.colorPixelFormat;
-
-    NSError *error = nil;
-    _pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-    if (!_pipelineState) {
-        NSLog(@"Failed to create pipeline state: %@", error);
-    }
+- (void)setupDisplayLayer {
+    _displayLayer = [[AVSampleBufferDisplayLayer alloc] init];
+    _displayLayer.frame = _containerView.bounds;
+    _displayLayer.videoGravity = AVLayerVideoGravityResizeAspect;
+    
+    // 创建控制时间基准
+    CMTimebaseRef controlTimebase = NULL;
+    CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &controlTimebase);
+    _displayLayer.controlTimebase = controlTimebase;
+    CMTimebaseSetTime(controlTimebase, kCMTimeZero);
+    CMTimebaseSetRate(controlTimebase, 1.0);
+    
+    [_containerView.layer addSublayer:_displayLayer];
+    
+    // 设置自动布局
+    _displayLayer.frame = _containerView.bounds;
 }
 
-- (void)dealloc {
-    if (_pixelBuffer) {
-        CVPixelBufferRelease(_pixelBuffer);
-        _pixelBuffer = NULL;
-    }
+- (void)setupCoreImage {
+    // 创建CIContext
+    _ciContext = [CIContext context];
+    
+    // 创建颜色控制滤镜
+    _colorControlsFilter = [CIFilter filterWithName:@"CIColorControls"];
 }
-
-#pragma mark - Public
 
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame {
-    dispatch_sync(_pixelBufferQueue, ^{
-      [self createOrUpdatePixelBufferWithFrame:frame];
-      _viewportSize = (vector_uint2){(uint32_t)CVPixelBufferGetWidth(self->_pixelBuffer),
-                                     (uint32_t)CVPixelBufferGetHeight(self->_pixelBuffer)};
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self->_mtkView setNeedsDisplay];
-      });
+    dispatch_sync(_renderQueue, ^{
+        CVPixelBufferRef pixelBuffer = [self createCVPixelBufferFromVideoFrame:frame];
+        if (!pixelBuffer) {
+            NSLog(@"Failed to create CVPixelBuffer from VideoFrame");
+            return;
+        }
+        
+        // 应用颜色调节
+        CVPixelBufferRef processedPixelBuffer = [self applyColorAdjustmentToPixelBuffer:pixelBuffer];
+        
+        // 创建CMSampleBuffer
+        CMSampleBufferRef sampleBuffer = [self createSampleBufferFromPixelBuffer:processedPixelBuffer
+                                                                        withPTS:frame.mPts
+                                                                       duration:frame.mDuration];
+        
+        if (sampleBuffer) {
+            [self->_displayLayer enqueueSampleBuffer:sampleBuffer];
+            CFRelease(sampleBuffer);
+        }
+        
+        // 释放像素缓冲区
+        if (processedPixelBuffer != pixelBuffer) {
+            CVPixelBufferRelease(processedPixelBuffer);
+        }
+        CVPixelBufferRelease(pixelBuffer);
     });
 }
 
-#pragma mark - Helpers
-
-- (void)createOrUpdatePixelBufferWithFrame:(const yffplayer::VideoFrame &)frame {
-    int width = frame.mWidth;
-    int height = frame.mHeight;
-
-    // 如果是 VideoToolbox 格式，直接从 frame.mData[3] 获取 CVPixelBufferRef
+- (CVPixelBufferRef)createCVPixelBufferFromVideoFrame:(const yffplayer::VideoFrame &)frame {
+    // VIDEOTOOLBOX格式直接从mData[3]获取CVPixelBufferRef
     if (frame.mFormat == yffplayer::PixelFormat::VIDEOTOOLBOX) {
         CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.mData[3];
         if (pixelBuffer) {
-            // 释放旧的 pixelBuffer
-            if (_pixelBuffer) {
-                CVPixelBufferRelease(_pixelBuffer);
-            }
-            // 直接使用 VideoToolbox 解码的 CVPixelBufferRef
-            _pixelBuffer = pixelBuffer;
-            CFRetain(_pixelBuffer); // 增加引用计数
-        }
-        return;
-    }
-
-    // 原有的软件解码逻辑保持不变
-    NSDictionary *pixelBufferAttrs = @{
-        (NSString *)kCVPixelBufferIOSurfacePropertiesKey : @{},
-        (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_420YpCbCr8Planar),
-        (NSString *)kCVPixelBufferWidthKey : @(width),
-        (NSString *)kCVPixelBufferHeightKey : @(height)
-    };
-
-    // 如果已有像素缓存且大小匹配，则直接更新，否则重新创建
-    if (!_pixelBuffer || CVPixelBufferGetWidth(_pixelBuffer) != width ||
-        CVPixelBufferGetHeight(_pixelBuffer) != height) {
-        if (_pixelBuffer) {
-            CVPixelBufferRelease(_pixelBuffer);
-            _pixelBuffer = NULL;
-        }
-
-        CVReturn ret = CVPixelBufferCreate(
-            kCFAllocatorDefault, width, height, kCVPixelFormatType_420YpCbCr8Planar,
-            (__bridge CFDictionaryRef)pixelBufferAttrs, &_pixelBuffer);
-        if (ret != kCVReturnSuccess) {
-            NSLog(@"Failed to create CVPixelBuffer");
-            return;
+            CVPixelBufferRetain(pixelBuffer);
+            return pixelBuffer;
+        } else {
+            NSLog(@"VIDEOTOOLBOX format but mData[3] is NULL");
+            return NULL;
         }
     }
-
-    CVPixelBufferLockBaseAddress(_pixelBuffer, 0);
-
-    // Y 平面
-    uint8_t *baseAddressY = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(_pixelBuffer, 0);
-    int bytesPerRowY = (int)CVPixelBufferGetBytesPerRowOfPlane(_pixelBuffer, 0);
-    for (int i = 0; i < height; ++i) {
-        memcpy(baseAddressY + i * bytesPerRowY, frame.mData[0] + i * frame.mLinesize[0], width);
-    }
-
-    // U 平面
-    uint8_t *baseAddressU = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(_pixelBuffer, 1);
-    int bytesPerRowU = (int)CVPixelBufferGetBytesPerRowOfPlane(_pixelBuffer, 1);
-    int halfHeight = height / 2;
-    int halfWidth = width / 2;
-    for (int i = 0; i < halfHeight; ++i) {
-        memcpy(baseAddressU + i * bytesPerRowU, frame.mData[1] + i * frame.mLinesize[1], halfWidth);
-    }
-
-    // V 平面
-    uint8_t *baseAddressV = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(_pixelBuffer, 2);
-    int bytesPerRowV = (int)CVPixelBufferGetBytesPerRowOfPlane(_pixelBuffer, 2);
-    for (int i = 0; i < halfHeight; ++i) {
-        memcpy(baseAddressV + i * bytesPerRowV, frame.mData[2] + i * frame.mLinesize[2], halfWidth);
-    }
-
-    CVPixelBufferUnlockBaseAddress(_pixelBuffer, 0);
-}
-
-// 从 CVPixelBuffer 获取对应平面的 Metal 纹理
-- (id<MTLTexture>)textureFromPixelBuffer:(CVPixelBufferRef)pixelBuffer
-                              planeIndex:(size_t)planeIndex {
-    CVMetalTextureCacheRef textureCache = NULL;
-
-    static dispatch_once_t onceToken;
-    static CVMetalTextureCacheRef sharedCache = NULL;
-    dispatch_once(&onceToken, ^{
-      CVMetalTextureCacheCreate(NULL, NULL, _device, NULL, &sharedCache);
-    });
-    textureCache = sharedCache;
-
-    if (!textureCache) {
-        NSLog(@"Failed to create Metal texture cache");
-        return nil;
-    }
-
-    // 获取像素格式和平面数量
-    OSType pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer);
-    size_t planeCount = CVPixelBufferGetPlaneCount(pixelBuffer);
     
-    // 检查平面索引是否有效
-    if (planeIndex >= planeCount) {
-        NSLog(@"Invalid plane index %zu for pixel format %d with %zu planes", 
-              planeIndex, pixelFormatType, planeCount);
-        return nil;
-    }
-
-    size_t width = CVPixelBufferGetWidthOfPlane(pixelBuffer, planeIndex);
-    size_t height = CVPixelBufferGetHeightOfPlane(pixelBuffer, planeIndex);
-
-    // 根据像素格式和平面索引确定 Metal 像素格式
-    MTLPixelFormat pixelFormat = MTLPixelFormatR8Unorm;
+    CVPixelBufferRef pixelBuffer = NULL;
     
-    switch (pixelFormatType) {
-        case kCVPixelFormatType_420YpCbCr8Planar: // YUV420P (3 planes)
-            pixelFormat = MTLPixelFormatR8Unorm; // Y, U, V 都是单通道
+    // 根据像素格式创建CVPixelBuffer
+    OSType pixelFormat;
+    switch (frame.mFormat) {
+        case yffplayer::PixelFormat::YUV420P:
+            pixelFormat = kCVPixelFormatType_420YpCbCr8Planar;
             break;
-            
-        case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange: // NV12 (2 planes)
-        case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
-            if (planeIndex == 0) {
-                pixelFormat = MTLPixelFormatR8Unorm; // Y plane
-            } else if (planeIndex == 1) {
-                pixelFormat = MTLPixelFormatRG8Unorm; // UV plane (interleaved)
-            }
+        case yffplayer::PixelFormat::NV12:
+            pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
             break;
-            
-        case kCVPixelFormatType_32BGRA:
-            pixelFormat = MTLPixelFormatBGRA8Unorm;
+        case yffplayer::PixelFormat::RGB24:
+            pixelFormat = kCVPixelFormatType_24RGB;
             break;
-            
         default:
-            NSLog(@"Unsupported pixel format: %d", pixelFormatType);
-            return nil;
+            NSLog(@"Unsupported pixel format: %d", (int)frame.mFormat);
+            return NULL;
     }
-
-    CVMetalTextureRef textureRef = NULL;
-    CVReturn ret = CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache,
-                                                             pixelBuffer, NULL, pixelFormat, width,
-                                                             height, planeIndex, &textureRef);
-    if (ret != kCVReturnSuccess) {
-        NSLog(@"Failed to create Metal texture from pixel buffer, error: %d", ret);
-        return nil;
+    
+    // 创建像素缓冲区属性
+    NSDictionary *pixelBufferAttributes = @{
+        (NSString *)kCVPixelBufferPixelFormatTypeKey: @(pixelFormat),
+        (NSString *)kCVPixelBufferWidthKey: @(frame.mWidth),
+        (NSString *)kCVPixelBufferHeightKey: @(frame.mHeight),
+        (NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
+    };
+    
+    CVReturn result = CVPixelBufferCreate(kCFAllocatorDefault,
+                                         frame.mWidth,
+                                         frame.mHeight,
+                                         pixelFormat,
+                                         (__bridge CFDictionaryRef)pixelBufferAttributes,
+                                         &pixelBuffer);
+    
+    if (result != kCVReturnSuccess) {
+        NSLog(@"Failed to create CVPixelBuffer: %d", result);
+        return NULL;
     }
-
-    id<MTLTexture> texture = CVMetalTextureGetTexture(textureRef);
-    CFRelease(textureRef);
-    return texture;
+    
+    // 锁定像素缓冲区
+    CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+    
+    if (frame.mFormat == yffplayer::PixelFormat::YUV420P) {
+        // YUV420P格式：3个平面
+        for (int i = 0; i < 3; i++) {
+            void *baseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, i);
+            size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, i);
+            size_t height = (i == 0) ? frame.mHeight : frame.mHeight / 2;
+            
+            for (size_t row = 0; row < height; row++) {
+                memcpy((uint8_t *)baseAddress + row * bytesPerRow,
+                       frame.mData[i] + row * frame.mLinesize[i],
+                       (i == 0) ? frame.mWidth : frame.mWidth / 2);
+            }
+        }
+    } else if (frame.mFormat == yffplayer::PixelFormat::NV12) {
+        // NV12格式：2个平面
+        // Y平面
+        void *yBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
+        size_t yBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0);
+        for (size_t row = 0; row < frame.mHeight; row++) {
+            memcpy((uint8_t *)yBaseAddress + row * yBytesPerRow,
+                   frame.mData[0] + row * frame.mLinesize[0],
+                   frame.mWidth);
+        }
+        
+        // UV平面
+        void *uvBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
+        size_t uvBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1);
+        for (size_t row = 0; row < frame.mHeight / 2; row++) {
+            memcpy((uint8_t *)uvBaseAddress + row * uvBytesPerRow,
+                   frame.mData[1] + row * frame.mLinesize[1],
+                   frame.mWidth);
+        }
+    } else if (frame.mFormat == yffplayer::PixelFormat::RGB24) {
+        // RGB24格式：单个平面
+        void *baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer);
+        size_t bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer);
+        for (size_t row = 0; row < frame.mHeight; row++) {
+            memcpy((uint8_t *)baseAddress + row * bytesPerRow,
+                   frame.mData[0] + row * frame.mLinesize[0],
+                   frame.mWidth * 3);
+        }
+    }
+    
+    // 解锁像素缓冲区
+    CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+    
+    return pixelBuffer;
 }
 
-#pragma mark - MTKViewDelegate
-
-- (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
-    _viewportSize = (vector_uint2){(uint32_t)size.width, (uint32_t)size.height};
+- (CVPixelBufferRef)applyColorAdjustmentToPixelBuffer:(CVPixelBufferRef)pixelBuffer {
+    // 如果不需要颜色调节，直接返回原始缓冲区
+    if (_brightness == 0.0f && _contrast == 1.0f && _saturation == 1.0f) {
+        CVPixelBufferRetain(pixelBuffer);
+        return pixelBuffer;
+    }
+    
+    // 创建CIImage
+    CIImage *inputImage = [CIImage imageWithCVPixelBuffer:pixelBuffer];
+    
+    // 设置颜色控制滤镜参数
+    [_colorControlsFilter setValue:inputImage forKey:kCIInputImageKey];
+    [_colorControlsFilter setValue:@(_brightness) forKey:kCIInputBrightnessKey];
+    [_colorControlsFilter setValue:@(_contrast) forKey:kCIInputContrastKey];
+    [_colorControlsFilter setValue:@(_saturation) forKey:kCIInputSaturationKey];
+    
+    // 获取输出图像
+    CIImage *outputImage = _colorControlsFilter.outputImage;
+    if (!outputImage) {
+        CVPixelBufferRetain(pixelBuffer);
+        return pixelBuffer;
+    }
+    
+    // 创建输出像素缓冲区
+    CVPixelBufferRef outputPixelBuffer = NULL;
+    
+    // 获取输入像素缓冲区的属性
+    size_t width = CVPixelBufferGetWidth(pixelBuffer);
+    size_t height = CVPixelBufferGetHeight(pixelBuffer);
+    OSType pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer);
+    
+    // 创建像素缓冲区属性
+    NSDictionary *pixelBufferAttributes = @{
+        (NSString *)kCVPixelBufferPixelFormatTypeKey: @(pixelFormat),
+        (NSString *)kCVPixelBufferWidthKey: @(width),
+        (NSString *)kCVPixelBufferHeightKey: @(height),
+        (NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
+    };
+    
+    // 创建输出像素缓冲区
+    CVReturn result = CVPixelBufferCreate(kCFAllocatorDefault,
+                                         width,
+                                         height,
+                                         pixelFormat,
+                                         (__bridge CFDictionaryRef)pixelBufferAttributes,
+                                         &outputPixelBuffer);
+    
+    if (result != kCVReturnSuccess || !outputPixelBuffer) {
+        CVPixelBufferRetain(pixelBuffer);
+        return pixelBuffer;
+    }
+    
+    // 渲染到输出像素缓冲区
+    [_ciContext render:outputImage toCVPixelBuffer:outputPixelBuffer];
+    
+    return outputPixelBuffer;
 }
 
-- (void)drawInMTKView:(MTKView *)view {
-    __block CVPixelBufferRef pixelBufferCopy = NULL;
-
-    dispatch_sync(_pixelBufferQueue, ^{
-      if (self->_pixelBuffer) {
-          pixelBufferCopy = self->_pixelBuffer;
-          CVPixelBufferRetain(pixelBufferCopy);
-      }
-    });
-
-    if (!pixelBufferCopy) {
-        return;
-    }
-
-    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
-    if (!renderPassDescriptor) {
-        [commandBuffer commit];
-        CVPixelBufferRelease(pixelBufferCopy);
-        return;
-    }
-
-    // 根据像素格式创建相应的纹理
-    OSType pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBufferCopy);
+- (CMSampleBufferRef)createSampleBufferFromPixelBuffer:(CVPixelBufferRef)pixelBuffer
+                                                withPTS:(int64_t)pts
+                                               duration:(int64_t)duration {
+    CMSampleBufferRef sampleBuffer = NULL;
     
-    id<MTLTexture> textureY = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:0];
-    id<MTLTexture> textureU = nil;
-    id<MTLTexture> textureV = nil;
-    
-    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar) {
-        textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1]; // U plane
-        textureV = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:2]; // V plane
-    } else if (pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
-               pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
-        textureU = [self textureFromPixelBuffer:pixelBufferCopy planeIndex:1]; // UV plane
-    }
-
-    if (!textureY || (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar && (!textureU || !textureV))) {
-        [commandBuffer commit];
-        CVPixelBufferRelease(pixelBufferCopy);
-        return;
-    }
-
-    // 创建render encoder
-    id<MTLRenderCommandEncoder> renderEncoder =
-        [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-    
-    // 根据格式选择pipeline
-    id<MTLRenderPipelineState> pipelineToUse;
-    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
-        pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
-        pipelineToUse = _nv12PipelineState; // 使用NV12 shader
-    } else {
-        pipelineToUse = _pipelineState; // 使用YUV420P shader
+    // 创建视频格式描述
+    CMVideoFormatDescriptionRef videoInfo = NULL;
+    OSStatus status = CMVideoFormatDescriptionCreateForImageBuffer(NULL, pixelBuffer, &videoInfo);
+    if (status != noErr) {
+        NSLog(@"Failed to create video format description: %d", (int)status);
+        return NULL;
     }
     
-    [renderEncoder setRenderPipelineState:pipelineToUse];
-
-    [renderEncoder setFragmentTexture:textureY atIndex:0];
-    if (textureU) [renderEncoder setFragmentTexture:textureU atIndex:1];
-    if (textureV) [renderEncoder setFragmentTexture:textureV atIndex:2];
-
-    [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:6];
-    [renderEncoder endEncoding];
-
-    [commandBuffer presentDrawable:view.currentDrawable];
-    [commandBuffer commit];
-
-    CVPixelBufferRelease(pixelBufferCopy);
+    // 创建时间信息
+    CMSampleTimingInfo timing = {
+        .duration = CMTimeMakeWithSeconds(duration / 1000.0, 1000),
+        .presentationTimeStamp = CMTimeMakeWithSeconds(pts / 1000.0, 1000),
+        .decodeTimeStamp = kCMTimeInvalid
+    };
+    
+    // 创建CMSampleBuffer
+    status = CMSampleBufferCreateForImageBuffer(kCFAllocatorDefault,
+                                               pixelBuffer,
+                                               true,
+                                               NULL,
+                                               NULL,
+                                               videoInfo,
+                                               &timing,
+                                               &sampleBuffer);
+    
+    CFRelease(videoInfo);
+    
+    if (status != noErr) {
+        NSLog(@"Failed to create sample buffer: %d", (int)status);
+        return NULL;
+    }
+    
+    return sampleBuffer;
 }
 
-#pragma mark - Metal
+#pragma mark - Color Adjustment Properties
 
-- (void)setupMetal {
-    // 创建两个不同的pipeline state
-    id<MTLLibrary> library = [_device newDefaultLibrary];
-    id<MTLFunction> vertexFunction = [library newFunctionWithName:@"vertexShader"];
-    id<MTLFunction> yuvFragmentFunction = [library newFunctionWithName:@"yuvToRGBFragmentShader"];
-    id<MTLFunction> nv12FragmentFunction = [library newFunctionWithName:@"nv12ToRGBFragmentShader"];
-    
-    MTLRenderPipelineDescriptor *pipelineDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-    pipelineDescriptor.vertexFunction = vertexFunction;
-    pipelineDescriptor.fragmentFunction = yuvFragmentFunction; // 默认使用YUV
-    pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-    
-    NSError *error;
-    _pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-    
-    // 创建NV12 pipeline
-    pipelineDescriptor.fragmentFunction = nv12FragmentFunction;
-    _nv12PipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
+- (void)setBrightness:(float)brightness {
+    _brightness = MAX(-1.0f, MIN(1.0f, brightness));
 }
+
+- (float)brightness {
+    return _brightness;
+}
+
+- (void)setContrast:(float)contrast {
+    _contrast = MAX(0.0f, MIN(2.0f, contrast));
+}
+
+- (float)contrast {
+    return _contrast;
+}
+
+- (void)setSaturation:(float)saturation {
+    _saturation = MAX(0.0f, MIN(2.0f, saturation));
+}
+
+- (float)saturation {
+    return _saturation;
+}
+
+- (void)dealloc {
+    [_displayLayer removeFromSuperlayer];
+}
+
 @end

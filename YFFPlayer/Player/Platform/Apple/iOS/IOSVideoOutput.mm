@@ -2,10 +2,10 @@
 #include "VideoFrame.h"
 
 #import "IOSCVPixelBufferVideoRenderer.h"
-#import "IOSVideoRenderer.h"
+#import "IOSMTKVideoRenderer.h"
 
 IOSVideoOutput::IOSVideoOutput(UIView* view) {
-    mVideoRenderer = [[IOSCVPixelBufferVideoRenderer alloc] initWithView:view];
+    mVideoRenderer = [[IOSMTKVideoRenderer alloc] initWithView:view];
 }
 
 bool IOSVideoOutput::initialize(int width, int height) {

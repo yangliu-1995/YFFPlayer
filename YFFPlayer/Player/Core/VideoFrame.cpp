@@ -19,7 +19,6 @@ VideoFrame::~VideoFrame() {
         releaseFrameHandle(mFrameHandle);
         mFrameHandle = nullptr;
     }
-    std::cerr << "VideoFrame released" << std::endl;
 }
 
 void VideoFrame::setupDataPointers() {
