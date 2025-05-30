@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import YFFPlayer
 
 class ViewController: UIViewController {
 
@@ -15,7 +16,7 @@ class ViewController: UIViewController {
     }()
 
     @IBOutlet weak var pV: UIView!
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -30,11 +31,11 @@ class ViewController: UIViewController {
         let url = Bundle.main.url(forResource: "m_264", withExtension: "mp4")
         player.playVideo(with: url)
     }
-    
+
     @IBAction func pauseAct(_ sender: Any) {
         player.pause()
     }
-    
+
     @IBAction func resumeAct(_ sender: Any) {
         player.resume()
     }
@@ -55,4 +56,3 @@ class ViewController: UIViewController {
         player.setPlaybackRate(2.0)
     }
 }
-

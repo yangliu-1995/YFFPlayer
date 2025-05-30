@@ -255,7 +255,6 @@ void Player::audioOutputThread() {
     }
 
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
-        float rate = mPlaybackRate.load();
         mSyncManager->updateClock(pts, duration);
         notifyProgressChanged();
     });
@@ -289,7 +288,6 @@ void Player::videoOutputThread() {
 #if defined(__APPLE__)
     pthread_setname_np("com.yffplayer.output.video");
 #endif
-    mLastPts = 0;
     while (mRunning) {
         if (mPaused) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -300,27 +298,6 @@ void Player::videoOutputThread() {
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
             float playbackRate = mPlaybackRate.load();
-
-            // 检测各种 PTS 异常情况
-            if (mLastPts != 0) {  // 跳过第一帧
-                if (pts < mLastPts) {
-                    // PTS 倒序
-                    std::cerr << "[PTS ERROR] Backward PTS: " << pts << " < " << mLastPts
-                              << " (diff: " << (mLastPts - pts) << ")" << std::endl;
-                    mPtsErrorCount++;
-                } else if (pts == mLastPts) {
-                    // PTS 重复
-                    std::cerr << "[PTS WARNING] Duplicate PTS: " << pts << std::endl;
-                    mPtsDuplicateCount++;
-                } else if (pts - mLastPts > mExpectedFrameDuration * 2) {
-                    // PTS 跳跃过大（可能丢帧）
-                    std::cerr << "[PTS WARNING] Large PTS jump: " << mLastPts << " -> " << pts
-                              << " (diff: " << (pts - mLastPts) << ")" << std::endl;
-                    mPtsJumpCount++;
-                }
-            }
-
-            mLastPts = pts;  // 总是更新，用于下次比较
             if (mMediaInfo.mHasAudio) {
                 bool shouldDropFrame = false;
                 int64_t delay = mSyncManager->calculateDelay(pts, shouldDropFrame);

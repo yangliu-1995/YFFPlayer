@@ -1,8 +1,8 @@
 //
 //  AppDelegate.swift
-//  YFFPlayer
+//  Example-iOS
 //
-//  Created by Xueyuan Xiao on 2025/5/8.
+//  Created by Xueyuan Xiao on 2025/5/30.
 //
 
 import UIKit

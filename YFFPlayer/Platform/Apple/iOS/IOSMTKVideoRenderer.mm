@@ -103,11 +103,11 @@ typedef struct {
 
 - (void)setupRenderPipeline {
     NSError *error = nil;
-    
-    // Load shader library from bundle
-    id<MTLLibrary> library = [self.device newDefaultLibrary];
-    if (!library) {
-        NSLog(@"Error: Could not load default Metal library");
+    NSBundle *frameworkBundle = [NSBundle bundleForClass:[self class]];
+    NSURL *libraryURL = [frameworkBundle URLForResource:@"default" withExtension:@"metallib"];
+    id<MTLLibrary> library = [self.device newLibraryWithURL:libraryURL error:&error];
+    if (error) {
+        NSLog(@"Error loading Metal library: %@", error.localizedDescription);
         return;
     }
     

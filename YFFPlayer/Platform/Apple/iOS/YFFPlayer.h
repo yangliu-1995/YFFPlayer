@@ -1,11 +1,7 @@
-//
-//  TestPlayer.h
-//  TestPlayer
-//
-//  Created by Xueyuan Xiao on 2025/5/26.
-//
-
 #import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
+
+#if TARGET_OS_IOS
 #import <UIKit/UIKit.h>
 
 @interface YFFPlayer : NSObject
@@ -27,3 +23,4 @@
 //- (void)play;
 
 @end
+#endif
