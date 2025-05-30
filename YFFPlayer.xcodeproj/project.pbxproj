@@ -52,7 +52,6 @@
 		0D4D51DC2DEA23270009BB99 /* Player.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50FF2DEA23270009BB99 /* Player.h */; };
 		0D4D51DD2DEA23270009BB99 /* PlayerCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51012DEA23270009BB99 /* PlayerCallback.h */; };
 		0D4D51DE2DEA23270009BB99 /* SonicAudioProcessor.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51022DEA23270009BB99 /* SonicAudioProcessor.h */; };
-		0D4D51DF2DEA23270009BB99 /* SyncManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51042DEA23270009BB99 /* SyncManager.h */; };
 		0D4D51E02DEA23270009BB99 /* VideoDecoder.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51062DEA23270009BB99 /* VideoDecoder.h */; };
 		0D4D51E12DEA23270009BB99 /* VideoFrame.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51082DEA23270009BB99 /* VideoFrame.h */; };
 		0D4D51E22DEA23270009BB99 /* VideoOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510A2DEA23270009BB99 /* VideoOutput.h */; };
@@ -74,6 +73,42 @@
 		0D4D557F2DEA26A00009BB99 /* Player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51002DEA23270009BB99 /* Player.cpp */; };
 		0D4D55802DEA26A00009BB99 /* SonicAudioProcessor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51032DEA23270009BB99 /* SonicAudioProcessor.cpp */; };
 		0D4D55812DEA26D60009BB99 /* YFFPlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51182DEA23270009BB99 /* YFFPlayer.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		0D4D56102DEA2CFC0009BB99 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D4D560F2DEA2CFC0009BB99 /* VideoToolbox.framework */; };
+		0D4D56112DEA2D300009BB99 /* IOSAUAudioOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D510D2DEA23270009BB99 /* IOSAUAudioOutput.mm */; };
+		0D4D56122DEA2D300009BB99 /* IOSAudioOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */; };
+		0D4D56132DEA2D300009BB99 /* IOSCVPixelBufferVideoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51112DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.mm */; };
+		0D4D56142DEA2D300009BB99 /* IOSMTKVideoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */; };
+		0D4D56152DEA2D300009BB99 /* IOSVideoOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51152DEA23270009BB99 /* IOSVideoOutput.mm */; };
+		0D4D56162DEA2D300009BB99 /* YFFPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51192DEA23270009BB99 /* YFFPlayer.mm */; };
+		0D4D56172DEA34290009BB99 /* SyncManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51042DEA23270009BB99 /* SyncManager.h */; };
+		0D4D56182DEA34420009BB99 /* IOSVideoOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */; };
+		0D4D56192DEA34420009BB99 /* IOSAUAudioOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510C2DEA23270009BB99 /* IOSAUAudioOutput.h */; };
+		0D4D561A2DEA34420009BB99 /* IOSCVPixelBufferVideoRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51102DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h */; };
+		0D4D561B2DEA34420009BB99 /* IOSAudioOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */; };
+		0D4D561C2DEA34420009BB99 /* IOSVideoRendererProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51162DEA23270009BB99 /* IOSVideoRendererProtocol.h */; };
+		0D4D561D2DEA34420009BB99 /* IOSMTKVideoRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */; };
+		0D4D561E2DEA34490009BB99 /* DemuxerCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F72DEA23270009BB99 /* DemuxerCallback.h */; };
+		0D4D561F2DEA34490009BB99 /* SonicAudioProcessor.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51022DEA23270009BB99 /* SonicAudioProcessor.h */; };
+		0D4D56202DEA34490009BB99 /* VideoOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510A2DEA23270009BB99 /* VideoOutput.h */; };
+		0D4D56212DEA34490009BB99 /* SyncManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51042DEA23270009BB99 /* SyncManager.h */; };
+		0D4D56222DEA34490009BB99 /* AudioFrame.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F22DEA23270009BB99 /* AudioFrame.h */; };
+		0D4D56232DEA34490009BB99 /* VideoDecoder.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51062DEA23270009BB99 /* VideoDecoder.h */; };
+		0D4D56242DEA34490009BB99 /* Player.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50FF2DEA23270009BB99 /* Player.h */; };
+		0D4D56252DEA34490009BB99 /* FrameQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F92DEA23270009BB99 /* FrameQueue.h */; };
+		0D4D56262DEA34490009BB99 /* Packet.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50FC2DEA23270009BB99 /* Packet.h */; };
+		0D4D56272DEA34490009BB99 /* Decoder.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F42DEA23270009BB99 /* Decoder.h */; };
+		0D4D56282DEA34490009BB99 /* MediaInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50FB2DEA23270009BB99 /* MediaInfo.h */; };
+		0D4D56292DEA34490009BB99 /* AudioOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F32DEA23270009BB99 /* AudioOutput.h */; };
+		0D4D562A2DEA34490009BB99 /* PacketQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50FD2DEA23270009BB99 /* PacketQueue.h */; };
+		0D4D562B2DEA34490009BB99 /* AudioDecoder.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F02DEA23270009BB99 /* AudioDecoder.h */; };
+		0D4D562C2DEA34490009BB99 /* PlayerCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51012DEA23270009BB99 /* PlayerCallback.h */; };
+		0D4D562D2DEA34490009BB99 /* Error.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F82DEA23270009BB99 /* Error.h */; };
+		0D4D562E2DEA34490009BB99 /* Demuxer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D50F52DEA23270009BB99 /* Demuxer.h */; };
+		0D4D562F2DEA34490009BB99 /* VideoFrame.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51082DEA23270009BB99 /* VideoFrame.h */; };
+		0D4D56312DEA34980009BB99 /* VideoRenderer.metal in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51172DEA23270009BB99 /* VideoRenderer.metal */; };
+		0D4D56322DEA34A20009BB99 /* sonic.c in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51BA2DEA23270009BB99 /* sonic.c */; };
+		0D4D56332DEA34C20009BB99 /* sonic.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51B92DEA23270009BB99 /* sonic.h */; };
+		0D4D56372DEA34F70009BB99 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D4D56362DEA34F70009BB99 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -280,6 +315,9 @@
 		0D4D53532DEA25A50009BB99 /* version.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = version.h; sourceTree = "<group>"; };
 		0D4D53542DEA25A50009BB99 /* version_major.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = version_major.h; sourceTree = "<group>"; };
 		0D4D53E92DEA25F70009BB99 /* YFFPlayer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D4D560F2DEA2CFC0009BB99 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
+		0D4D56342DEA34E30009BB99 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
+		0D4D56362DEA34F70009BB99 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -308,6 +346,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0D4D56372DEA34F70009BB99 /* Foundation.framework in Frameworks */,
+				0D4D56102DEA2CFC0009BB99 /* VideoToolbox.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,6 +375,9 @@
 		030F82FC2DE987D500C6CF04 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				0D4D56362DEA34F70009BB99 /* Foundation.framework */,
+				0D4D56342DEA34E30009BB99 /* libc++.tbd */,
+				0D4D560F2DEA2CFC0009BB99 /* VideoToolbox.framework */,
 				0D4D52BB2DEA24F90009BB99 /* libffmpeg.a */,
 				030F83172DE988AA00C6CF04 /* Metal.framework */,
 				030F83152DE9889D00C6CF04 /* CoreGraphics.framework */,
@@ -711,6 +754,7 @@
 				0D4D51D32DEA23270009BB99 /* AudioOutput.h in Headers */,
 				0D4D51D42DEA23270009BB99 /* Decoder.h in Headers */,
 				0D4D51D52DEA23270009BB99 /* Demuxer.h in Headers */,
+				0D4D56172DEA34290009BB99 /* SyncManager.h in Headers */,
 				0D4D51D62DEA23270009BB99 /* DemuxerCallback.h in Headers */,
 				0D4D51D72DEA23270009BB99 /* Error.h in Headers */,
 				0D4D51D82DEA23270009BB99 /* FrameQueue.h in Headers */,
@@ -720,7 +764,6 @@
 				0D4D51DC2DEA23270009BB99 /* Player.h in Headers */,
 				0D4D51DD2DEA23270009BB99 /* PlayerCallback.h in Headers */,
 				0D4D51DE2DEA23270009BB99 /* SonicAudioProcessor.h in Headers */,
-				0D4D51DF2DEA23270009BB99 /* SyncManager.h in Headers */,
 				0D4D51E02DEA23270009BB99 /* VideoDecoder.h in Headers */,
 				0D4D51E12DEA23270009BB99 /* VideoFrame.h in Headers */,
 				0D4D51E22DEA23270009BB99 /* VideoOutput.h in Headers */,
@@ -739,7 +782,32 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0D4D561E2DEA34490009BB99 /* DemuxerCallback.h in Headers */,
+				0D4D56332DEA34C20009BB99 /* sonic.h in Headers */,
+				0D4D561F2DEA34490009BB99 /* SonicAudioProcessor.h in Headers */,
+				0D4D56202DEA34490009BB99 /* VideoOutput.h in Headers */,
+				0D4D56212DEA34490009BB99 /* SyncManager.h in Headers */,
+				0D4D56222DEA34490009BB99 /* AudioFrame.h in Headers */,
+				0D4D56232DEA34490009BB99 /* VideoDecoder.h in Headers */,
+				0D4D56242DEA34490009BB99 /* Player.h in Headers */,
+				0D4D56252DEA34490009BB99 /* FrameQueue.h in Headers */,
+				0D4D56262DEA34490009BB99 /* Packet.h in Headers */,
+				0D4D56272DEA34490009BB99 /* Decoder.h in Headers */,
+				0D4D56282DEA34490009BB99 /* MediaInfo.h in Headers */,
+				0D4D56292DEA34490009BB99 /* AudioOutput.h in Headers */,
+				0D4D562A2DEA34490009BB99 /* PacketQueue.h in Headers */,
+				0D4D562B2DEA34490009BB99 /* AudioDecoder.h in Headers */,
+				0D4D562C2DEA34490009BB99 /* PlayerCallback.h in Headers */,
+				0D4D562D2DEA34490009BB99 /* Error.h in Headers */,
+				0D4D562E2DEA34490009BB99 /* Demuxer.h in Headers */,
+				0D4D562F2DEA34490009BB99 /* VideoFrame.h in Headers */,
 				0D4D55812DEA26D60009BB99 /* YFFPlayer.h in Headers */,
+				0D4D56182DEA34420009BB99 /* IOSVideoOutput.h in Headers */,
+				0D4D56192DEA34420009BB99 /* IOSAUAudioOutput.h in Headers */,
+				0D4D561A2DEA34420009BB99 /* IOSCVPixelBufferVideoRenderer.h in Headers */,
+				0D4D561B2DEA34420009BB99 /* IOSAudioOutput.h in Headers */,
+				0D4D561C2DEA34420009BB99 /* IOSVideoRendererProtocol.h in Headers */,
+				0D4D561D2DEA34420009BB99 /* IOSMTKVideoRenderer.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -870,6 +938,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0D4D56322DEA34A20009BB99 /* sonic.c in Sources */,
+				0D4D56312DEA34980009BB99 /* VideoRenderer.metal in Sources */,
+				0D4D56112DEA2D300009BB99 /* IOSAUAudioOutput.mm in Sources */,
+				0D4D56122DEA2D300009BB99 /* IOSAudioOutput.mm in Sources */,
+				0D4D56132DEA2D300009BB99 /* IOSCVPixelBufferVideoRenderer.mm in Sources */,
+				0D4D56142DEA2D300009BB99 /* IOSMTKVideoRenderer.mm in Sources */,
+				0D4D56152DEA2D300009BB99 /* IOSVideoOutput.mm in Sources */,
+				0D4D56162DEA2D300009BB99 /* YFFPlayer.mm in Sources */,
 				0D4D55782DEA26A00009BB99 /* AudioDecoder.cpp in Sources */,
 				0D4D55792DEA26A00009BB99 /* SyncManager.cpp in Sources */,
 				0D4D557A2DEA26A00009BB99 /* PacketQueue.cpp in Sources */,
@@ -1106,6 +1182,8 @@
 		0D4D53EF2DEA25F70009BB99 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1114,8 +1192,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_MODULE_VERIFIER = YES;
+				GCC_C_LANGUAGE_STANDARD = c17;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
 					"\"$(SRCROOT)/YFFPlayer/Vendor/FFmpeg/macOS/include/libavcodec\"",
 					"\"$(SRCROOT)/YFFPlayer/Vendor/FFmpeg/macOS/include/libavdevice\"",
 					"\"$(SRCROOT)/YFFPlayer/Vendor/FFmpeg/macOS/include/libavfilter\"",
@@ -1132,10 +1212,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/YFFPlayer/Vendor/FFmpeg/macOS/lib",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
@@ -1144,13 +1221,17 @@
 				PRODUCT_NAME = YFFPlayer;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				USER_HEADER_SEARCH_PATHS = "";
 			};
 			name = Debug;
 		};
 		0D4D53F02DEA25F70009BB99 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1159,8 +1240,10 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_MODULE_VERIFIER = YES;
+				GCC_C_LANGUAGE_STANDARD = c17;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
 					"\"$(SRCROOT)/YFFPlayer/Vendor/FFmpeg/macOS/include/libavcodec\"",
 					"\"$(SRCROOT)/YFFPlayer/Vendor/FFmpeg/macOS/include/libavdevice\"",
 					"\"$(SRCROOT)/YFFPlayer/Vendor/FFmpeg/macOS/include/libavfilter\"",
@@ -1177,10 +1260,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/YFFPlayer/Vendor/FFmpeg/macOS/lib",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
@@ -1189,7 +1269,9 @@
 				PRODUCT_NAME = YFFPlayer;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				USER_HEADER_SEARCH_PATHS = "";
 			};
 			name = Release;
 		};
