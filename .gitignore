@@ -63,5 +63,8 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 
 YFFPlayer/Vendor/FFmpeg/
-scripts/ffmpeg-build/
-output/
+scripts/iOS/ffmpeg-build/
+scripts/iOS/output/
+
+scripts/macOS/ffmpeg-build/
+scripts/macOS/output/
