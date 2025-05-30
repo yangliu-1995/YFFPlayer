@@ -16,10 +16,7 @@ void SyncManager::updateClock(int64_t pts, int64_t duration) {
 int64_t SyncManager::calculateDelay(int64_t pts, bool& shouldDropFrame) {
     int64_t diff = pts - mClock;
     int64_t adjustedDiff = static_cast<int64_t>(diff / mSpeed.load());
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        shouldDropFrame = diff < -kMaxDropDiff;
-    }
+    shouldDropFrame = diff < -kMaxDropDiff;
     return adjustedDiff >= 0 ? adjustedDiff : 0;
 }
 

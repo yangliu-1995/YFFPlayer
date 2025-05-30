@@ -15,7 +15,6 @@ public:
     int64_t getClock() const;
 
 private:
-    std::mutex mMutex;
     std::atomic<float> mSpeed{1.0};
     std::atomic<int64_t> mClock{0};
 };
