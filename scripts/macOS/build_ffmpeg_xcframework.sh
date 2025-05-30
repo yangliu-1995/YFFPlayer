@@ -154,7 +154,8 @@ build_ffmpeg() {
         --enable-indevs \
         --enable-outdevs \
         --disable-programs \
-        --disable-doc
+        --disable-doc \
+        --disable-x86asm
     
     # 编译和安装
     make clean

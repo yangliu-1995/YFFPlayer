@@ -6,8 +6,6 @@
 
 @interface YFFPlayer : NSObject
 
-@property (nonatomic, strong) UIView *videoRenderView;
-
 - (instancetype)initWithVideoRenderView:(UIView *)videoRenderView;
 
 - (void)playVideoWithURL:(NSURL *)url;

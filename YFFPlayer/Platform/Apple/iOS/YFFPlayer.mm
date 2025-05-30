@@ -29,6 +29,9 @@ private:
 @interface YFFPlayer ()<PlayerCoreDelegate> {
     std::shared_ptr<yffplayer::Player> _player;
 }
+
+@property (nonatomic, strong) UIView *videoRenderView;
+
 @end
 
 @implementation YFFPlayer
