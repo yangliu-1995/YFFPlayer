@@ -44,7 +44,7 @@
 		030F84722DE9913F00C6CF04 /* m.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = m.avi; sourceTree = "<group>"; };
 		030F84732DE9913F00C6CF04 /* m_264.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = m_264.mp4; sourceTree = "<group>"; };
 		030F84742DE9913F00C6CF04 /* m_an.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = m_an.avi; sourceTree = "<group>"; };
-		030F84892DE992FF00C6CF04 /* YFFPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = YFFPlayer.xcodeproj; path = /Users/xueyuanxiao/Desktop/Projs/YFFPlayer/YFFPlayer.xcodeproj; sourceTree = "<absolute>"; };
+		030F84892DE992FF00C6CF04 /* YFFPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = YFFPlayer.xcodeproj; path = ../../YFFPlayer.xcodeproj; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
