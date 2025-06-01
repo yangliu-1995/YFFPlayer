@@ -4,8 +4,6 @@
 
 namespace {
 constexpr int kMaxDropDiff = 50;
-constexpr double kSyncThreshold = 0.01;  // 同步阈值
-constexpr double kNosyncThreshold = 10.0; // 不同步阈值
 }
 
 namespace yffplayer {
@@ -30,14 +28,14 @@ int64_t SyncManager::calculateDelay(int64_t pts, bool& shouldDropFrame) {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
         // 外部时钟模式：使用 pts - getClock() 计算延迟
         int64_t currentClock = getClock();
-        double diff = (pts - currentClock) / 1000.0;  // 转换为秒
+        int64_t diff = pts - currentClock;  // 转换为秒
         
         // 判断是否丢帧
-        shouldDropFrame = diff <= -kSyncThreshold;
+        shouldDropFrame = diff <= -kMaxDropDiff;
         
         // 返回延迟时间（毫秒）
         if (diff > 0) {
-            return static_cast<int64_t>(diff * 1000);
+            return diff;
         } else {
             return 0;
         }
