@@ -31,8 +31,7 @@ VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
 VideoDecoder::~VideoDecoder() {
     stop();
-    if (mSwsCtx) sws_freeContext(mSwsCtx);
-    if (mCodecCtx) avcodec_free_context(&mCodecCtx);
+    std::cerr << "~VideoDecoder" << std::endl;
 }
 
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {

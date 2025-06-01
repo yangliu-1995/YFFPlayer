@@ -51,13 +51,13 @@ private:
     void notifyProgressChanged();
 
     std::unique_ptr<SyncManager> mSyncManager;
-    std::shared_ptr<Demuxer> mDemuxer;
+    std::unique_ptr<Demuxer> mDemuxer;
     std::shared_ptr<PacketQueue> mAudioPacketQueue;
     std::shared_ptr<PacketQueue> mVideoPacketQueue;
     std::shared_ptr<FrameQueue<AudioFrame>> mAudioFrameQueue;
     std::shared_ptr<FrameQueue<VideoFrame>> mVideoFrameQueue;
-    std::shared_ptr<AudioDecoder> mAudioDecoder;
-    std::shared_ptr<VideoDecoder> mVideoDecoder;
+    std::unique_ptr<AudioDecoder> mAudioDecoder;
+    std::unique_ptr<VideoDecoder> mVideoDecoder;
     std::shared_ptr<AudioOutput> mAudioOutput;
     std::shared_ptr<VideoOutput> mVideoOutput;
     std::thread mAudioOutputThread;

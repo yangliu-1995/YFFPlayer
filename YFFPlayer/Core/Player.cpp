@@ -24,7 +24,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mAudioFrameQueue(std::make_shared<FrameQueue<AudioFrame>>(100)),
       mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
       mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
-    mDemuxer = std::make_shared<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
+    mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
 }
 
 Player::~Player() { stop(); }
@@ -39,7 +39,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
     if (mMediaInfo.mHasAudio) {
         AVCodecParameters* audioCodecParams = avcodec_parameters_alloc();
         avcodec_parameters_copy(audioCodecParams, mMediaInfo.mAudioCodecParameters);
-        mAudioDecoder = std::make_shared<AudioDecoder>(mAudioPacketQueue, mAudioFrameQueue);
+        mAudioDecoder = std::make_unique<AudioDecoder>(mAudioPacketQueue, mAudioFrameQueue);
         mAudioDecoder->open(audioCodecParams, mMediaInfo.mAudioTimeBase);
         avcodec_parameters_free(&audioCodecParams);
         if (!mAudioOutput->init(44100, 2)) {
@@ -50,7 +50,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
     if (mMediaInfo.mHasVideo) {
         AVCodecParameters* videoCodecParams = avcodec_parameters_alloc();
         avcodec_parameters_copy(videoCodecParams, mMediaInfo.mVideoCodecParameters);
-        mVideoDecoder = std::make_shared<VideoDecoder>(mVideoPacketQueue, mVideoFrameQueue);
+        mVideoDecoder = std::make_unique<VideoDecoder>(mVideoPacketQueue, mVideoFrameQueue);
         mVideoDecoder->open(videoCodecParams, mMediaInfo.mVideoTimeBase);
         avcodec_parameters_free(&videoCodecParams);
         if (!mVideoOutput->initialize(mMediaInfo.mVideoWidth, mMediaInfo.mVideoHeight)) {

@@ -4,7 +4,7 @@
 set -e
 
 # 配置变量
-FFMPEG_VERSION="7.1"
+FFMPEG_VERSION="6.0"
 OPENSSL_VERSION="3.1.4"
 DEPLOYMENT_TARGET="11.0"  # macOS 最低版本
 SCRIPT_DIR="$(pwd)"
@@ -14,6 +14,9 @@ OPENSSL_SOURCE_DIR="${BUILD_DIR}/openssl-${OPENSSL_VERSION}"
 OUTPUT_DIR="${SCRIPT_DIR}/output"
 LIB_NAME="libffmpeg.a"
 UNIVERSAL_LIB_PATH="${OUTPUT_DIR}/universal/lib/${LIB_NAME}"
+
+# 设置SDK路径
+export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 
 # 创建必要的目录
 mkdir -p "${BUILD_DIR}"
@@ -86,7 +89,6 @@ build_openssl() {
     make -j$(sysctl -n hw.ncpu)
     make install_sw
     
-    # 返回到脚本目录
     cd "${SCRIPT_DIR}"
 }
 
@@ -102,30 +104,43 @@ build_ffmpeg() {
     local sdk_path=$(xcrun --sdk macosx --show-sdk-path)
     
     # 设置编译器标志
-    export CFLAGS="-arch ${arch} -isysroot ${sdk_path} -mmacosx-version-min=${DEPLOYMENT_TARGET}"
-    export LDFLAGS="-arch ${arch} -isysroot ${sdk_path} -mmacosx-version-min=${DEPLOYMENT_TARGET}"
-    export CPPFLAGS="${CFLAGS}"
+    export CFLAGS="-arch ${arch} -isysroot ${sdk_path} -mmacosx-version-min=${DEPLOYMENT_TARGET} \
+        -I${sdk_path}/System/Library/Frameworks/CoreFoundation.framework/Headers \
+        -I${sdk_path}/System/Library/Frameworks/CoreMedia.framework/Headers \
+        -I${sdk_path}/System/Library/Frameworks/CoreVideo.framework/Headers \
+        -I${sdk_path}/System/Library/Frameworks/VideoToolbox.framework/Headers"
+    
+    export LDFLAGS="-arch ${arch} -isysroot ${sdk_path} -mmacosx-version-min=${DEPLOYMENT_TARGET} \
+        -framework CoreFoundation -framework CoreMedia -framework CoreVideo -framework VideoToolbox \
+        -framework AudioToolbox -framework Security"
+    
+    export CPPFLAGS="${CFLAGS} -I${openssl_dir}/include"
     
     export CC="$(xcrun -find -sdk macosx clang)"
     export CXX="$(xcrun -find -sdk macosx clang++)"
     
-    # 添加OpenSSL头文件和库路径
-    export CFLAGS="${CFLAGS} -I${openssl_dir}/include"
+    # 添加OpenSSL路径
     export LDFLAGS="${LDFLAGS} -L${openssl_dir}/lib"
     
+    # 验证OpenSSL路径
+    if [ ! -d "${openssl_dir}/include/openssl" ] || [ ! -f "${openssl_dir}/lib/libssl.a" ]; then
+        echo "OpenSSL 路径错误: ${openssl_dir}"
+        exit 1
+    fi
+    
     # 创建并进入构建目录
-    mkdir -p "${build_dir}"
+    rm -rf "${build_dir}" && mkdir -p "${build_dir}"
     cd "${SOURCE_DIR}"
     
-    # 配置FFmpeg，专注于macOS需要的功能
-    ./configure \
+    # 配置FFmpeg
+    PKG_CONFIG_PATH="${build_dir}/lib/pkgconfig" ./configure \
         --prefix="${build_dir}" \
         --enable-cross-compile \
         --target-os=darwin \
         --arch=${arch} \
         --cc="${CC}" \
         --extra-cflags="${CFLAGS}" \
-        --extra-ldflags="${LDFLAGS} -framework CoreVideo -framework VideoToolbox" \
+        --extra-ldflags="${LDFLAGS}" \
         --enable-static \
         --disable-shared \
         --enable-pic \
@@ -133,13 +148,14 @@ build_ffmpeg() {
         --enable-version3 \
         --enable-nonfree \
         --enable-openssl \
-        --enable-libxml2 \
         --enable-avcodec \
         --enable-avformat \
         --enable-avfilter \
         --enable-swscale \
         --enable-swresample \
         --enable-postproc \
+        --enable-videotoolbox \
+        --enable-audiotoolbox \
         --enable-protocols \
         --enable-parsers \
         --enable-muxers \
@@ -147,22 +163,19 @@ build_ffmpeg() {
         --enable-encoders \
         --enable-decoders \
         --enable-hwaccels \
-        --enable-videotoolbox \
-        --enable-hwaccel=h264_videotoolbox \
-        --enable-hwaccel=hevc_videotoolbox \
         --enable-bsfs \
         --enable-indevs \
         --enable-outdevs \
         --disable-programs \
         --disable-doc \
-        --disable-x86asm
+        --disable-x86asm \
+        --disable-debug || { echo "FFmpeg 配置失败"; cat config.log; exit 1; }
     
     # 编译和安装
     make clean
-    make -j$(sysctl -n hw.ncpu)
-    make install
+    make -j$(sysctl -n hw.ncpu) || { echo "FFmpeg 编译失败"; exit 1; }
+    make install || { echo "FFmpeg 安装失败"; exit 1; }
     
-    # 返回到脚本目录
     cd "${SCRIPT_DIR}"
 }
 

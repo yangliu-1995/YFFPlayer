@@ -16,7 +16,10 @@ AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<AudioFrame>> frameQueue)
     : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
 
-AudioDecoder::~AudioDecoder() { stop(); }
+AudioDecoder::~AudioDecoder() {
+    stop();
+    std::cerr << "~AudioDecoder" << std::endl;
+}
 
 bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     mTimeBase = timeBase;
