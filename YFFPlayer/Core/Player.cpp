@@ -63,6 +63,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
 
 void Player::start() {
     mRunning = true;
+    mIsFirstFrame = true;  // 重置首帧标记
     mDemuxer->start();
     if (mMediaInfo.mHasAudio) {
         mAudioDecoder->start();
@@ -183,6 +184,9 @@ void Player::resume() {
         return;  // 未暂停或未运行
     }
     mPaused = false;
+    
+    // 标记下一帧为首帧，用于更新漂移补偿
+    mIsFirstFrame = true;
 
     // 恢复外部时钟
     if (mSyncManager) {
@@ -236,6 +240,9 @@ bool Player::seek(int64_t positionMs) {
     // 重置时钟（以便同步）
     mSyncManager->updateClock(positionMs, 0);
     
+    // 标记下一帧为首帧，用于更新漂移补偿
+    mIsFirstFrame = true;
+    
     // 跳转外部时钟
     if (mSyncManager) {
         mSyncManager->seekExternalClock(positionMs);
@@ -271,6 +278,10 @@ void Player::audioOutputThread() {
 
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         mSyncManager->updateClock(pts, duration);
+        if (mIsFirstFrame.load()) {
+            mSyncManager->updateDriftWithPts(pts);
+            mIsFirstFrame = false;
+        }
         notifyProgressChanged();
     });
 
@@ -283,7 +294,6 @@ void Player::audioOutputThread() {
 
         auto audioFrame = mAudioFrameQueue->pop();
         if (audioFrame) {
-            // 修改这里的判断条件
             if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
                 auto processedFrame = mAudioProcessor->processAudioFrame(*audioFrame);
                 if (processedFrame) {
@@ -291,6 +301,10 @@ void Player::audioOutputThread() {
                 }
             } else {
                 mAudioOutput->enqueueAudioFrame(*audioFrame);
+            }
+            if (mIsFirstFrame.load()) {
+                mSyncManager->updateDriftWithPts(audioFrame->mPts);
+                mIsFirstFrame = false;
             }
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -312,6 +326,12 @@ void Player::videoOutputThread() {
         auto videoFrame = mVideoFrameQueue->pop();
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
+            
+            if (mIsFirstFrame.load()) {
+                mSyncManager->updateDriftWithPts(pts);
+                mIsFirstFrame = false;
+            }
+            
             float playbackRate = mPlaybackRate.load();
             if (mMediaInfo.mHasAudio) {
                 bool shouldDropFrame = false;
