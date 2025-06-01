@@ -156,6 +156,11 @@ void Player::pause() {
     }
     mPaused = true;
 
+    // 暂停外部时钟
+    if (mSyncManager) {
+        mSyncManager->pauseExternalClock();
+    }
+
     // 停止解复用和解码线程继续读取数据
     mDemuxer->pause();
     if (mAudioDecoder) {
@@ -178,6 +183,11 @@ void Player::resume() {
         return;  // 未暂停或未运行
     }
     mPaused = false;
+
+    // 恢复外部时钟
+    if (mSyncManager) {
+        mSyncManager->resumeExternalClock();
+    }
 
     // 解除abort状态，允许继续读取和解码
     mDemuxer->resume();
@@ -225,6 +235,11 @@ bool Player::seek(int64_t positionMs) {
 
     // 重置时钟（以便同步）
     mSyncManager->updateClock(positionMs, 0);
+    
+    // 跳转外部时钟
+    if (mSyncManager) {
+        mSyncManager->seekExternalClock(positionMs);
+    }
 
     // 音视频输出模块同步清理（如果有缓存）
     mAudioProcessor->flush();
@@ -350,6 +365,20 @@ void Player::setPlaybackRate(float rate) {
 }
 
 float Player::getPlaybackRate() const { return mPlaybackRate.load(); }
+
+// 同步模式控制实现
+void Player::setSyncMode(SyncMode mode) {
+    if (mSyncManager) {
+        mSyncManager->setSyncMode(mode);
+    }
+}
+
+SyncMode Player::getSyncMode() const {
+    if (mSyncManager) {
+        return mSyncManager->getSyncMode();
+    }
+    return SyncMode::AUDIO_MASTER;
+}
 
 void Player::onDemuxStarted() {}
 void Player::onDemuxPaused() {}
