@@ -25,7 +25,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
       mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
-          mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
+    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }
 
 Player::~Player() { stop(); }
@@ -340,8 +340,7 @@ void Player::videoOutputThread() {
                 int64_t delay = mSyncManager->calculateDelay(pts, shouldDropFrame);
                 if (shouldDropFrame) {
                     ++mDroppedVideoFramesCount;
-                    std::cerr << "Dropped video frame, total count: " << mDroppedVideoFramesCount
-                              << std::endl;
+                    std::cerr << "Dropped video frame,delay: " << delay << std::endl;
                     continue;
                 } else {
                     int ret = av_usleep(static_cast<unsigned int>(delay * 1000));

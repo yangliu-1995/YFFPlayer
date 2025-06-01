@@ -28,11 +28,13 @@ int64_t SyncManager::calculateDelay(int64_t pts, bool& shouldDropFrame) {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
         // 外部时钟模式：使用 pts - getClock() 计算延迟
         int64_t currentClock = getClock();
-        int64_t diff = pts - currentClock;  // 转换为秒
+        int64_t diff = getCurrentExternalTime() - mPtsDrift;  // 转换为秒
         
         // 判断是否丢帧
         shouldDropFrame = diff <= -kMaxDropDiff;
-        
+        if (shouldDropFrame) {
+            return diff;
+        }
         // 返回延迟时间（毫秒）
         if (diff > 0) {
             return diff;
@@ -111,10 +113,6 @@ int64_t SyncManager::getExternalClock() const {
         return mClock.load();
     }
     
-    if (mExternalClockPaused.load()) {
-        return mExternalClockPauseOffset.load() - mPtsDrift.load();
-    }
-    
     return getCurrentExternalTime() - mPtsDrift.load();
 }
 
@@ -128,12 +126,7 @@ void SyncManager::updateDriftWithPts(int64_t pts) {
 // 内部辅助方法
 int64_t SyncManager::getCurrentExternalTime() const {
     auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - mExternalClockBaseTime).count();
-    
-    // 应用播放速度
-    int64_t adjustedElapsed = static_cast<int64_t>(elapsed * mSpeed.load());
-    
-    return mExternalClockStartTime.load() + adjustedElapsed;
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 }
 
 }  // namespace yffplayer
