@@ -160,7 +160,7 @@ void Player::pause() {
     mDemuxer->pause();
     if (mAudioDecoder) {
         mAudioDecoder->pause();
-        mAudioPacketQueue->abort();  // 假设你能访问 packetQueue 和 frameQueue
+        mAudioPacketQueue->abort(); 
         mAudioFrameQueue->abort();
     }
     if (mVideoDecoder) {
