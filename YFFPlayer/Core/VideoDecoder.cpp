@@ -143,21 +143,15 @@ void VideoDecoder::decodeLoop() {
         int ret = avcodec_send_packet(mCodecCtx, avPacket);
         if (ret < 0) {
             if (ret == AVERROR(EAGAIN)) {
-                // 解码器内部缓冲区满了，你应该先调用 avcodec_receive_frame 读掉旧帧
-                // 然后重新 send_packet（也可以 continue，但必须说明）
-                // 建议日志提示
                 av_log(NULL, AV_LOG_WARNING,
                        "Decoder is full, need to receive frames before sending more packets.\n");
                 continue;
             } else if (ret == AVERROR_EOF) {
-                // 解码器已经 flush 完成，不能再发送数据
                 av_log(NULL, AV_LOG_INFO, "Decoder has been fully flushed.\n");
                 break;  // 或 return，根据你的状态判断
             } else {
-                // 其他错误，比如解码器内部错误、内存问题等
                 av_log(NULL, AV_LOG_ERROR, "Failed to send packet to decoder: %s\n",
                        av_err2str(ret));
-                // 可选中断或继续
                 continue;
             }
         }
