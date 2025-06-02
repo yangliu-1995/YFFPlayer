@@ -2,60 +2,60 @@
 
 #include <atomic>
 #include <chrono>
-#include <memory>
 #include <mutex>
 
 namespace yffplayer {
 
-// 同步模式枚举
 enum class SyncMode {
-    AUDIO_MASTER,    // 音频主时钟（默认）
-    VIDEO_MASTER,    // 视频主时钟
-    EXTERNAL_CLOCK   // 外部时钟
+    AUDIO,
+    EXTERNAL_CLOCK
+};
+
+struct Clock {
+    double mPts;           // 当前时间戳（秒）
+    double mPtsDrift;      // 时间戳与实际时间的漂移（秒）
+    double mLastUpdated;   // 上次更新时间（秒）
+    double mSpeed;         // 播放速度
+    std::atomic<bool> mPaused; // 暂停状态
 };
 
 class SyncManager {
 public:
-    SyncManager() = default;
+    SyncManager();
     ~SyncManager() = default;
-    
-    // 原有接口
+
+    // 播放速度控制
     void setSpeed(float speed);
     float getSpeed() const;
+
+    // 时钟更新
     void updateClock(int64_t pts, int64_t duration);
-    int64_t calculateDelay(int64_t pts, bool &shouldDropFrame);
+
+    // 延迟计算
+    int64_t calculateDelay(int64_t pts, bool& shouldDropFrame);
+
+    // 获取当前时钟
     int64_t getClock() const;
-    
-    // 新增外部时钟接口
+
+    // 同步模式控制
     void setSyncMode(SyncMode mode);
     SyncMode getSyncMode() const;
-    
+
     // 外部时钟控制
     void startExternalClock();
     void pauseExternalClock();
     void resumeExternalClock();
     void seekExternalClock(int64_t positionMs);
     int64_t getExternalClock() const;
-    
-    // PTS漂移补偿
     void updateDriftWithPts(int64_t pts);
-    
+
 private:
-    // 原有成员
-    std::atomic<float> mSpeed{1.0};
-    std::atomic<int64_t> mClock{0};
-    
-    // 新增成员
-    std::atomic<SyncMode> mSyncMode{SyncMode::AUDIO_MASTER};
-    
-    // 外部时钟相关
-    std::atomic<bool> mExternalClockPaused{false};
-    std::atomic<int64_t> mExternalClockStartTime{0};  // 外部时钟开始时间
-    std::chrono::steady_clock::time_point mExternalClockBaseTime;  // 系统时间基准点
-    std::atomic<int64_t> mExternalClockPauseOffset{0};  // 暂停时的偏移量
-    std::atomic<int64_t> mPtsDrift{0};  // PTS漂移补偿
-    
-    // 内部辅助方法
-    int64_t getCurrentExternalTime() const;
+    // 获取当前系统时间（秒）
+    double getCurrentExternalTime() const;
+
+    Clock mClock;                     // 时钟结构
+    std::atomic<SyncMode> mSyncMode;  // 同步模式
+    std::chrono::steady_clock::time_point mExternalClockBaseTime; // 外部时钟基准时间
+    mutable std::mutex mClockMutex;   // 保护 Clock 结构的互斥锁
 };
 }  // namespace yffplayer

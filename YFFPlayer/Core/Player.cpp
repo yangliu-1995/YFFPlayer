@@ -25,6 +25,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
       mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
+    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }
 
 Player::~Player() { stop(); }
@@ -299,8 +300,8 @@ void Player::audioOutputThread() {
         auto audioFrame = mAudioFrameQueue->pop();
         if (audioFrame) {
             bool shouldDropFrame = false;
-            int64_t delay = mSyncManager->calculateDelay(audioFrame->mPts + audioFrame->mDuration, shouldDropFrame);
-            std::cerr << "audio should delay: " << delay << " should drop: " << shouldDropFrame << std::endl;
+//            int64_t delay = mSyncManager->calculateDelay(audioFrame->mPts + audioFrame->mDuration, shouldDropFrame);
+//            std::cerr << "audio should delay: " << delay << " should drop: " << shouldDropFrame << std::endl;
             if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
                 auto processedFrame = mAudioProcessor->processAudioFrame(*audioFrame);
                 if (processedFrame) {
@@ -398,7 +399,7 @@ SyncMode Player::getSyncMode() const {
     if (mSyncManager) {
         return mSyncManager->getSyncMode();
     }
-    return SyncMode::AUDIO_MASTER;
+    return SyncMode::AUDIO;
 }
 
 void Player::onDemuxStarted() {}

@@ -3,49 +3,62 @@
 #include <cmath>
 
 namespace {
-constexpr int kMaxDropDiff = 50;
+constexpr double kMaxDropDiff = 0.050; // 50ms，转换为秒
 }
 
 namespace yffplayer {
 
-// 原有接口实现
-void SyncManager::setSpeed(float speed) { 
-    mSpeed = speed; 
+SyncManager::SyncManager() {
+    mClock.mPts = 0.0;
+    mClock.mPtsDrift = 0.0;
+    mClock.mLastUpdated = 0.0;
+    mClock.mSpeed = 1.0;
+    mClock.mPaused = false;
+    mSyncMode = SyncMode::AUDIO;
 }
 
-float SyncManager::getSpeed() const { 
-    return mSpeed; 
+void SyncManager::setSpeed(float speed) {
+    std::lock_guard<std::mutex> lock(mClockMutex);
+    mClock.mSpeed = (speed > 0.1f) ? speed : 0.1f; // 防止除零
+}
+
+float SyncManager::getSpeed() const {
+    std::lock_guard<std::mutex> lock(mClockMutex);
+    return static_cast<float>(mClock.mSpeed);
 }
 
 void SyncManager::updateClock(int64_t pts, int64_t duration) {
-    // 只有在非外部时钟模式下才更新内部时钟
     if (mSyncMode.load() != SyncMode::EXTERNAL_CLOCK) {
-        mClock = pts + static_cast<int64_t>(duration / mSpeed.load());
+        std::lock_guard<std::mutex> lock(mClockMutex);
+        double ptsSec = pts / 1000.0; // 毫秒转秒
+        double durationSec = duration / 1000.0;
+        mClock.mPts = ptsSec + durationSec / mClock.mSpeed;
+        mClock.mLastUpdated = getCurrentExternalTime();
+        mClock.mPtsDrift = mClock.mPts - mClock.mLastUpdated;
     }
 }
 
 int64_t SyncManager::calculateDelay(int64_t pts, bool& shouldDropFrame) {
+    double ptsSec = pts / 1000.0; // 毫秒转秒
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
-        int64_t clockPts = getCurrentExternalTime() - mPtsDrift;  // 转换为秒
-        int64_t diff = pts - clockPts;
+//        std::lock_guard<std::mutex> lock(mClockMutex);
+        double clockPts = getExternalClock() / 1000.0; // 毫秒转秒
+        double diff = ptsSec - clockPts;
         
-        // 判断是否丢帧
-        shouldDropFrame = diff <= -kMaxDropDiff;
+        // 考虑播放速度调整丢帧阈值
+        shouldDropFrame = diff <= -kMaxDropDiff * mClock.mSpeed;
         if (shouldDropFrame) {
-            return diff;
+            return static_cast<int64_t>(diff * 1000.0); // 秒转毫秒
         }
-        // 返回延迟时间（毫秒）
-        if (diff > 0) {
-            return diff;
-        } else {
-            return 0;
-        }
+        // 延迟时间也需要根据播放速度调整
+        double adjustedDiff = diff / mClock.mSpeed;
+        return adjustedDiff > 0 ? static_cast<int64_t>(adjustedDiff * 1000.0) : 0;
     } else {
-        // 原有逻辑：音频/视频时钟
-        int64_t diff = pts - mClock;
-        int64_t adjustedDiff = static_cast<int64_t>(diff / mSpeed.load());
-        shouldDropFrame = diff < -kMaxDropDiff;
-        return adjustedDiff >= 0 ? adjustedDiff : 0;
+        std::lock_guard<std::mutex> lock(mClockMutex);
+        double diff = ptsSec - mClock.mPts;
+        double adjustedDiff = diff / mClock.mSpeed;
+        shouldDropFrame = diff < -kMaxDropDiff * mClock.mSpeed;
+        return adjustedDiff >= 0 ? static_cast<int64_t>(adjustedDiff * 1000.0) : 0;
     }
 }
 
@@ -53,10 +66,10 @@ int64_t SyncManager::getClock() const {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
         return getExternalClock();
     }
-    return mClock.load();
+    std::lock_guard<std::mutex> lock(mClockMutex);
+    return static_cast<int64_t>(mClock.mPts * 1000.0); // 秒转毫秒
 }
 
-// 新增同步模式接口
 void SyncManager::setSyncMode(SyncMode mode) {
     mSyncMode = mode;
     if (mode == SyncMode::EXTERNAL_CLOCK) {
@@ -68,64 +81,74 @@ SyncMode SyncManager::getSyncMode() const {
     return mSyncMode.load();
 }
 
-// 外部时钟控制实现
 void SyncManager::startExternalClock() {
+    std::lock_guard<std::mutex> lock(mClockMutex);
     mExternalClockBaseTime = std::chrono::steady_clock::now();
-    mExternalClockStartTime = 0;
-    mExternalClockPauseOffset = 0;
-    mExternalClockPaused = false;
-    mPtsDrift = 0;  // 重置PTS漂移补偿
+    mClock.mPts = 0.0;
+    mClock.mPtsDrift = 0.0;
+    mClock.mLastUpdated = getCurrentExternalTime();
+    mClock.mPaused = false;
 }
 
 void SyncManager::pauseExternalClock() {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
-        if (!mExternalClockPaused.load()) {
-            mExternalClockPauseOffset = getCurrentExternalTime();
-            mExternalClockPaused = true;
+        std::lock_guard<std::mutex> lock(mClockMutex);
+        if (!mClock.mPaused.load()) {
+            mClock.mPts = (getCurrentExternalTime() - mClock.mPtsDrift) / mClock.mSpeed;
+            mClock.mLastUpdated = getCurrentExternalTime();
+            mClock.mPaused = true;
         }
     }
 }
 
 void SyncManager::resumeExternalClock() {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
-        if (mExternalClockPaused.load()) {
+        std::lock_guard<std::mutex> lock(mClockMutex);
+        if (mClock.mPaused.load()) {
             mExternalClockBaseTime = std::chrono::steady_clock::now();
-            mExternalClockStartTime = mExternalClockPauseOffset.load();
-            mExternalClockPaused = false;
+            mClock.mLastUpdated = getCurrentExternalTime();
+            mClock.mPtsDrift = mClock.mLastUpdated - mClock.mPts * mClock.mSpeed;
+            mClock.mPaused = false;
         }
     }
 }
 
 void SyncManager::seekExternalClock(int64_t positionMs) {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
+        std::lock_guard<std::mutex> lock(mClockMutex);
         mExternalClockBaseTime = std::chrono::steady_clock::now();
-        mExternalClockStartTime = positionMs;
-        if (mExternalClockPaused.load()) {
-            mExternalClockPauseOffset = positionMs;
-        }
-        mPtsDrift = 0;  // 重置PTS漂移补偿
+        mClock.mPts = positionMs / 1000.0; // 毫秒转秒
+        mClock.mLastUpdated = getCurrentExternalTime();
+        mClock.mPtsDrift = mClock.mLastUpdated - mClock.mPts * mClock.mSpeed;
     }
 }
 
 int64_t SyncManager::getExternalClock() const {
     if (mSyncMode.load() != SyncMode::EXTERNAL_CLOCK) {
-        return mClock.load();
+        std::lock_guard<std::mutex> lock(mClockMutex);
+        return static_cast<int64_t>(mClock.mPts * 1000.0);
     }
-    
-    return getCurrentExternalTime() - mPtsDrift.load();
+    std::lock_guard<std::mutex> lock(mClockMutex);
+    if (mClock.mPaused.load()) {
+        return static_cast<int64_t>(mClock.mPts * 1000.0);
+    }
+    return static_cast<int64_t>((getCurrentExternalTime() - mClock.mPtsDrift) / mClock.mSpeed * 1000.0);
 }
 
 void SyncManager::updateDriftWithPts(int64_t pts) {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
-        int64_t currentSystemTime = getCurrentExternalTime();
-        mPtsDrift = currentSystemTime - pts;
+        std::lock_guard<std::mutex> lock(mClockMutex);
+        double currentTime = getCurrentExternalTime();
+        double ptsSec = pts / 1000.0;
+        mClock.mPtsDrift = currentTime - ptsSec;
+        mClock.mLastUpdated = currentTime;
+        mClock.mPts = ptsSec;
     }
 }
 
-// 内部辅助方法
-int64_t SyncManager::getCurrentExternalTime() const {
+double SyncManager::getCurrentExternalTime() const {
     auto now = std::chrono::steady_clock::now();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now - mExternalClockBaseTime).count() / 1000.0;
 }
 
-}  // namespace yffplayer
+} // namespace yffplayer
