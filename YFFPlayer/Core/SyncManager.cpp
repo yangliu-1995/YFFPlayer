@@ -26,8 +26,6 @@ void SyncManager::updateClock(int64_t pts, int64_t duration) {
 
 int64_t SyncManager::calculateDelay(int64_t pts, bool& shouldDropFrame) {
     if (mSyncMode.load() == SyncMode::EXTERNAL_CLOCK) {
-        // 外部时钟模式：使用 pts - getClock() 计算延迟
-        int64_t currentClock = getClock();
         int64_t clockPts = getCurrentExternalTime() - mPtsDrift;  // 转换为秒
         int64_t diff = pts - clockPts;
         

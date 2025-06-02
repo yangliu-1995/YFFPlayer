@@ -25,7 +25,6 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
       mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
-    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }
 
 Player::~Player() { stop(); }
@@ -375,6 +374,7 @@ void Player::setPlaybackRate(float rate) {
     if (rate == mPlaybackRate) return;
 
     rate = std::max(0.25f, std::min(4.0f, rate));
+    mRequiresDriftSync = true;
     mSyncManager->setSpeed(rate);
 
     if (mAudioProcessor) {
