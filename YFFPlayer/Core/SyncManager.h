@@ -1,61 +1,55 @@
 #pragma once
 
-#include <atomic>
-#include <chrono>
 #include <mutex>
+#include <vector>
+
+// 前向声明 FFmpeg 函数
+extern "C" int64_t av_gettime_relative();
 
 namespace yffplayer {
-
-enum class SyncMode {
-    AUDIO,
-    EXTERNAL_CLOCK
-};
-
-struct Clock {
-    double mPts;           // 当前时间戳（秒）
-    double mPtsDrift;      // 时间戳与实际时间的漂移（秒）
-    double mLastUpdated;   // 上次更新时间（秒）
-    double mSpeed;         // 播放速度
-    std::atomic<bool> mPaused; // 暂停状态
-};
 
 class SyncManager {
 public:
     SyncManager();
-    ~SyncManager() = default;
 
-    // 播放速度控制
-    void setSpeed(float speed);
-    float getSpeed() const;
-
-    // 时钟更新
-    void updateClock(int64_t pts, int64_t duration);
-
-    // 延迟计算
-    int64_t calculateDelay(int64_t pts, bool& shouldDropFrame);
-
-    // 获取当前时钟
-    int64_t getClock() const;
-
-    // 同步模式控制
-    void setSyncMode(SyncMode mode);
-    SyncMode getSyncMode() const;
-
-    // 外部时钟控制
-    void startExternalClock();
-    void pauseExternalClock();
-    void resumeExternalClock();
-    void seekExternalClock(int64_t positionMs);
-    int64_t getExternalClock() const;
-    void updateDriftWithPts(int64_t pts);
+    // 暂停播放
+    void pause();
+    // 恢复播放
+    void resume();
+    // 跳转到指定时间戳
+    void seek(double pts);
+    // 设置播放速率
+    void setPlaybackRate(double speed);
+    // 获取当前同步时间
+    double getSyncTime() const;
+    // 计算延迟并决定是否丢帧
+    double calcDelay(double pts, bool &shouldDrop);
+    // 更新时间戳漂移
+    void updatePtsDrift(double pts);
 
 private:
-    // 获取当前系统时间（秒）
-    double getCurrentExternalTime() const;
+    struct Clock {
+        double mPts = 0.0;         // 当前时间戳
+        double mTimeOffset = 0.0;  // 时间偏移（原 mPtsDrift）
+        int64_t mLastUpdatedUs = 0;// 最后更新时间（微秒）
+        double mSpeed = 1.0;       // 播放速率
+        bool mPaused = false;      // 暂停状态
 
-    Clock mClock;                     // 时钟结构
-    std::atomic<SyncMode> mSyncMode;  // 同步模式
-    std::chrono::steady_clock::time_point mExternalClockBaseTime; // 外部时钟基准时间
-    mutable std::mutex mClockMutex;   // 保护 Clock 结构的互斥锁
+        // 设置时间戳
+        void set(double pts, bool force = true);
+        // 获取当前时间
+        double get() const;
+        // 更新时间戳
+        void update(double pts);
+        // 设置播放速率
+        void setSpeed(double speed);
+        // 获取当前时间（微秒）
+        static int64_t getCurrentTimeUs();
+    };
+
+    Clock mClock;                 // 时钟对象
+    mutable std::mutex mMutex;           // 互斥锁，确保线程安全
+    static constexpr double MAX_DELAY = 0.1;     // 最大等待时间 100ms
+    static constexpr double DROP_THRESHOLD = 0.05; // 丢帧阈值 50ms
 };
 }  // namespace yffplayer
