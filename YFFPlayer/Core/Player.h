@@ -31,10 +31,6 @@ public:
     bool seek(int64_t positionMs);
     void setPlaybackRate(float rate);  // 设置播放倍率
     float getPlaybackRate() const;     // 获取当前播放倍率
-    
-    // 同步模式控制
-    void setSyncMode(SyncMode mode);
-    SyncMode getSyncMode() const;
 
     // demuxer callback
     void onDemuxStarted() override;

@@ -30,6 +30,10 @@
 		0D3F6D252DEB572000500A07 /* SyncManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51052DEA23270009BB99 /* SyncManager.cpp */; };
 		0D3F6D262DEB572000500A07 /* VideoDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51072DEA23270009BB99 /* VideoDecoder.cpp */; };
 		0D3F6D272DEB572000500A07 /* VideoFrame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51092DEA23270009BB99 /* VideoFrame.cpp */; };
+		0D3F6D292DEEDB2200500A07 /* Clock.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D3F6D282DEEDB2000500A07 /* Clock.h */; };
+		0D3F6D2A2DEEDB2200500A07 /* Clock.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D3F6D282DEEDB2000500A07 /* Clock.h */; };
+		0D3F6D2C2DEEDB2600500A07 /* Clock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F6D2B2DEEDB2500500A07 /* Clock.cpp */; };
+		0D3F6D2D2DEEDB2600500A07 /* Clock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F6D2B2DEEDB2500500A07 /* Clock.cpp */; };
 		0D4D51BE2DEA23270009BB99 /* FFmpeg.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D4D511D2DEA23270009BB99 /* FFmpeg.xcframework */; };
 		0D4D51C02DEA23270009BB99 /* AudioDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D50F12DEA23270009BB99 /* AudioDecoder.cpp */; };
 		0D4D51C12DEA23270009BB99 /* Demuxer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D50F62DEA23270009BB99 /* Demuxer.cpp */; };
@@ -93,6 +97,8 @@
 		030F83152DE9889D00C6CF04 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
 		030F83172DE988AA00C6CF04 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
 		0D3F6D162DEB56C600500A07 /* YFFPlayer_macOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer_macOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D3F6D282DEEDB2000500A07 /* Clock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Clock.h; sourceTree = "<group>"; };
+		0D3F6D2B2DEEDB2500500A07 /* Clock.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Clock.cpp; sourceTree = "<group>"; };
 		0D4D50F02DEA23270009BB99 /* AudioDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioDecoder.h; sourceTree = "<group>"; };
 		0D4D50F12DEA23270009BB99 /* AudioDecoder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = AudioDecoder.cpp; sourceTree = "<group>"; };
 		0D4D50F22DEA23270009BB99 /* AudioFrame.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioFrame.h; sourceTree = "<group>"; };
@@ -225,6 +231,8 @@
 				0D4D50F12DEA23270009BB99 /* AudioDecoder.cpp */,
 				0D4D50F22DEA23270009BB99 /* AudioFrame.h */,
 				0D4D50F32DEA23270009BB99 /* AudioOutput.h */,
+				0D3F6D282DEEDB2000500A07 /* Clock.h */,
+				0D3F6D2B2DEEDB2500500A07 /* Clock.cpp */,
 				0D4D50F42DEA23270009BB99 /* Decoder.h */,
 				0D4D50F52DEA23270009BB99 /* Demuxer.h */,
 				0D4D50F62DEA23270009BB99 /* Demuxer.cpp */,
@@ -361,6 +369,7 @@
 				0D4D51E32DEA23270009BB99 /* IOSAUAudioOutput.h in Headers */,
 				0D4D51E42DEA23270009BB99 /* IOSAudioOutput.h in Headers */,
 				0D4D51E52DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h in Headers */,
+				0D3F6D2A2DEEDB2200500A07 /* Clock.h in Headers */,
 				0D4D51E62DEA23270009BB99 /* IOSMTKVideoRenderer.h in Headers */,
 				0D4D51E72DEA23270009BB99 /* IOSVideoOutput.h in Headers */,
 				0D4D51E82DEA23270009BB99 /* IOSVideoRendererProtocol.h in Headers */,
@@ -374,6 +383,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0D3F6D1E2DEB56F900500A07 /* YFFPlayer.h in Headers */,
+				0D3F6D292DEEDB2200500A07 /* Clock.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -496,6 +506,7 @@
 				0D4D51CD2DEA23270009BB99 /* IOSVideoOutput.mm in Sources */,
 				0D4D51CE2DEA23270009BB99 /* VideoRenderer.metal in Sources */,
 				0D4D51CF2DEA23270009BB99 /* YFFPlayer.mm in Sources */,
+				0D3F6D2C2DEEDB2600500A07 /* Clock.cpp in Sources */,
 				0D4D51D02DEA23270009BB99 /* sonic.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -510,6 +521,7 @@
 				0D3F6D222DEB572000500A07 /* PacketQueue.cpp in Sources */,
 				0D3F6D232DEB572000500A07 /* Player.cpp in Sources */,
 				0D3F6D242DEB572000500A07 /* SonicAudioProcessor.cpp in Sources */,
+				0D3F6D2D2DEEDB2600500A07 /* Clock.cpp in Sources */,
 				0D3F6D252DEB572000500A07 /* SyncManager.cpp in Sources */,
 				0D3F6D262DEB572000500A07 /* VideoDecoder.cpp in Sources */,
 				0D3F6D272DEB572000500A07 /* VideoFrame.cpp in Sources */,

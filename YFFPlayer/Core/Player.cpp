@@ -25,7 +25,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
       mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
-    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
+//    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }
 
 Player::~Player() { stop(); }
@@ -148,13 +148,13 @@ void Player::stop() {
 
 void Player::notifyProgressChanged() {
     if (mCallback) {
-        mCallback->onProgress(mSyncManager->getClock(), mMediaInfo.mDurationMs);
+        mCallback->onProgress(mSyncManager->getClockTime(), mMediaInfo.mDurationMs);
     }
 }
 
 void Player::syncDriftIfNeeded(int64_t pts) {
     if (mRequiresDriftSync.load()) {
-        mSyncManager->updateDriftWithPts(pts);
+        mSyncManager->updateTime(pts / 1000.0);
         mRequiresDriftSync = false;
     }
 }
@@ -167,7 +167,8 @@ void Player::pause() {
 
     // 暂停外部时钟
     if (mSyncManager) {
-        mSyncManager->pauseExternalClock();
+//        mSyncManager->pauseExternalClock();
+        mSyncManager->pause();
     }
 
     // 停止解复用和解码线程继续读取数据
@@ -198,7 +199,8 @@ void Player::resume() {
 
     // 恢复外部时钟
     if (mSyncManager) {
-        mSyncManager->resumeExternalClock();
+//        mSyncManager->resumeExternalClock();
+        mSyncManager->resume();
     }
 
     // 解除abort状态，允许继续读取和解码
@@ -244,17 +246,9 @@ bool Player::seek(int64_t positionMs) {
     // 刷新解码器内部状态（丢弃之前缓冲的帧）
     if (mAudioDecoder) mAudioDecoder->flush();
     if (mVideoDecoder) mVideoDecoder->flush();
-
-    // 重置时钟（以便同步）
-    mSyncManager->updateClock(positionMs, 0);
     
     // 标记下一帧为首帧，用于更新漂移补偿
     mRequiresDriftSync = true;
-    
-    // 跳转外部时钟
-    if (mSyncManager) {
-        mSyncManager->seekExternalClock(positionMs);
-    }
 
     // 音视频输出模块同步清理（如果有缓存）
     mAudioProcessor->flush();
@@ -285,7 +279,7 @@ void Player::audioOutputThread() {
     }
 
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
-        mSyncManager->updateClock(pts, duration);
+        mSyncManager->updateAudioTime(pts / 1000.0);
         syncDriftIfNeeded(pts);
         notifyProgressChanged();
     });
@@ -299,9 +293,6 @@ void Player::audioOutputThread() {
 
         auto audioFrame = mAudioFrameQueue->pop();
         if (audioFrame) {
-            bool shouldDropFrame = false;
-//            int64_t delay = mSyncManager->calculateDelay(audioFrame->mPts + audioFrame->mDuration, shouldDropFrame);
-//            std::cerr << "audio should delay: " << delay << " should drop: " << shouldDropFrame << std::endl;
             if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
                 auto processedFrame = mAudioProcessor->processAudioFrame(*audioFrame);
                 if (processedFrame) {
@@ -336,16 +327,17 @@ void Player::videoOutputThread() {
             
             float playbackRate = mPlaybackRate.load();
             if (mMediaInfo.mHasAudio) {
-                bool shouldDropFrame = false;
-                int64_t delay = mSyncManager->calculateDelay(pts, shouldDropFrame);
-                if (shouldDropFrame) {
+                double delay = mSyncManager->computeFrameDelay(pts / 1000.0);
+                if (delay > 0.05) {
                     ++mDroppedVideoFramesCount;
                     std::cerr << "Dropped video frame,delay: " << delay << std::endl;
+                    mSyncManager->updateTime(pts / 1000);
                     continue;
                 } else {
-                    int ret = av_usleep(static_cast<unsigned int>(delay * 1000));
+//                    mSyncManager->updateVideoTime(pts / 1000);
+                    int ret = av_usleep(static_cast<unsigned int>(delay * 1000 * 1000));
                     if (ret != 0) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+                        std::this_thread::sleep_for(std::chrono::milliseconds((int64_t)(delay * 1000)));
                     }
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 }
@@ -359,7 +351,7 @@ void Player::videoOutputThread() {
                     }
                 }
                 int64_t adjustedDuration = static_cast<int64_t>(frameDuration / playbackRate);
-                mSyncManager->updateClock(pts, frameDuration);
+//                mSyncManager->updateVideoTime(pts / 1000.0);
                 notifyProgressChanged();
                 int ret = av_usleep(static_cast<unsigned int>(adjustedDuration * 1000));
                 if (ret != 0) {
@@ -387,20 +379,6 @@ void Player::setPlaybackRate(float rate) {
 }
 
 float Player::getPlaybackRate() const { return mPlaybackRate.load(); }
-
-// 同步模式控制实现
-void Player::setSyncMode(SyncMode mode) {
-    if (mSyncManager) {
-        mSyncManager->setSyncMode(mode);
-    }
-}
-
-SyncMode Player::getSyncMode() const {
-    if (mSyncManager) {
-        return mSyncManager->getSyncMode();
-    }
-    return SyncMode::AUDIO;
-}
 
 void Player::onDemuxStarted() {}
 void Player::onDemuxPaused() {}

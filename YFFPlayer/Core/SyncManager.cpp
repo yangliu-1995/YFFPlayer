@@ -2,112 +2,118 @@
 #include <algorithm>
 #include <iostream>
 
+extern "C" {
+#include <libavutil/time.h>
+}
+
+#define AV_NOSYNC_THRESHOLD 10.0
+
 namespace yffplayer {
 SyncManager::SyncManager() {
-    mClock.set(0.0);
+    mAudioClock = new Clock();
+    mExternalClock = new Clock();
+    mVideoClock = new Clock();
+    mAudioClock->init();
+    mExternalClock->init();
+    mVideoClock->init();
+}
+
+SyncManager::~SyncManager() {
+    delete mAudioClock;
+    delete mExternalClock;
+    delete mVideoClock;
+}
+
+double SyncManager::getMasterClockTime() const {
+    return getMasterClock()->get();
 }
 
 void SyncManager::pause() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    if (!mClock.mPaused) {
-        mClock.mPts = mClock.get();
-        mClock.mPaused = true;
-    }
+    mExternalClock->set(mExternalClock->get());
+    mPaused = true;
+    mAudioClock->setPaused(true);
+    mExternalClock->setPaused(true);
+    mVideoClock->setPaused(true);
 }
 
 void SyncManager::resume() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    if (mClock.mPaused) {
-        mClock.mLastUpdatedUs = Clock::getCurrentTimeUs();
-        mClock.mPaused = false;
-    }
+    mExternalClock->set(mVideoClock->get());
+    mPaused = false;
+    mAudioClock->setPaused(false);
+    mExternalClock->setPaused(false);
+    mVideoClock->setPaused(false);
 }
 
-void SyncManager::seek(double pts) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    mClock.set(pts, true);
+void SyncManager::setSpeed(double speed) {
+    mAudioClock->setSpeed(speed);
+    mExternalClock->setSpeed(speed);
+    mVideoClock->setSpeed(speed);
 }
 
-void SyncManager::setPlaybackRate(double speed) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    // 限制播放速率范围 [0.1, 10.0]
-    if (speed < 0.1 || speed > 10.0) {
-        std::cerr << "无效的播放速率: " << speed << "，限制为 [0.1, 10.0]\n";
-        speed = std::clamp(speed, 0.1, 10.0);
-    }
-    mClock.setSpeed(speed);
+double SyncManager::getSpeed() const {
+    return 0;
 }
 
-double SyncManager::getSyncTime() const {
-    std::lock_guard<std::mutex> lock(mMutex);
-    return mClock.get();
+void SyncManager::syncClockToSlave(Clock *clock, Clock *slave) {
+    double slaveClockTime = slave->get();
+    clock->set(slaveClockTime);
 }
 
-void SyncManager::updatePtsDrift(double pts) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    if (!mClock.mPaused) {
-        mClock.mPts = pts;
-        mClock.mLastUpdatedUs = Clock::getCurrentTimeUs();
-        mClock.mTimeOffset = pts - (mClock.mLastUpdatedUs / 1e6);
-    }
+void SyncManager::updateTime(double time) {
+    getMasterClock()->set(time);
+//    switch (type) {
+//        case SyncType::Audio:
+//            updateAudioTime(time);
+//            break;
+//        case SyncType::Video:
+//            updateVideoTime(time);
+//            break;
+//        case SyncType::External:
+//            mExternalClock->set(time);
+//            break;
+//    }
 }
 
-double SyncManager::calcDelay(double pts, bool &shouldDrop) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    static std::vector<double> delayHistory; // 记录历史延迟
-    double syncTime = mClock.get();
-    double delay = pts - syncTime;
-    
-    // 记录延迟历史，用于动态调整丢帧阈值
-    delayHistory.push_back(delay);
-    if (delayHistory.size() > 10) delayHistory.erase(delayHistory.begin());
-    
-    // 计算平均延迟
-    double avgDelay = 0.0;
-    for (double d : delayHistory) avgDelay += d;
-    avgDelay /= delayHistory.size();
-    
-    // 动态丢帧阈值
-    if (delay < -std::max(DROP_THRESHOLD, avgDelay * 1.5)) {
-        shouldDrop = true;
-        return 0.0;
-    }
-    
-    shouldDrop = false;
-    if (delay > MAX_DELAY) {
-        delay = MAX_DELAY;
-    }
-    
-    return delay;
+void SyncManager::updateVideoTime(double time) {
+    mVideoClock->set(time);
+    syncClockToSlave(mExternalClock, mVideoClock);
 }
 
-void SyncManager::Clock::set(double pts, bool force) {
-    mPts = pts;
-    mLastUpdatedUs = getCurrentTimeUs();
-    mTimeOffset = mPts - (mLastUpdatedUs / 1e6);
+void SyncManager::updateAudioTime(double time) {
+//    if (type == SyncType::Audio) {
+//        getMasterClock()->set(time);
+//    }
 }
 
-double SyncManager::Clock::get() const {
-    if (mPaused) return mPts;
-    int64_t now = getCurrentTimeUs();
-    return mTimeOffset + ((now - mLastUpdatedUs) / 1e6) * mSpeed;
+double SyncManager::computeFrameDelay(double framePts) {
+    double masterClock = getMasterClockTime();
+    double diff = framePts - masterClock;  // 修正计算方向
+//    if (diff > 0.05) {
+//        updateTime(framePts);
+//    }
+    std::cerr << "compute delay, framePts: " << framePts << ", master clock: " << masterClock << ", diff: " << diff << std::endl;
+    return diff >= 0 ? diff : -diff;
 }
 
-void SyncManager::Clock::update(double pts) {
-    set(pts, true);
+Clock *SyncManager::getMasterClock() const {
+//    switch (type) {
+//        case SyncType::Audio:
+//            return mAudioClock;
+//            break;
+//        case SyncType::External:
+//            return mExternalClock;
+//            break;
+//        case SyncType::Video:
+//            return mVideoClock;
+//            break;
+//        default:
+//            break;
+//    }
+    return mExternalClock;
 }
 
-void SyncManager::Clock::setSpeed(double speed) {
-    update(get());
-    mSpeed = speed;
+double SyncManager::getClockTime() {
+    return getMasterClockTime();
 }
 
-int64_t SyncManager::Clock::getCurrentTimeUs() {
-    int64_t time = av_gettime_relative();
-    if (time < 0) {
-        std::cerr << "av_gettime_relative 失败，返回 0\n";
-        return 0;
-    }
-    return time;
-}
 } // namespace yffplayer
