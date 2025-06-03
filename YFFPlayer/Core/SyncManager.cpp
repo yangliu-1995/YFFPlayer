@@ -2,6 +2,9 @@
 #include <algorithm>
 #include <iostream>
 
+#include "AudioClock.h"
+#include "SystemTimeClock.h"
+
 extern "C" {
 #include <libavutil/time.h>
 }
@@ -9,111 +12,83 @@ extern "C" {
 #define AV_NOSYNC_THRESHOLD 10.0
 
 namespace yffplayer {
-SyncManager::SyncManager() {
-    mAudioClock = new Clock();
-    mExternalClock = new Clock();
-    mVideoClock = new Clock();
-    mAudioClock->init();
-    mExternalClock->init();
-    mVideoClock->init();
+SyncManager::SyncManager(SyncType type): mType(type) {
+    switch (type) {
+        case SyncType::Audio:
+            mClock = std::make_unique<AudioClock>();
+            break;
+        default:
+            mClock = std::make_unique<SystemTimeClock>();
+            break;
+    }
 }
 
 SyncManager::~SyncManager() {
-    delete mAudioClock;
-    delete mExternalClock;
-    delete mVideoClock;
-}
-
-double SyncManager::getMasterClockTime() const {
-    return getMasterClock()->get();
 }
 
 void SyncManager::pause() {
-    mExternalClock->set(mExternalClock->get());
-    mPaused = true;
-    mAudioClock->setPaused(true);
-    mExternalClock->setPaused(true);
-    mVideoClock->setPaused(true);
+    mClock->setPaused(true);
 }
 
 void SyncManager::resume() {
-    mExternalClock->set(mVideoClock->get());
-    mPaused = false;
-    mAudioClock->setPaused(false);
-    mExternalClock->setPaused(false);
-    mVideoClock->setPaused(false);
+    mClock->setPaused(false);
 }
 
 void SyncManager::setSpeed(double speed) {
-    mAudioClock->setSpeed(speed);
-    mExternalClock->setSpeed(speed);
-    mVideoClock->setSpeed(speed);
+    mClock->setSpeed(speed);
 }
 
 double SyncManager::getSpeed() const {
-    return 0;
+    return mClock->getSpeed();
 }
 
-void SyncManager::syncClockToSlave(Clock *clock, Clock *slave) {
-    double slaveClockTime = slave->get();
-    clock->set(slaveClockTime);
+void SyncManager::updateTime(double pts) {
+    if (mType == SyncType::Audio) {
+        return;
+    }
+//    mClock->set(pts, 0);
+    mClock->update(pts);
 }
 
-void SyncManager::updateTime(double time) {
-    getMasterClock()->set(time);
-//    switch (type) {
-//        case SyncType::Audio:
-//            updateAudioTime(time);
-//            break;
-//        case SyncType::Video:
-//            updateVideoTime(time);
-//            break;
-//        case SyncType::External:
-//            mExternalClock->set(time);
-//            break;
-//    }
+void SyncManager::updateClock(double pts) {
+    if (mType == SyncType::Audio) {
+        return;
+    }
+    mClock->set(pts, 0);
+//    mClock->update(pts);
 }
 
-void SyncManager::updateVideoTime(double time) {
-    mVideoClock->set(time);
-    syncClockToSlave(mExternalClock, mVideoClock);
+void SyncManager::updateAudioTime(double pts, double duration) {
+    mAudioClock = pts + duration / getSpeed();
+    std::cerr<<"update audio time"<<mAudioClock<<std::endl;
+    if (mType != SyncType::Audio) {
+        return;
+    }
+    mClock->set(pts, duration);
 }
 
-void SyncManager::updateAudioTime(double time) {
-//    if (type == SyncType::Audio) {
-//        getMasterClock()->set(time);
-//    }
+double SyncManager::computeAudioFrameDelay(double pts) {
+    if (mType == SyncType::Audio) {
+        return 0;
+    }
+    double time = getClock();
+    double delay = pts - time;
+    std::cerr << "audio current time: " << time - mAudioClock << ", pts: " << pts << ", delay: " << delay << std::endl;
+    return delay / mClock -> getSpeed();
 }
 
-double SyncManager::computeFrameDelay(double framePts) {
-    double masterClock = getMasterClockTime();
-    double diff = framePts - masterClock;  // 修正计算方向
-//    if (diff > 0.05) {
-//        updateTime(framePts);
-//    }
-    std::cerr << "compute delay, framePts: " << framePts << ", master clock: " << masterClock << ", diff: " << diff << std::endl;
-    return diff >= 0 ? diff : -diff;
+double SyncManager::computeVideoFrameDelay(double pts) {
+    if (pts - mAudioClock < 0.05) {
+        updateClock(mAudioClock);
+    }
+    double time = getClock();
+    double delay = (pts - time) / mClock -> getSpeed();
+
+    return delay;
 }
 
-Clock *SyncManager::getMasterClock() const {
-//    switch (type) {
-//        case SyncType::Audio:
-//            return mAudioClock;
-//            break;
-//        case SyncType::External:
-//            return mExternalClock;
-//            break;
-//        case SyncType::Video:
-//            return mVideoClock;
-//            break;
-//        default:
-//            break;
-//    }
-    return mExternalClock;
-}
-
-double SyncManager::getClockTime() {
-    return getMasterClockTime();
+double SyncManager::getClock() {
+    return mClock->get();
 }
 
 } // namespace yffplayer

@@ -49,7 +49,7 @@ private:
     void audioOutputThread();
     void videoOutputThread();
     void notifyProgressChanged();
-    void syncDriftIfNeeded(int64_t pts);
+    void syncClockIfNeeded(int64_t pts);
 
     std::unique_ptr<SyncManager> mSyncManager;
     std::unique_ptr<Demuxer> mDemuxer;
@@ -69,7 +69,7 @@ private:
     std::atomic<bool> mPaused{false};
     std::atomic<int> mDroppedVideoFramesCount{0};
     std::atomic<float> mPlaybackRate{1.0f};  // 播放倍率
-    std::atomic<bool> mRequiresDriftSync{true};   // 标记是否需要漂移同步
+    std::atomic<bool> mRequiresSyncClock{true};   // 标记是否需要漂移同步
     std::shared_ptr<PlayerCallback> mCallback;
     std::unique_ptr<SonicAudioProcessor> mAudioProcessor;
 };

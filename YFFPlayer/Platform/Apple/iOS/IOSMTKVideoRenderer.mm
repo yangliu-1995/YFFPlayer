@@ -84,7 +84,9 @@ typedef struct {
     self.mtkView.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
     self.mtkView.clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
     self.mtkView.framebufferOnly = NO;
-    
+    self.mtkView.paused = YES;
+    self.mtkView.enableSetNeedsDisplay = YES;
+
     [parentView addSubview:self.mtkView];
     
     // Setup auto layout

@@ -14,7 +14,7 @@ public:
         External = 1,
         Video = 2,
     };
-    SyncManager();
+    SyncManager(SyncType type);
     ~SyncManager();
 
     void pause();
@@ -25,23 +25,21 @@ public:
 
     double getSpeed() const;
 
-    double computeFrameDelay(double framePts);
+    double computeAudioFrameDelay(double pts);
+
+    double computeVideoFrameDelay(double pts);
     
-    double getClockTime();
+    double getClock();
     
-    void updateTime(double time);
-    void updateVideoTime(double time);
-    void updateAudioTime(double time);
+    void updateTime(double pts);
+
+    void updateAudioTime(double pts, double duration);
+
+    void updateClock(double pts);
 
 private:
-    SyncType type { SyncType::External };  // 改为External模式
-    Clock *mAudioClock;
-    Clock *mVideoClock;
-    Clock *mExternalClock;
-    std::atomic<bool> mPaused;
-    Clock *getMasterClock() const;
-    double getMasterClockTime() const;
-
-    void syncClockToSlave(Clock *clock, Clock *slave);
+    SyncType mType { SyncType::External };  // 改为External模式
+    std::atomic<double> mAudioClock{0};
+    std::unique_ptr<Clock> mClock;
 };
 }  // namespace yffplayer
