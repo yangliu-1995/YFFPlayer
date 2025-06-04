@@ -194,8 +194,14 @@ typedef struct {
     self.uniformBuffer = [self.device newBufferWithLength:sizeof(ColorUniforms)
                                                   options:MTLResourceStorageModeShared];
 }
-
+static CFAbsoluteTime baseTime = 0;
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame {
+    if (baseTime == 0) {
+        baseTime = CFAbsoluteTimeGetCurrent();
+    }
+    CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+    double clock = (frame.mPts) / 1000.0;
+    NSLog(@"video Delta since base: %.3f seconds，clock: %.3f, delt：%.3f", now - baseTime, clock, clock - (now - baseTime));
     dispatch_sync(_renderQueue, ^{
         if (!frame.isValid()) {
             return;

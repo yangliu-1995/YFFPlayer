@@ -83,10 +83,6 @@ void VideoDecoder::stop() {
         avcodec_free_context(&mCodecCtx);
         mCodecCtx = nullptr;
     }
-    if (mSwsCtx) {
-        sws_freeContext(mSwsCtx);
-        mSwsCtx = nullptr;
-    }
 }
 
 void VideoDecoder::pause() { mPaused = true; }
@@ -132,14 +128,6 @@ void VideoDecoder::decodeLoop() {
             continue;
         }
 
-        // 确保从关键帧开始
-        static bool firstPacket = true;
-        if (firstPacket && !(avPacket->flags & AV_PKT_FLAG_KEY)) {
-            std::cerr << "Skipping non-keyframe packet at start\n";
-            continue;
-        }
-        firstPacket = false;
-
         int ret = avcodec_send_packet(mCodecCtx, avPacket);
         if (ret < 0) {
             if (ret == AVERROR(EAGAIN)) {
@@ -165,51 +153,15 @@ void VideoDecoder::decodeLoop() {
             if (ret < 0) {
                 break;
             }
-            AVPixelFormat sourceFormat = (AVPixelFormat)frame->format;
-            // 计算时间戳
-            int64_t pts =
-                (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+            AVFrame* clonedFrame = av_frame_alloc();
+            av_frame_ref(clonedFrame, frame);
+            int64_t pts = (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
             pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-            int64_t dur = (frame->duration == AV_NOPTS_VALUE)
-                              ? 0
-                              : frame->duration * av_q2d(mTimeBase) * 1000;
-
-            // 对于不支持的格式，需要转换为RGB24
-            if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 &&
-                sourceFormat != AV_PIX_FMT_RGB24 && sourceFormat != AV_PIX_FMT_VIDEOTOOLBOX) {
-                if (!mSwsCtx) {
-                    mSwsCtx = sws_getContext(frame->width, frame->height, sourceFormat,
-                                             frame->width, frame->height, AV_PIX_FMT_RGB24,
-                                             SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
-                    av_image_alloc(rgbFrame->data, rgbFrame->linesize, frame->width, frame->height,
-                                   AV_PIX_FMT_RGB24, 1);
-                }
-                sws_scale(mSwsCtx, frame->data, frame->linesize, 0, frame->height, rgbFrame->data,
-                          rgbFrame->linesize);
-
-                std::array<int, 4> lineSize;
-                int linesizes[4] = {0};
-                av_image_fill_linesizes(linesizes, AV_PIX_FMT_RGB24, frame->width);
-                lineSize = {linesizes[0], 0, 0, 0};
-
-                int bufferSize =
-                    av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
-                std::vector<uint8_t> data(bufferSize);
-                av_image_copy_to_buffer(data.data(), bufferSize, rgbFrame->data, rgbFrame->linesize,
-                                        AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
-
-                rgbFrame->pts = pts;
-                rgbFrame->duration = dur;
-                mFrameQueue->push(std::make_shared<FrameHandle>(rgbFrame));
-            } else {
-                AVFrame* clonedFrame = av_frame_clone(frame);
-                if (clonedFrame) {
-                    clonedFrame->pts = pts;
-                    clonedFrame->duration = dur;
-                    auto videoFrame = std::make_shared<FrameHandle>(clonedFrame);
-                    mFrameQueue->push(videoFrame);
-                }
-            }
+            int64_t duration = (frame->duration == AV_NOPTS_VALUE) ? 0 : frame->duration * av_q2d(mTimeBase) * 1000;
+            clonedFrame->pts = pts;
+            clonedFrame->duration = duration;
+            auto videoFrame = std::make_shared<FrameHandle>(clonedFrame);
+            mFrameQueue->push(videoFrame);
         }
     }
 

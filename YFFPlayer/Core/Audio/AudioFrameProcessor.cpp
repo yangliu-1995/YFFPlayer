@@ -9,6 +9,13 @@ extern "C" {
 #include <libavutil/samplefmt.h>
 }
 
+namespace {
+constexpr AVSampleFormat kTargetFormat = AV_SAMPLE_FMT_S16;
+constexpr int kTargetSampleRate = 44100;
+constexpr int kTargetNbChannles = 2;
+constexpr double kMaxDelay = 0.05; // 50ms
+}
+
 namespace yffplayer {
 
 AudioFrameProcessor::AudioFrameProcessor()
@@ -16,29 +23,23 @@ AudioFrameProcessor::AudioFrameProcessor()
       mSampleRate(0),
       mChannels(0),
       mCurrentRate(1.0f),
-      mInitialized(false),
-      mSwrContext(nullptr),
-      mSwrInitialized(false) {}
+      mInitialized(false) {}
 
 AudioFrameProcessor::~AudioFrameProcessor() {
     if (mSonicStream) {
         sonicDestroyStream(mSonicStream);
         mSonicStream = nullptr;
     }
-    
-    if (mSwrContext) {
-        swr_free(&mSwrContext);
-        mSwrContext = nullptr;
-    }
 }
 
-bool AudioFrameProcessor::initialize(int sampleRate, int channels) {
+bool AudioFrameProcessor::initialize(int sampleRate, int channels, int format) {
     if (mSonicStream) {
         sonicDestroyStream(mSonicStream);
     }
 
     mSampleRate = sampleRate;
     mChannels = channels;
+    mFormat = format;
 
     mSonicStream = sonicCreateStream(sampleRate, channels);
     if (!mSonicStream) {
@@ -49,39 +50,8 @@ bool AudioFrameProcessor::initialize(int sampleRate, int channels) {
     // 设置默认参数
     sonicSetSpeed(mSonicStream, mCurrentRate);
     sonicSetPitch(mSonicStream, 1.0f);  // 保持音调不变
-    
-    // 初始化 SwrContext
-    if (mSwrContext) {
-        swr_free(&mSwrContext);
-    }
-    
-    mSwrContext = swr_alloc();
-    if (!mSwrContext) {
-        std::cerr << "Failed to allocate SwrContext" << std::endl;
-        return false;
-    }
-    
-    // 设置重采样参数 (44100Hz, 2ch, 16bit)
-    AVChannelLayout outLayout;
-    av_channel_layout_default(&outLayout, 2);
-    
-    AVChannelLayout inLayout;
-    av_channel_layout_default(&inLayout, 2);
-    
-    if (swr_alloc_set_opts2(&mSwrContext, &outLayout, AV_SAMPLE_FMT_S16, 44100, &inLayout,
-                            AV_SAMPLE_FMT_S16, 44100, 0, nullptr) < 0) {
-        std::cerr << "swr_alloc_set_opts2 failed" << std::endl;
-        return false;
-    }
-    
-    if (swr_init(mSwrContext) < 0) {
-        std::cerr << "Failed to initialize SwrContext" << std::endl;
-        swr_free(&mSwrContext);
-        mSwrContext = nullptr;
-        return false;
-    }
-    
-    mSwrInitialized = true;
+
+    mResampleContext = std::make_unique<AudioResampleContext>(sampleRate, format, channels);
 
     mInitialized = true;
     return true;
@@ -100,186 +70,170 @@ void AudioFrameProcessor::setPitch(float pitch) {
     if (!mInitialized || !mSonicStream) {
         return;
     }
-
     sonicSetPitch(mSonicStream, pitch);
 }
 
-std::unique_ptr<AudioFrame> AudioFrameProcessor::processFrameHandle(const FrameHandle& frameHandle) {
-    if (!frameHandle.isValid()) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle, double delay) {
+    AVFrame *frame = frameHandle->getFrame();
+    int wantedSamples = calculateWantedSamples(frame->nb_samples, delay, frame->sample_rate);
+    SwrContext* swrContext = mResampleContext->getSwrContext();
+    if (!swrContext) {
         return nullptr;
     }
-    
-    // 从FrameHandle获取AVFrame
-    AVFrame* avFrame = frameHandle.getFrame();
-    if (!avFrame) {
-        return nullptr;
-    }
-    
-    // 从AVFrame提取音频数据
-    int64_t pts = (avFrame->pts == AV_NOPTS_VALUE) ? avFrame->best_effort_timestamp : avFrame->pts;
-    int sampleRate = avFrame->sample_rate;
-    int channels = avFrame->ch_layout.nb_channels;
-    int nbSamples = avFrame->nb_samples;
-    
-    // 计算持续时间（毫秒）
-    int64_t duration = 0;
-    if (sampleRate > 0) {
-        duration = static_cast<int64_t>(nbSamples * 1000.0 / sampleRate);
-    }
-    
-    // 提取音频数据
-    std::vector<uint8_t> audioData;
-    int dataSize = av_get_bytes_per_sample(static_cast<AVSampleFormat>(avFrame->format)) * channels * nbSamples;
-    
-    if (av_sample_fmt_is_planar(static_cast<AVSampleFormat>(avFrame->format))) {
-        // 平面格式：每个声道的数据分别存储
-        audioData.resize(dataSize);
-        uint8_t* dst = audioData.data();
-        int bytesPerSample = av_get_bytes_per_sample(static_cast<AVSampleFormat>(avFrame->format));
-        
-        for (int sample = 0; sample < nbSamples; sample++) {
-            for (int ch = 0; ch < channels; ch++) {
-                memcpy(dst, avFrame->data[ch] + sample * bytesPerSample, bytesPerSample);
-                dst += bytesPerSample;
-            }
-        }
-    } else {
-        // 交错格式：所有声道的数据交错存储
-        audioData.resize(dataSize);
-        memcpy(audioData.data(), avFrame->data[0], dataSize);
-    }
-    
-    // 创建AudioFrame
-    auto audioFrame = std::make_unique<AudioFrame>(pts, duration, sampleRate, channels, nbSamples, std::move(audioData));
-    
-    // 处理AudioFrame
-    return processAudioFrame(*audioFrame);
-}
-
-std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const AudioFrame& inputFrame) {
-    if (!mInitialized || !mSonicStream) {
-        return nullptr;
-    }
-
-    // 如果播放倍率接近1.0，直接返回原始帧的拷贝
+    auto audioFrame = reSampleAVFrame(*frame, frame->nb_samples);
+    swr_set_compensation(swrContext, 0, 0);
     if (std::abs(mCurrentRate - 1.0f) < 0.01f) {
-        auto outputFrame = std::make_unique<AudioFrame>();
-        outputFrame->mPts = inputFrame.mPts;
-        outputFrame->mDuration = inputFrame.mDuration;
-        outputFrame->mSampleRate = inputFrame.mSampleRate;
-        outputFrame->mChannels = inputFrame.mChannels;
-        outputFrame->mNbSamples = inputFrame.mNbSamples;
-        outputFrame->mData = inputFrame.mData;
-        return outputFrame;
+        return audioFrame;
     }
-
-    int inputSamples = inputFrame.mNbSamples;
-    short* inputData = (short*)inputFrame.mData.data();
-
-    // 写入 Sonic 流
+    int inputSamples = audioFrame->mNbSamples;
+    short* inputData = (short*)audioFrame->mData.data();
     __unused int samplesWritten = sonicWriteShortToStream(mSonicStream, inputData, inputSamples);
-
     int availableSamples = sonicSamplesAvailable(mSonicStream);
     if (availableSamples <= 0) {
         return nullptr;
     }
-
-    int totalOutputSamples = availableSamples * inputFrame.mChannels;
-    mOutputBuffer.resize(totalOutputSamples);
-
-    int samplesRead =
-        sonicReadShortFromStream(mSonicStream, mOutputBuffer.data(), availableSamples);
+    int totalOutputSamples = availableSamples * audioFrame->mChannels;
+        mOutputBuffer.resize(totalOutputSamples);
+    int samplesRead = sonicReadShortFromStream(mSonicStream, mOutputBuffer.data(), availableSamples);
 
     if (samplesRead <= 0) {
         return nullptr;
     }
-
     auto outputFrame = std::make_unique<AudioFrame>();
-    outputFrame->mPts = inputFrame.mPts;
-    outputFrame->mDuration = static_cast<int64_t>(inputFrame.mDuration / mCurrentRate);
-    outputFrame->mSampleRate = inputFrame.mSampleRate;
-    outputFrame->mChannels = inputFrame.mChannels;
+    outputFrame->mPts = audioFrame->mPts;
+    outputFrame->mDuration = static_cast<int64_t>(audioFrame->mDuration / mCurrentRate);
+    outputFrame->mSampleRate = audioFrame->mSampleRate;
+    outputFrame->mChannels = audioFrame->mChannels;
     outputFrame->mNbSamples = samplesRead;
 
-    size_t dataSize = samplesRead * inputFrame.mChannels * sizeof(int16_t);
+    size_t dataSize = samplesRead * audioFrame->mChannels * sizeof(int16_t);
     outputFrame->mData.resize(dataSize);
-
     std::memcpy(outputFrame->mData.data(), mOutputBuffer.data(), dataSize);
-
     return outputFrame;
 }
 
-std::unique_ptr<AudioFrame> AudioFrameProcessor::resampleToWantedSamples(const AudioFrame& inputFrame, int wantedSamples) {
-    if (!mInitialized || !mSwrInitialized || !mSwrContext) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame, int wantedSamples) {
+    int inSampleRate = frame.sample_rate;
+    int outSampleRate = 44100; // 固定输出采样率 44100 Hz
+    int channels = 2; // 固定输出为 2 通道（立体声）
+    AVSampleFormat sampleFmt = AV_SAMPLE_FMT_S16; // 固定输出为 16-bit PCM
+
+    SwrContext* swrContext = mResampleContext->getSwrContext();
+    if (!swrContext) {
         return nullptr;
     }
-    
-    // 如果想要的采样数和原始采样数相同，直接返回拷贝
-    if (wantedSamples == inputFrame.mNbSamples) {
-        auto outputFrame = std::make_unique<AudioFrame>();
-        outputFrame->mPts = inputFrame.mPts;
-        outputFrame->mDuration = inputFrame.mDuration;
-        outputFrame->mSampleRate = inputFrame.mSampleRate;
-        outputFrame->mChannels = inputFrame.mChannels;
-        outputFrame->mNbSamples = inputFrame.mNbSamples;
-        outputFrame->mData = inputFrame.mData;
-        return outputFrame;
+
+    // 检查输入帧的通道数
+    int inChannels = frame.ch_layout.nb_channels;
+
+    // 判断是否需要直接拷贝（样本数相同且格式一致）
+    if (wantedSamples == frame.nb_samples &&
+        inSampleRate == outSampleRate &&
+        sampleFmt == frame.format &&
+        inChannels == channels) {
+        // 直接拷贝原始数据
+        int bufferSize = av_samples_get_buffer_size(
+            nullptr,
+            channels,
+            frame.nb_samples,
+            sampleFmt,
+            0
+        );
+        if (bufferSize < 0) {
+            return nullptr;
+        }
+
+        std::vector<uint8_t> audioBuffer(bufferSize);
+        memcpy(audioBuffer.data(), frame.data[0], bufferSize);
+
+        // 计算 duration
+        int64_t duration = av_rescale_q(frame.nb_samples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000.f;
+
+        return std::make_unique<AudioFrame>(
+            frame.pts,
+            duration,
+            outSampleRate,
+            channels,
+            frame.nb_samples,
+            std::move(audioBuffer)
+        );
     }
-    
-    // 计算需要补偿的采样数差值
-    int sampleDelta = wantedSamples - inputFrame.mNbSamples;
-    
-    // 使用 swr_set_compensation 进行软补偿
-    // 参数：sample_delta（需要补偿的采样数），compensation_distance（补偿距离，通常设为输入采样数）
-    if (swr_set_compensation(mSwrContext, sampleDelta, inputFrame.mNbSamples) < 0) {
-        std::cerr << "Failed to set compensation" << std::endl;
+
+    // 1. 如果需要拉伸，计算补偿
+    int delta = 0;
+    if (wantedSamples != frame.nb_samples) {
+        int64_t expectedOut = av_rescale_rnd(frame.nb_samples, outSampleRate, inSampleRate, AV_ROUND_UP);
+        delta = (int)((int64_t)wantedSamples - expectedOut);
+        swr_set_compensation(swrContext, delta, frame.nb_samples);
+    }
+
+    // 2. 分配输出缓冲区
+    uint8_t** outData = nullptr;
+    int outLinesize = 0;
+    if (av_samples_alloc_array_and_samples(
+            &outData, &outLinesize,
+            channels,
+            wantedSamples, // 分配足够的空间
+            sampleFmt,
+            0) < 0) {
         return nullptr;
     }
-    
-    // 准备输入数据
-    const uint8_t* inputData[2] = {nullptr};
-    inputData[0] = inputFrame.mData.data();
-    
-    // 计算最大可能的输出采样数
-    int maxOutputSamples = swr_get_out_samples(mSwrContext, inputFrame.mNbSamples);
-    if (maxOutputSamples <= 0) {
-        maxOutputSamples = wantedSamples + 64; // 添加一些缓冲
-    }
-    
-    // 准备输出缓冲区
-    size_t outputDataSize = maxOutputSamples * inputFrame.mChannels * sizeof(int16_t);
-    mOutputBuffer.resize(outputDataSize / sizeof(int16_t));
-    
-    uint8_t* outputData[2] = {nullptr};
-    outputData[0] = reinterpret_cast<uint8_t*>(mOutputBuffer.data());
-    
-    // 执行重采样
-    int outputSamples = swr_convert(mSwrContext, outputData, maxOutputSamples, inputData, inputFrame.mNbSamples);
-    
-    if (outputSamples <= 0) {
-        std::cerr << "swr_convert failed, returned: " << outputSamples << std::endl;
+
+    // 3. 执行重采样
+    int outSamples = swr_convert(
+        swrContext,
+        outData, wantedSamples,
+        const_cast<const uint8_t**>(frame.extended_data),
+        frame.nb_samples
+    );
+
+    if (outSamples <= 0) {
+        av_freep(&outData[0]);
+        av_freep(&outData);
         return nullptr;
     }
-    
-    // 创建输出帧
-    auto outputFrame = std::make_unique<AudioFrame>();
-    outputFrame->mPts = inputFrame.mPts;
-    outputFrame->mDuration = inputFrame.mDuration;
-    outputFrame->mSampleRate = inputFrame.mSampleRate;
-    outputFrame->mChannels = inputFrame.mChannels;
-    outputFrame->mNbSamples = outputSamples;
-    
-    size_t actualDataSize = outputSamples * inputFrame.mChannels * sizeof(int16_t);
-    outputFrame->mData.resize(actualDataSize);
-    
-    std::memcpy(outputFrame->mData.data(), mOutputBuffer.data(), actualDataSize);
-    
-    std::cerr << "[resampleToWantedSamples] input: " << inputFrame.mNbSamples 
-              << ", wanted: " << wantedSamples 
-              << ", output: " << outputSamples 
-              << ", delta: " << sampleDelta << std::endl;
-    
-    return outputFrame;
+
+    // 4. 拷贝实际输出的样本数据
+    int outBufferSize = av_samples_get_buffer_size(
+        nullptr,
+        channels,
+        outSamples,
+        sampleFmt,
+        0
+    );
+
+    std::vector<uint8_t> audioBuffer(outBufferSize);
+    memcpy(audioBuffer.data(), outData[0], outBufferSize);
+
+    av_freep(&outData[0]);
+    av_freep(&outData);
+
+    // 5. 计算 duration
+    int64_t duration = av_rescale_q(outSamples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000.f;
+
+    return std::make_unique<AudioFrame>(
+        frame.pts,
+        duration,
+        outSampleRate,
+        channels,
+        outSamples,
+        std::move(audioBuffer)
+    );
+}
+
+int AudioFrameProcessor::calculateWantedSamples(int nbSamples, double delay, int sampleRate) {
+    // 计算样本数调整量
+    int sampleDiff = (int)(delay * kTargetSampleRate);
+
+    // 计算目标样本数
+    int wantedNbSamples = nbSamples + sampleDiff;
+
+    // 限制调整幅度 (±10%)
+    int minNbSamples = nbSamples * 90 / 100;
+    int maxNbSamples = nbSamples * 110 / 100;
+    wantedNbSamples = av_clip(wantedNbSamples, minNbSamples, maxNbSamples);
+
+    return wantedNbSamples;
 }
 
 void AudioFrameProcessor::flush() {
@@ -292,7 +246,7 @@ void AudioFrameProcessor::reset() {
     if (mInitialized) {
         flush();
         // 重新初始化
-        initialize(mSampleRate, mChannels);
+        initialize(mSampleRate, mChannels, mFormat);
         setPlaybackRate(mCurrentRate);
     }
 }

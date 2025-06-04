@@ -31,8 +31,6 @@ private:
     std::shared_ptr<PacketQueue> mPacketQueue;
     std::shared_ptr<FrameQueue<FrameHandle>> mFrameQueue;
     AVCodecContext* mCodecCtx = nullptr;
-    SwsContext* mSwsCtx = nullptr;
-    AVPixelFormat mTargetFormat = AV_PIX_FMT_RGB24;
     AVRational mTimeBase;
     std::atomic<bool> mPaused{false};
     std::mutex mMutex;

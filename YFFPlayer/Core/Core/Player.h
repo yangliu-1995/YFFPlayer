@@ -18,6 +18,7 @@
 #include "VideoDecoder.h"
 #include "VideoFrame.h"
 #include "VideoOutput.h"
+#include "VideoFrameProcessor.h"
 
 namespace yffplayer {
 class Player : public DemuxerCallback, public std::enable_shared_from_this<Player> {
@@ -53,7 +54,6 @@ private:
     void videoOutputThread();
     void notifyProgressChanged();
     void syncClockIfNeeded(int64_t pts);
-    int synchronizeAudio(std::shared_ptr<AudioFrame> frame);
 
     std::unique_ptr<SyncManager> mSyncManager;
     std::unique_ptr<Demuxer> mDemuxer;
@@ -76,7 +76,8 @@ private:
     std::atomic<bool> mRequiresSyncClock{true};   // 标记是否需要漂移同步
     std::shared_ptr<PlayerCallback> mCallback;
     std::unique_ptr<AudioFrameProcessor> mAudioProcessor;
-    
+    std::unique_ptr<VideoFrameProcessor> mVideoProcessor;
+
     double mAudioDiffCum = 0;
     int mAudioDiffAvgCount = 0;
     const double mAudioDiffAvgCoef = 0.95;

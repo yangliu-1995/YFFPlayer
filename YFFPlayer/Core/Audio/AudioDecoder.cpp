@@ -130,7 +130,8 @@ void AudioDecoder::decodeLoop() {
         while (true) {
             ret = avcodec_receive_frame(mCodecCtx, frame);
             if (ret == 0) {
-                AVFrame* frameClone = av_frame_clone(frame);
+                AVFrame* frameClone = av_frame_alloc();
+                av_frame_ref(frameClone, frame);
                 if (!frameClone) {
                     std::cerr << "Failed to allocate frame clone" << std::endl;
                     continue;

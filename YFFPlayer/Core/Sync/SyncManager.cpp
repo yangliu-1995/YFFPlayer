@@ -83,6 +83,9 @@ double SyncManager::computeVideoFrameDelay(double pts) {
 }
 
 double SyncManager::getClock() {
+    if (mType == SyncType::Audio) {
+        return mAudioClock;
+    }
     return mClock->get();
 }
 

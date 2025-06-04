@@ -110,7 +110,7 @@ void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ,
     auto* output = static_cast<IOSAudioOutput*>(userData);
     output->handleBuffer(inBuffer);
 }
-
+static CFAbsoluteTime baseTime = 0;
 void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
     yffplayer::AudioFrame frame;
     bool hasFrame = false;
@@ -138,6 +138,12 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
 
     // 在锁外调用回调，避免死锁
     if (hasFrame && mPlaybackCallback) {
+        if (baseTime == 0) {
+            baseTime = CFAbsoluteTimeGetCurrent();
+        }
+        CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+        double clock = (frame.mPts + frame.mDuration) / 1000.0;
+        NSLog(@"Delta since base: %.3f seconds，clock: %.3f, delt：%.3f", now - baseTime, clock, clock - (now - baseTime));
         mPlaybackCallback(frame.mPts, frame.mDuration);
     }
 }

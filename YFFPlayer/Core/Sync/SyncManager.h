@@ -37,9 +37,9 @@ public:
 
     void updateClock(double pts);
 
+    std::atomic<double> mAudioClock{0};
 private:
     SyncType mType { SyncType::External };  // 改为External模式
-    std::atomic<double> mAudioClock{0};
     std::unique_ptr<Clock> mClock;
 };
 }  // namespace yffplayer
