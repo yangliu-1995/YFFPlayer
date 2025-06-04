@@ -75,13 +75,11 @@ void AudioFrameProcessor::setPitch(float pitch) {
 
 std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle, double delay) {
     AVFrame *frame = frameHandle->getFrame();
-    int wantedSamples = calculateWantedSamples(frame->nb_samples, delay, frame->sample_rate);
     SwrContext* swrContext = mResampleContext->getSwrContext();
     if (!swrContext) {
         return nullptr;
     }
     auto audioFrame = reSampleAVFrame(*frame, frame->nb_samples);
-    swr_set_compensation(swrContext, 0, 0);
     if (std::abs(mCurrentRate - 1.0f) < 0.01f) {
         return audioFrame;
     }
@@ -127,8 +125,7 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
     int inChannels = frame.ch_layout.nb_channels;
 
     // 判断是否需要直接拷贝（样本数相同且格式一致）
-    if (wantedSamples == frame.nb_samples &&
-        inSampleRate == outSampleRate &&
+    if (inSampleRate == outSampleRate &&
         sampleFmt == frame.format &&
         inChannels == channels) {
         // 直接拷贝原始数据
@@ -159,15 +156,6 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
         );
     }
 
-    // 1. 如果需要拉伸，计算补偿
-    int delta = 0;
-    if (wantedSamples != frame.nb_samples) {
-        int64_t expectedOut = av_rescale_rnd(frame.nb_samples, outSampleRate, inSampleRate, AV_ROUND_UP);
-        delta = (int)((int64_t)wantedSamples - expectedOut);
-        swr_set_compensation(swrContext, delta, frame.nb_samples);
-    }
-
-    // 2. 分配输出缓冲区
     uint8_t** outData = nullptr;
     int outLinesize = 0;
     if (av_samples_alloc_array_and_samples(
