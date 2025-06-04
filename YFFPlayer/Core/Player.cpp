@@ -24,9 +24,9 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mCallback(callback),
       mAudioPacketQueue(std::make_shared<PacketQueue>(100)),
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
-      mAudioFrameQueue(std::make_shared<FrameQueue<AudioFrame>>(100)),
+      mAudioFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(100)),
       mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
-      mAudioProcessor(std::make_unique<SonicAudioProcessor>()) {
+      mAudioProcessor(std::make_unique<AudioProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
 //    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }
@@ -296,37 +296,88 @@ void Player::audioOutputThread() {
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         mSyncManager->updateAudioTime(pts / 1000.0, duration / 1000.0);
 //        double delay = mSyncManager->computeAudioFrameDelay((pts + duration) / 1000.0);
-//        if (delay > 0.05) {
-//            mSyncManager->updateClock(pts);
-//        }
-        std::cerr<<"debug pts audio: "<<pts+duration<<std::endl;
+//        std::cerr<<"debug pts audio: "<<pts+duration<<std::endl;
         syncClockIfNeeded(pts);
         notifyProgressChanged();
     });
 
     mAudioOutput->start();
+    
     while (mRunning) {
         if (mPaused) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
             continue;
         }
 
-        auto audioFrame = mAudioFrameQueue->pop();
-        if (audioFrame) {
-            if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
-                auto processedFrame = mAudioProcessor->processAudioFrame(*audioFrame);
-                if (processedFrame) {
-                    mAudioOutput->enqueueAudioFrame(*processedFrame);
+        auto frameHandle = mAudioFrameQueue->pop();
+        if (frameHandle) {
+            // 使用AudioProcessor将FrameHandle转换为AudioFrame
+            auto audioFrame = mAudioProcessor->processFrameHandle(*frameHandle);
+            if (audioFrame) {
+                if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
+                    // 已经在processFrameHandle中处理了播放倍率
+                    mAudioOutput->enqueueAudioFrame(*audioFrame);
+                } else {
+                    int wanted_samples = synchronizeAudio(audioFrame);
+                    if (wanted_samples != audioFrame->mNbSamples) {
+                        std::cerr<<"wanted_samples: "<<wanted_samples<<", orignal samples: " << audioFrame->mNbSamples <<std::endl;
+                        auto processedFrame = mAudioProcessor->resampleToWantedSamples(*audioFrame, wanted_samples);
+                        if (processedFrame) {
+                            audioFrame = std::move(processedFrame);
+                        }
+                        mAudioOutput->enqueueAudioFrame(*audioFrame);
+                    } else {
+                        mAudioOutput->enqueueAudioFrame(*audioFrame);
+                    }
                 }
-            } else {
-                mAudioOutput->enqueueAudioFrame(*audioFrame);
             }
-//            syncClockIfNeeded(audioFrame->mPts);
         } else {
             av_usleep(static_cast<unsigned int>(1 * 1000));
         }
     }
     mAudioOutput->stop();
+}
+
+int Player::synchronizeAudio(std::shared_ptr<AudioFrame> frame) {
+    const int avgWindowSize = 20;
+    const double audioDiffAvgCoef = 0.95;
+    const double diffThreshold = 0.05; // 50ms
+    const int maxAdjustPercent = 5;
+
+    static double audioDiffCum = 0;
+    static int audioDiffCount = 0;
+    int nb_samples = frame->mNbSamples;
+    int wanted_samples = nb_samples;
+    
+    double diff = mSyncManager->computeAudioFrameDelay(frame->mPts / 1000.0);
+    std::cerr << "audio diff: " << diff << std::endl;
+    
+    if (!std::isnan(diff) && fabs(diff) < 10) {
+        audioDiffCum = diff + audioDiffAvgCoef * audioDiffCum;
+        
+        if (audioDiffCount < avgWindowSize) {
+            audioDiffCount++;
+        } else {
+            double avgDiff = audioDiffCum * (1.0 - audioDiffAvgCoef);
+            if (fabs(avgDiff) > diffThreshold) {
+                int sampleRate = frame->mSampleRate;
+                // 修复：音频领先时增加采样数来减慢播放，滞后时减少采样数来加快播放
+                wanted_samples = nb_samples + static_cast<int>(avgDiff * sampleRate);
+                int min_samples = nb_samples * (100 - maxAdjustPercent) / 100;
+                int max_samples = nb_samples * (100 + maxAdjustPercent) / 100;
+                wanted_samples = std::clamp(wanted_samples, min_samples, max_samples);
+                
+                std::cerr << "[audioSync] avgDiff=" << avgDiff
+                << ", wanted_samples=" << wanted_samples
+                << ", original=" << nb_samples << std::endl;
+            }
+        }
+    } else {
+        audioDiffCount = 0;
+        audioDiffCum = 0;
+    }
+    
+    return wanted_samples;
 }
 
 void Player::videoOutputThread() {

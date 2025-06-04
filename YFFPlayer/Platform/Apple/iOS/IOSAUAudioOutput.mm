@@ -169,7 +169,7 @@ bool IOSAUAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
     std::unique_lock<std::mutex> lock(mMutex);
     mCond.wait(lock, [this]() { return mFrameQueue.size() < 50 || !mIsRunning; });
     if (!mIsRunning) return false;
-    mFrameQueue.push_back(std::make_shared<yffplayer::AudioFrame>(frame));
+    mFrameQueue.push_back(std::make_shared<yffplayer::AudioFrame>(frame.mFrameHandle));
     mCond.notify_one();
     return true;
 }

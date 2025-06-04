@@ -4,16 +4,19 @@
 #include <thread>
 
 #include "AudioDecoder.h"
+#include "AudioFrame.h"
 #include "AudioOutput.h"
+#include "AudioProcessor.h"
 #include "Demuxer.h"
 #include "DemuxerCallback.h"
+#include "FrameHandle.h"
 #include "FrameQueue.h"
 #include "MediaInfo.h"
 #include "PacketQueue.h"
 #include "PlayerCallback.h"
-#include "SonicAudioProcessor.h"
 #include "SyncManager.h"
 #include "VideoDecoder.h"
+#include "VideoFrame.h"
 #include "VideoOutput.h"
 
 namespace yffplayer {
@@ -50,12 +53,13 @@ private:
     void videoOutputThread();
     void notifyProgressChanged();
     void syncClockIfNeeded(int64_t pts);
+    int synchronizeAudio(std::shared_ptr<AudioFrame> frame);
 
     std::unique_ptr<SyncManager> mSyncManager;
     std::unique_ptr<Demuxer> mDemuxer;
     std::shared_ptr<PacketQueue> mAudioPacketQueue;
     std::shared_ptr<PacketQueue> mVideoPacketQueue;
-    std::shared_ptr<FrameQueue<AudioFrame>> mAudioFrameQueue;
+    std::shared_ptr<FrameQueue<FrameHandle>> mAudioFrameQueue;
     std::shared_ptr<FrameQueue<VideoFrame>> mVideoFrameQueue;
     std::unique_ptr<AudioDecoder> mAudioDecoder;
     std::unique_ptr<VideoDecoder> mVideoDecoder;
@@ -71,6 +75,13 @@ private:
     std::atomic<float> mPlaybackRate{1.0f};  // 播放倍率
     std::atomic<bool> mRequiresSyncClock{true};   // 标记是否需要漂移同步
     std::shared_ptr<PlayerCallback> mCallback;
-    std::unique_ptr<SonicAudioProcessor> mAudioProcessor;
+    std::unique_ptr<AudioProcessor> mAudioProcessor;
+    
+    double mAudioDiffCum = 0;
+    int mAudioDiffAvgCount = 0;
+    const double mAudioDiffAvgCoef = 0.95;
+    const double mAudioDiffThreshold = 0.01; // 可调
+    const int SAMPLE_CORRECTION_PERCENT_MAX = 10;
+    const int AUDIO_DIFF_AVG_NB = 20;
 };
 }  // namespace yffplayer

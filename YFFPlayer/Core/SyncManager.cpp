@@ -46,7 +46,6 @@ void SyncManager::updateTime(double pts) {
     if (mType == SyncType::Audio) {
         return;
     }
-//    mClock->set(pts, 0);
     mClock->update(pts);
 }
 
@@ -55,7 +54,6 @@ void SyncManager::updateClock(double pts) {
         return;
     }
     mClock->set(pts, 0);
-//    mClock->update(pts);
 }
 
 void SyncManager::updateAudioTime(double pts, double duration) {
@@ -72,15 +70,12 @@ double SyncManager::computeAudioFrameDelay(double pts) {
         return 0;
     }
     double time = getClock();
-    double delay = pts - time;
-    std::cerr << "audio current time: " << time - mAudioClock << ", pts: " << pts << ", delay: " << delay << std::endl;
-    return delay / mClock -> getSpeed();
+    double delay = mAudioClock - time;
+    std::cerr << "audio clock: " << mAudioClock << ", master clock: " << time << ", delay: " << delay << std::endl;
+    return delay;
 }
 
 double SyncManager::computeVideoFrameDelay(double pts) {
-    if (pts - mAudioClock < 0.05) {
-        updateClock(mAudioClock);
-    }
     double time = getClock();
     double delay = (pts - time) / mClock -> getSpeed();
 

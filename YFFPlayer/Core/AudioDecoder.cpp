@@ -46,35 +46,7 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
 
-    // ✅ 目标布局（44100Hz, 2 channels, S16）
-    AVChannelLayout outLayout;
-    av_channel_layout_default(&outLayout, 2);
-
-    // ✅ 确保输入布局是有效的，否则 fallback 到默认
-    if (!av_channel_layout_check(&mCodecCtx->ch_layout)) {
-        av_channel_layout_default(&mCodecCtx->ch_layout, mCodecCtx->ch_layout.nb_channels);
-    }
-
-    mSwrCtx = swr_alloc();
-
-    if (!mSwrCtx) {
-        std::cerr << "Failed to allocate SwrContext" << std::endl;
-        return false;
-    }
-
-    if (swr_alloc_set_opts2(&mSwrCtx, &outLayout, AV_SAMPLE_FMT_S16, 44100, &mCodecCtx->ch_layout,
-                            mCodecCtx->sample_fmt, mCodecCtx->sample_rate, 0, nullptr) < 0) {
-        std::cerr << "swr_alloc_set_opts2 failed" << std::endl;
-        return false;
-    }
-
-    if (swr_init(mSwrCtx) < 0) {
-        std::cerr << "Failed to initialize SwrContext" << std::endl;
-        return false;
-    }
-
-    // 注意 outLayout 是栈上临时变量，拷贝后记得释放
-    av_channel_layout_uninit(&outLayout);
+    // 移除重采样逻辑，decoder只负责解码
 
     return true;
 }
@@ -95,10 +67,6 @@ void AudioDecoder::stop() {
     if (mCodecCtx && avcodec_is_open(mCodecCtx)) {
         avcodec_free_context(&mCodecCtx);
         mCodecCtx = nullptr;
-    }
-    if (mSwrCtx) {
-        swr_free(&mSwrCtx);
-        mSwrCtx = nullptr;
     }
 }
 
@@ -162,33 +130,28 @@ void AudioDecoder::decodeLoop() {
         while (true) {
             ret = avcodec_receive_frame(mCodecCtx, frame);
             if (ret == 0) {
-                // 计算重采样输出大小
-                int outSamples = av_rescale_rnd(
-                    swr_get_delay(mSwrCtx, mCodecCtx->sample_rate) + frame->nb_samples, 44100,
-                    mCodecCtx->sample_rate, AV_ROUND_UP);
-                int outChannels = 2;
-                int bytesPerSample = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-                int outBufferSize = outSamples * outChannels * bytesPerSample;
-                std::vector<uint8_t> buffer(outBufferSize);
-                uint8_t* out[] = {buffer.data()};
-
-                // 重采样
-                int samples = swr_convert(mSwrCtx, out, outSamples, (const uint8_t**)frame->data,
-                                          frame->nb_samples);
-                if (samples < 0) {
-                    std::cerr << "swr_convert failed: " << samples << std::endl;
+                // 创建新的AVFrame副本，避免被覆盖
+                AVFrame* frameClone = av_frame_alloc();
+                if (!frameClone) {
+                    std::cerr << "Failed to allocate frame clone" << std::endl;
                     continue;
                 }
-
-                // 检查时间戳
-                int64_t pts =
-                    (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
-                pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-                int64_t dur = samples * 1000 / 44100;
-
-                // 推送到 FrameQueue
-                mFrameQueue->push(
-                    std::make_shared<AudioFrame>(pts, dur, 44100, 2, samples, std::move(buffer)));
+                
+                if (av_frame_ref(frameClone, frame) < 0) {
+                    std::cerr << "Failed to reference frame" << std::endl;
+                    av_frame_free(&frameClone);
+                    continue;
+                }
+                
+                // 转换时间戳为毫秒
+                if (frameClone->pts != AV_NOPTS_VALUE) {
+                    frameClone->pts = static_cast<int64_t>(frameClone->pts * av_q2d(mTimeBase) * 1000);
+                } else if (frameClone->best_effort_timestamp != AV_NOPTS_VALUE) {
+                    frameClone->pts = static_cast<int64_t>(frameClone->best_effort_timestamp * av_q2d(mTimeBase) * 1000);
+                }
+                
+                // 直接使用AVFrame创建FrameHandle
+                mFrameQueue->push(std::make_shared<FrameHandle>(frameClone));
             } else if (ret == AVERROR(EAGAIN)) {
                 break;  // 需要更多输入
             } else if (ret == AVERROR_EOF) {

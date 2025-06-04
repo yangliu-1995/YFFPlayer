@@ -4,6 +4,7 @@
 
 #include "AudioFrame.h"
 #include "Decoder.h"
+#include "FrameHandle.h"
 #include "FrameQueue.h"
 #include "PacketQueue.h"
 
@@ -11,7 +12,6 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
 #include <libavutil/time.h>
-#include <libswresample/swresample.h>
 }
 
 namespace yffplayer {
@@ -19,7 +19,7 @@ namespace yffplayer {
 class AudioDecoder : public Decoder {
 public:
     AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                 std::shared_ptr<FrameQueue<AudioFrame>> frameQueue);
+                 std::shared_ptr<FrameQueue<FrameHandle>> frameQueue);
     ~AudioDecoder() override;
 
     bool open(AVCodecParameters* codecParams, AVRational timeBase) override;
@@ -31,9 +31,8 @@ public:
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;
-    std::shared_ptr<FrameQueue<AudioFrame>> mFrameQueue;
+    std::shared_ptr<FrameQueue<FrameHandle>> mFrameQueue;
     AVCodecContext* mCodecCtx = nullptr;
-    SwrContext* mSwrCtx = nullptr;
     AVRational mTimeBase;
     std::atomic<bool> mPaused{false};
     std::mutex mMutex;

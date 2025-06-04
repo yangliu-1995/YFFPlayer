@@ -15,6 +15,7 @@ struct AudioFrame {
 
     AudioFrame() = default;
 
+    // 构造函数
     AudioFrame(int64_t pts, int64_t duration, int sampleRate, int channels, int nbSamples,
                std::vector<uint8_t>&& data)
         : mPts(pts),
