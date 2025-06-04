@@ -79,7 +79,7 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const std::sh
     if (!swrContext) {
         return nullptr;
     }
-    auto audioFrame = reSampleAVFrame(*frame, frame->nb_samples);
+    auto audioFrame = reSampleAVFrame(*frame);
     if (std::abs(mCurrentRate - 1.0f) < 0.01f) {
         return audioFrame;
     }
@@ -110,10 +110,10 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const std::sh
     return outputFrame;
 }
 
-std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame, int wantedSamples) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame) {
     int inSampleRate = frame.sample_rate;
     int outSampleRate = 44100; // 固定输出采样率 44100 Hz
-    int channels = 2; // 固定输出为 2 通道（立体声）
+    int outChannels = 2; // 固定输出为 2 通道（立体声）
     AVSampleFormat sampleFmt = AV_SAMPLE_FMT_S16; // 固定输出为 16-bit PCM
 
     SwrContext* swrContext = mResampleContext->getSwrContext();
@@ -125,13 +125,11 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
     int inChannels = frame.ch_layout.nb_channels;
 
     // 判断是否需要直接拷贝（样本数相同且格式一致）
-    if (inSampleRate == outSampleRate &&
-        sampleFmt == frame.format &&
-        inChannels == channels) {
+    if (inSampleRate == outSampleRate && sampleFmt == frame.format && inChannels == outChannels) {
         // 直接拷贝原始数据
         int bufferSize = av_samples_get_buffer_size(
             nullptr,
-            channels,
+            outChannels,
             frame.nb_samples,
             sampleFmt,
             0
@@ -150,78 +148,36 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
             frame.pts,
             duration,
             outSampleRate,
-            channels,
+            outChannels,
             frame.nb_samples,
             std::move(audioBuffer)
         );
     }
 
-    uint8_t** outData = nullptr;
-    int outLinesize = 0;
-    if (av_samples_alloc_array_and_samples(
-            &outData, &outLinesize,
-            channels,
-            wantedSamples, // 分配足够的空间
-            sampleFmt,
-            0) < 0) {
-        return nullptr;
+    int outSamples = (int)av_rescale_rnd(swr_get_delay(swrContext, mSampleRate) + frame.nb_samples, outSampleRate, mSampleRate, AV_ROUND_UP);
+
+    int bytesPerSample = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
+    int outBufferSize = outSamples * outChannels * bytesPerSample;
+    std::vector<uint8_t> buffer(outBufferSize);
+    uint8_t* out[] = {buffer.data()};
+
+    int samples = swr_convert(swrContext, out, outSamples, (const uint8_t**)frame.data, frame.nb_samples);
+    if (samples < 0) {
+        std::cerr << "swr_convert failed: " << samples << std::endl;
     }
 
-    // 3. 执行重采样
-    int outSamples = swr_convert(
-        swrContext,
-        outData, wantedSamples,
-        const_cast<const uint8_t**>(frame.extended_data),
-        frame.nb_samples
-    );
+    int64_t pts = (frame.pts == AV_NOPTS_VALUE) ? frame.best_effort_timestamp : frame.pts;
 
-    if (outSamples <= 0) {
-        av_freep(&outData[0]);
-        av_freep(&outData);
-        return nullptr;
-    }
-
-    // 4. 拷贝实际输出的样本数据
-    int outBufferSize = av_samples_get_buffer_size(
-        nullptr,
-        channels,
-        outSamples,
-        sampleFmt,
-        0
-    );
-
-    std::vector<uint8_t> audioBuffer(outBufferSize);
-    memcpy(audioBuffer.data(), outData[0], outBufferSize);
-
-    av_freep(&outData[0]);
-    av_freep(&outData);
-
-    // 5. 计算 duration
     int64_t duration = av_rescale_q(outSamples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000.f;
 
     return std::make_unique<AudioFrame>(
-        frame.pts,
+        pts,
         duration,
         outSampleRate,
-        channels,
+        outChannels,
         outSamples,
-        std::move(audioBuffer)
+        std::move(buffer)
     );
-}
-
-int AudioFrameProcessor::calculateWantedSamples(int nbSamples, double delay, int sampleRate) {
-    // 计算样本数调整量
-    int sampleDiff = (int)(delay * kTargetSampleRate);
-
-    // 计算目标样本数
-    int wantedNbSamples = nbSamples + sampleDiff;
-
-    // 限制调整幅度 (±10%)
-    int minNbSamples = nbSamples * 90 / 100;
-    int maxNbSamples = nbSamples * 110 / 100;
-    wantedNbSamples = av_clip(wantedNbSamples, minNbSamples, maxNbSamples);
-
-    return wantedNbSamples;
 }
 
 void AudioFrameProcessor::flush() {

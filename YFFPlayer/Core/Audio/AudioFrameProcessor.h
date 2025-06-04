@@ -54,8 +54,7 @@ private:
     void floatToShort(const float* input, short* output, size_t samples);
     void shortToFloat(const short* input, float* output, size_t samples);
 
-    int calculateWantedSamples(int nbSamples, double delay, int sampleRate);
-    std::unique_ptr<AudioFrame> reSampleAVFrame(const AVFrame &frame, int wantedSamples);
+    std::unique_ptr<AudioFrame> reSampleAVFrame(const AVFrame &frame);
 };
 
 }  // namespace yffplayer
