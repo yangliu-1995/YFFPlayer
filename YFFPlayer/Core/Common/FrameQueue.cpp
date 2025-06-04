@@ -17,7 +17,7 @@ void FrameQueue<T>::push(std::shared_ptr<T> frame) {
     ++mSize;
 
     lock.unlock();
-    mCondEmpty.notify_one();
+    mCondEmpty.notify_all();
 }
 
 template <typename T>
@@ -31,7 +31,7 @@ std::shared_ptr<T> FrameQueue<T>::pop() {
     --mSize;
 
     lock.unlock();
-    mCondFull.notify_one();
+    mCondFull.notify_all();
     return frame;
 }
 
@@ -64,6 +64,12 @@ void FrameQueue<T>::flush() {
     abort();
     clear();
     start();
+}
+
+template <typename T>
+void FrameQueue<T>::wait_for_frames(size_t min_frames) {
+    std::unique_lock<std::mutex> lock(mMutex);
+    mCondEmpty.wait(lock, [this, min_frames]() { return mSize >= min_frames || mAborted.load(); });
 }
 
 template <typename T>

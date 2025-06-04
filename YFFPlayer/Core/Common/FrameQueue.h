@@ -21,7 +21,8 @@ public:
     void abort();  // 中断阻塞操作
     void start();  // 恢复阻塞
     void flush();  // 等价于 abort + clear + start
-
+    void wait_for_frames(size_t min_frames);
+    
     size_t size() const;
 
 private:

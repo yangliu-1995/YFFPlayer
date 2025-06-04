@@ -46,7 +46,8 @@ void SyncManager::updateTime(double pts) {
     if (mType == SyncType::Audio) {
         return;
     }
-    mClock->update(pts);
+//    mClock->update(pts);
+    mClock->set(pts, 0);
 }
 
 void SyncManager::updateClock(double pts) {
