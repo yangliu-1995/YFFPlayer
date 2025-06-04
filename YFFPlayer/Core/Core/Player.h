@@ -6,7 +6,7 @@
 #include "AudioDecoder.h"
 #include "AudioFrame.h"
 #include "AudioOutput.h"
-#include "AudioProcessor.h"
+#include "AudioFrameProcessor.h"
 #include "Demuxer.h"
 #include "DemuxerCallback.h"
 #include "FrameHandle.h"
@@ -75,7 +75,7 @@ private:
     std::atomic<float> mPlaybackRate{1.0f};  // 播放倍率
     std::atomic<bool> mRequiresSyncClock{true};   // 标记是否需要漂移同步
     std::shared_ptr<PlayerCallback> mCallback;
-    std::unique_ptr<AudioProcessor> mAudioProcessor;
+    std::unique_ptr<AudioFrameProcessor> mAudioProcessor;
     
     double mAudioDiffCum = 0;
     int mAudioDiffAvgCount = 0;

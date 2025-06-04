@@ -21,10 +21,10 @@ extern "C" {
 
 namespace yffplayer {
 
-class AudioProcessor {
+class AudioFrameProcessor {
 public:
-    AudioProcessor();
-    ~AudioProcessor();
+    AudioFrameProcessor();
+    ~AudioFrameProcessor();
 
     bool initialize(int sampleRate, int channels);
     void setPlaybackRate(float rate);

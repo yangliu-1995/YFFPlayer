@@ -26,7 +26,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
       mAudioFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(100)),
       mVideoFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(50)),
-      mAudioProcessor(std::make_unique<AudioProcessor>()) {
+      mAudioProcessor(std::make_unique<AudioFrameProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
 //    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }

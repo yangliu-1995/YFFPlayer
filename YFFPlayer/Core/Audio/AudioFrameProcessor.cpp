@@ -1,4 +1,4 @@
-#include "AudioProcessor.h"
+#include "AudioFrameProcessor.h"
 
 #include <algorithm>
 #include <cstring>
@@ -11,7 +11,7 @@ extern "C" {
 
 namespace yffplayer {
 
-AudioProcessor::AudioProcessor()
+AudioFrameProcessor::AudioFrameProcessor()
     : mSonicStream(nullptr),
       mSampleRate(0),
       mChannels(0),
@@ -20,7 +20,7 @@ AudioProcessor::AudioProcessor()
       mSwrContext(nullptr),
       mSwrInitialized(false) {}
 
-AudioProcessor::~AudioProcessor() {
+AudioFrameProcessor::~AudioFrameProcessor() {
     if (mSonicStream) {
         sonicDestroyStream(mSonicStream);
         mSonicStream = nullptr;
@@ -32,7 +32,7 @@ AudioProcessor::~AudioProcessor() {
     }
 }
 
-bool AudioProcessor::initialize(int sampleRate, int channels) {
+bool AudioFrameProcessor::initialize(int sampleRate, int channels) {
     if (mSonicStream) {
         sonicDestroyStream(mSonicStream);
     }
@@ -87,7 +87,7 @@ bool AudioProcessor::initialize(int sampleRate, int channels) {
     return true;
 }
 
-void AudioProcessor::setPlaybackRate(float rate) {
+void AudioFrameProcessor::setPlaybackRate(float rate) {
     if (!mInitialized || !mSonicStream) {
         return;
     }
@@ -96,7 +96,7 @@ void AudioProcessor::setPlaybackRate(float rate) {
     sonicSetSpeed(mSonicStream, rate);
 }
 
-void AudioProcessor::setPitch(float pitch) {
+void AudioFrameProcessor::setPitch(float pitch) {
     if (!mInitialized || !mSonicStream) {
         return;
     }
@@ -104,7 +104,7 @@ void AudioProcessor::setPitch(float pitch) {
     sonicSetPitch(mSonicStream, pitch);
 }
 
-std::unique_ptr<AudioFrame> AudioProcessor::processFrameHandle(const FrameHandle& frameHandle) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::processFrameHandle(const FrameHandle& frameHandle) {
     if (!frameHandle.isValid()) {
         return nullptr;
     }
@@ -156,7 +156,7 @@ std::unique_ptr<AudioFrame> AudioProcessor::processFrameHandle(const FrameHandle
     return processAudioFrame(*audioFrame);
 }
 
-std::unique_ptr<AudioFrame> AudioProcessor::processAudioFrame(const AudioFrame& inputFrame) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const AudioFrame& inputFrame) {
     if (!mInitialized || !mSonicStream) {
         return nullptr;
     }
@@ -209,7 +209,7 @@ std::unique_ptr<AudioFrame> AudioProcessor::processAudioFrame(const AudioFrame& 
     return outputFrame;
 }
 
-std::unique_ptr<AudioFrame> AudioProcessor::resampleToWantedSamples(const AudioFrame& inputFrame, int wantedSamples) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::resampleToWantedSamples(const AudioFrame& inputFrame, int wantedSamples) {
     if (!mInitialized || !mSwrInitialized || !mSwrContext) {
         return nullptr;
     }
@@ -282,13 +282,13 @@ std::unique_ptr<AudioFrame> AudioProcessor::resampleToWantedSamples(const AudioF
     return outputFrame;
 }
 
-void AudioProcessor::flush() {
+void AudioFrameProcessor::flush() {
     if (mSonicStream) {
         sonicFlushStream(mSonicStream);
     }
 }
 
-void AudioProcessor::reset() {
+void AudioFrameProcessor::reset() {
     if (mInitialized) {
         flush();
         // 重新初始化
@@ -297,7 +297,7 @@ void AudioProcessor::reset() {
     }
 }
 
-void AudioProcessor::floatToShort(const float* input, short* output, size_t samples) {
+void AudioFrameProcessor::floatToShort(const float* input, short* output, size_t samples) {
     for (size_t i = 0; i < samples; ++i) {
         float sample = input[i];
         // 限制范围到 [-1.0, 1.0]
@@ -307,7 +307,7 @@ void AudioProcessor::floatToShort(const float* input, short* output, size_t samp
     }
 }
 
-void AudioProcessor::shortToFloat(const short* input, float* output, size_t samples) {
+void AudioFrameProcessor::shortToFloat(const short* input, float* output, size_t samples) {
     for (size_t i = 0; i < samples; ++i) {
         output[i] = static_cast<float>(input[i]) / 32767.0f;
     }
