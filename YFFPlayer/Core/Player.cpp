@@ -25,7 +25,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mAudioPacketQueue(std::make_shared<PacketQueue>(100)),
       mVideoPacketQueue(std::make_shared<PacketQueue>(50)),
       mAudioFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(100)),
-      mVideoFrameQueue(std::make_shared<FrameQueue<VideoFrame>>(50)),
+      mVideoFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(50)),
       mAudioProcessor(std::make_unique<AudioProcessor>()) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
 //    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
@@ -311,26 +311,25 @@ void Player::audioOutputThread() {
 
         auto frameHandle = mAudioFrameQueue->pop();
         if (frameHandle) {
-            // 使用AudioProcessor将FrameHandle转换为AudioFrame
             auto audioFrame = mAudioProcessor->processFrameHandle(*frameHandle);
-            if (audioFrame) {
-                if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
-                    // 已经在processFrameHandle中处理了播放倍率
-                    mAudioOutput->enqueueAudioFrame(*audioFrame);
-                } else {
-                    int wanted_samples = synchronizeAudio(audioFrame);
-                    if (wanted_samples != audioFrame->mNbSamples) {
-                        std::cerr<<"wanted_samples: "<<wanted_samples<<", orignal samples: " << audioFrame->mNbSamples <<std::endl;
-                        auto processedFrame = mAudioProcessor->resampleToWantedSamples(*audioFrame, wanted_samples);
-                        if (processedFrame) {
-                            audioFrame = std::move(processedFrame);
-                        }
-                        mAudioOutput->enqueueAudioFrame(*audioFrame);
-                    } else {
-                        mAudioOutput->enqueueAudioFrame(*audioFrame);
-                    }
-                }
-            }
+//            if (audioFrame) {
+//                if (mAudioProcessor && std::abs(mPlaybackRate.load() - 1.0f) > 0.01f) {
+//                    // 已经在processFrameHandle中处理了播放倍率
+//                    mAudioOutput->enqueueAudioFrame(*audioFrame);
+//                } else {
+//                    int wanted_samples = synchronizeAudio(audioFrame);
+//                    if (wanted_samples != audioFrame->mNbSamples) {
+//                        std::cerr<<"wanted_samples: "<<wanted_samples<<", orignal samples: " << audioFrame->mNbSamples <<std::endl;
+//                        auto processedFrame = mAudioProcessor->resampleToWantedSamples(*audioFrame, wanted_samples);
+//                        if (processedFrame) {
+//                            audioFrame = std::move(processedFrame);
+//                        }
+//                        mAudioOutput->enqueueAudioFrame(*audioFrame);
+//                    } else {
+//                        mAudioOutput->enqueueAudioFrame(*audioFrame);
+//                    }
+//                }
+//            }
         } else {
             av_usleep(static_cast<unsigned int>(1 * 1000));
         }
@@ -392,45 +391,45 @@ void Player::videoOutputThread() {
 
         auto videoFrame = mVideoFrameQueue->pop();
         if (videoFrame) {
-            int64_t pts = videoFrame->mPts;
-            float playbackRate = mPlaybackRate.load();
-            if (mMediaInfo.mHasAudio) {
-//                double delay = FFMAX(mSyncManager->computeVideoFrameDelay(pts / 1000.0), 0);
-                double delay = mSyncManager->computeVideoFrameDelay(pts / 1000.0);
-                double sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
-                std::cerr<< "sync_threshold: " << sync_threshold << std::endl;
-                std::cerr << "video delay: " << delay << std::endl;
-                if (fabs(delay) > 0.05) {
-                    mSyncManager->updateClock((pts) / 1000.0);
-                    continue;
-                }
-                if (delay > sync_threshold) {
-                    ++mDroppedVideoFramesCount;
-//                    av_usleep(static_cast<unsigned int>(videoFrame->mDuration * 1000));
-                    mSyncManager->updateClock((pts) / 1000.0);
-                    continue;
-                } else {
-
-                    av_usleep(static_cast<unsigned int>(delay * 1000 * 1000));
-                    mVideoOutput->renderVideoFrame(*videoFrame);
-                    mSyncManager->updateClock((pts) / 1000.0);
-                }
-                std::cerr<<"debug pts video: "<<pts<<"\n"<<std::endl;
-//                syncClockIfNeeded(pts);
-            } else {
-                mVideoOutput->renderVideoFrame(*videoFrame);
-                int64_t frameDuration = videoFrame->mDuration;
-                if (frameDuration <= 0) {
-                    frameDuration = mMediaInfo.mVideoFrameRate;
-                    if (frameDuration <= 0) {
-                        frameDuration = 30;
-                    }
-                }
-                int64_t adjustedDuration = static_cast<int64_t>(frameDuration / playbackRate);
-//                mSyncManager->updateVideoTime(pts / 1000.0);
-                notifyProgressChanged();
-                av_usleep(static_cast<unsigned int>(adjustedDuration * 1000));
-            }
+//            int64_t pts = videoFrame->mPts;
+//            float playbackRate = mPlaybackRate.load();
+//            if (mMediaInfo.mHasAudio) {
+////                double delay = FFMAX(mSyncManager->computeVideoFrameDelay(pts / 1000.0), 0);
+//                double delay = mSyncManager->computeVideoFrameDelay(pts / 1000.0);
+//                double sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
+//                std::cerr<< "sync_threshold: " << sync_threshold << std::endl;
+//                std::cerr << "video delay: " << delay << std::endl;
+//                if (fabs(delay) > 0.05) {
+//                    mSyncManager->updateClock((pts) / 1000.0);
+//                    continue;
+//                }
+//                if (delay > sync_threshold) {
+//                    ++mDroppedVideoFramesCount;
+////                    av_usleep(static_cast<unsigned int>(videoFrame->mDuration * 1000));
+//                    mSyncManager->updateClock((pts) / 1000.0);
+//                    continue;
+//                } else {
+//
+//                    av_usleep(static_cast<unsigned int>(delay * 1000 * 1000));
+//                    mVideoOutput->renderVideoFrame(*videoFrame);
+//                    mSyncManager->updateClock((pts) / 1000.0);
+//                }
+//                std::cerr<<"debug pts video: "<<pts<<"\n"<<std::endl;
+////                syncClockIfNeeded(pts);
+//            } else {
+//                mVideoOutput->renderVideoFrame(*videoFrame);
+//                int64_t frameDuration = videoFrame->mDuration;
+//                if (frameDuration <= 0) {
+//                    frameDuration = mMediaInfo.mVideoFrameRate;
+//                    if (frameDuration <= 0) {
+//                        frameDuration = 30;
+//                    }
+//                }
+//                int64_t adjustedDuration = static_cast<int64_t>(frameDuration / playbackRate);
+////                mSyncManager->updateVideoTime(pts / 1000.0);
+//                notifyProgressChanged();
+//                av_usleep(static_cast<unsigned int>(adjustedDuration * 1000));
+//            }
         }
     }
 }

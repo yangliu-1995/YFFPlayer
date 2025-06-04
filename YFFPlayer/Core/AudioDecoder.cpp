@@ -13,7 +13,7 @@
 namespace yffplayer {
 
 AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                           std::shared_ptr<FrameQueue<AudioFrame>> frameQueue)
+                           std::shared_ptr<FrameQueue<FrameHandle>> frameQueue)
     : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
 
 AudioDecoder::~AudioDecoder() {
@@ -130,27 +130,16 @@ void AudioDecoder::decodeLoop() {
         while (true) {
             ret = avcodec_receive_frame(mCodecCtx, frame);
             if (ret == 0) {
-                // 创建新的AVFrame副本，避免被覆盖
-                AVFrame* frameClone = av_frame_alloc();
+                AVFrame* frameClone = av_frame_clone(frame);
                 if (!frameClone) {
                     std::cerr << "Failed to allocate frame clone" << std::endl;
                     continue;
                 }
-                
-                if (av_frame_ref(frameClone, frame) < 0) {
-                    std::cerr << "Failed to reference frame" << std::endl;
-                    av_frame_free(&frameClone);
-                    continue;
-                }
-                
-                // 转换时间戳为毫秒
                 if (frameClone->pts != AV_NOPTS_VALUE) {
                     frameClone->pts = static_cast<int64_t>(frameClone->pts * av_q2d(mTimeBase) * 1000);
                 } else if (frameClone->best_effort_timestamp != AV_NOPTS_VALUE) {
                     frameClone->pts = static_cast<int64_t>(frameClone->best_effort_timestamp * av_q2d(mTimeBase) * 1000);
                 }
-                
-                // 直接使用AVFrame创建FrameHandle
                 mFrameQueue->push(std::make_shared<FrameHandle>(frameClone));
             } else if (ret == AVERROR(EAGAIN)) {
                 break;  // 需要更多输入

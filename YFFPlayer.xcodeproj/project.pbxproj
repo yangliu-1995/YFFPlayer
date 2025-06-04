@@ -34,6 +34,10 @@
 		0D3F6D2A2DEEDB2200500A07 /* Clock.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D3F6D282DEEDB2000500A07 /* Clock.h */; };
 		0D3F9E5D2DF01C0600500A07 /* AudioFrame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F9E5C2DF01C0600500A07 /* AudioFrame.cpp */; };
 		0D3F9E5E2DF01C0600500A07 /* AudioFrame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F9E5C2DF01C0600500A07 /* AudioFrame.cpp */; };
+		0D3F9E612DF0413E00500A07 /* FrameHandle.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D3F9E5F2DF0413E00500A07 /* FrameHandle.h */; };
+		0D3F9E622DF0413E00500A07 /* FrameHandle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F9E602DF0413E00500A07 /* FrameHandle.cpp */; };
+		0D3F9E632DF0413E00500A07 /* FrameHandle.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D3F9E5F2DF0413E00500A07 /* FrameHandle.h */; };
+		0D3F9E642DF0413E00500A07 /* FrameHandle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F9E602DF0413E00500A07 /* FrameHandle.cpp */; };
 		0D4D51C02DEA23270009BB99 /* AudioDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D50F12DEA23270009BB99 /* AudioDecoder.cpp */; };
 		0D4D51C12DEA23270009BB99 /* Demuxer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D50F62DEA23270009BB99 /* Demuxer.cpp */; };
 		0D4D51C22DEA23270009BB99 /* FrameQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D50FA2DEA23270009BB99 /* FrameQueue.cpp */; };
@@ -118,6 +122,8 @@
 		0D3F6D162DEB56C600500A07 /* YFFPlayer_macOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer_macOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0D3F6D282DEEDB2000500A07 /* Clock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Clock.h; sourceTree = "<group>"; };
 		0D3F9E5C2DF01C0600500A07 /* AudioFrame.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = AudioFrame.cpp; sourceTree = "<group>"; };
+		0D3F9E5F2DF0413E00500A07 /* FrameHandle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FrameHandle.h; sourceTree = "<group>"; };
+		0D3F9E602DF0413E00500A07 /* FrameHandle.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FrameHandle.cpp; sourceTree = "<group>"; };
 		0D4D50F02DEA23270009BB99 /* AudioDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioDecoder.h; sourceTree = "<group>"; };
 		0D4D50F12DEA23270009BB99 /* AudioDecoder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = AudioDecoder.cpp; sourceTree = "<group>"; };
 		0D4D50F22DEA23270009BB99 /* AudioFrame.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioFrame.h; sourceTree = "<group>"; };
@@ -248,19 +254,22 @@
 		0D4D510B2DEA23270009BB99 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				A1148BC32DEF15B6008992FA /* AudioClock.h */,
 				0D4D50F02DEA23270009BB99 /* AudioDecoder.h */,
 				0D4D50F12DEA23270009BB99 /* AudioDecoder.cpp */,
 				0D4D50F22DEA23270009BB99 /* AudioFrame.h */,
 				0D3F9E5C2DF01C0600500A07 /* AudioFrame.cpp */,
 				0D4D50F32DEA23270009BB99 /* AudioOutput.h */,
+				0D4D51022DEA23270009BB99 /* AudioProcessor.h */,
+				0D4D51032DEA23270009BB99 /* AudioProcessor.cpp */,
 				0D3F6D282DEEDB2000500A07 /* Clock.h */,
-				A1148BC32DEF15B6008992FA /* AudioClock.h */,
-				A1148BC62DEF27F9008992FA /* SystemTimeClock.h */,
 				0D4D50F42DEA23270009BB99 /* Decoder.h */,
 				0D4D50F52DEA23270009BB99 /* Demuxer.h */,
 				0D4D50F62DEA23270009BB99 /* Demuxer.cpp */,
 				0D4D50F72DEA23270009BB99 /* DemuxerCallback.h */,
 				0D4D50F82DEA23270009BB99 /* Error.h */,
+				0D3F9E5F2DF0413E00500A07 /* FrameHandle.h */,
+				0D3F9E602DF0413E00500A07 /* FrameHandle.cpp */,
 				0D4D50F92DEA23270009BB99 /* FrameQueue.h */,
 				0D4D50FA2DEA23270009BB99 /* FrameQueue.cpp */,
 				0D4D50FB2DEA23270009BB99 /* MediaInfo.h */,
@@ -270,10 +279,9 @@
 				0D4D50FF2DEA23270009BB99 /* Player.h */,
 				0D4D51002DEA23270009BB99 /* Player.cpp */,
 				0D4D51012DEA23270009BB99 /* PlayerCallback.h */,
-				0D4D51022DEA23270009BB99 /* AudioProcessor.h */,
-				0D4D51032DEA23270009BB99 /* AudioProcessor.cpp */,
 				0D4D51042DEA23270009BB99 /* SyncManager.h */,
 				0D4D51052DEA23270009BB99 /* SyncManager.cpp */,
+				A1148BC62DEF27F9008992FA /* SystemTimeClock.h */,
 				0D4D51062DEA23270009BB99 /* VideoDecoder.h */,
 				0D4D51072DEA23270009BB99 /* VideoDecoder.cpp */,
 				0D4D51082DEA23270009BB99 /* VideoFrame.h */,
@@ -377,6 +385,7 @@
 				0D4D51D42DEA23270009BB99 /* Decoder.h in Headers */,
 				0D4D51D52DEA23270009BB99 /* Demuxer.h in Headers */,
 				0D4D56172DEA34290009BB99 /* SyncManager.h in Headers */,
+				0D3F9E632DF0413E00500A07 /* FrameHandle.h in Headers */,
 				A1148BC42DEF15BB008992FA /* AudioClock.h in Headers */,
 				0D4D51D62DEA23270009BB99 /* DemuxerCallback.h in Headers */,
 				0D4D51D72DEA23270009BB99 /* Error.h in Headers */,
@@ -408,6 +417,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0D3F6D1E2DEB56F900500A07 /* YFFPlayer.h in Headers */,
+				0D3F9E612DF0413E00500A07 /* FrameHandle.h in Headers */,
 				A1148BC52DEF15BB008992FA /* AudioClock.h in Headers */,
 				0D3F6D292DEEDB2200500A07 /* Clock.h in Headers */,
 				A1148BC72DEF2800008992FA /* SystemTimeClock.h in Headers */,
@@ -526,6 +536,7 @@
 				0D4D51C42DEA23270009BB99 /* Player.cpp in Sources */,
 				0D4D51C52DEA23270009BB99 /* AudioProcessor.cpp in Sources */,
 				0D4D51C62DEA23270009BB99 /* SyncManager.cpp in Sources */,
+				0D3F9E642DF0413E00500A07 /* FrameHandle.cpp in Sources */,
 				0D4D51C72DEA23270009BB99 /* VideoDecoder.cpp in Sources */,
 				0D4D51C82DEA23270009BB99 /* VideoFrame.cpp in Sources */,
 				0D4D51C92DEA23270009BB99 /* IOSAUAudioOutput.mm in Sources */,
@@ -552,6 +563,7 @@
 				0D3F6D242DEB572000500A07 /* AudioProcessor.cpp in Sources */,
 				0D3F6D252DEB572000500A07 /* SyncManager.cpp in Sources */,
 				0D3F6D262DEB572000500A07 /* VideoDecoder.cpp in Sources */,
+				0D3F9E622DF0413E00500A07 /* FrameHandle.cpp in Sources */,
 				0D3F6D272DEB572000500A07 /* VideoFrame.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

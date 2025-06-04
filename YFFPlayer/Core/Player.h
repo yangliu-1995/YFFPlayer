@@ -60,7 +60,7 @@ private:
     std::shared_ptr<PacketQueue> mAudioPacketQueue;
     std::shared_ptr<PacketQueue> mVideoPacketQueue;
     std::shared_ptr<FrameQueue<FrameHandle>> mAudioFrameQueue;
-    std::shared_ptr<FrameQueue<VideoFrame>> mVideoFrameQueue;
+    std::shared_ptr<FrameQueue<FrameHandle>> mVideoFrameQueue;
     std::unique_ptr<AudioDecoder> mAudioDecoder;
     std::unique_ptr<VideoDecoder> mVideoDecoder;
     std::shared_ptr<AudioOutput> mAudioOutput;

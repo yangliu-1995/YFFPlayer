@@ -5,7 +5,7 @@
 #include "Decoder.h"
 #include "FrameQueue.h"
 #include "PacketQueue.h"
-#include "VideoFrame.h"
+#include "FrameHandle.h"
 
 extern "C" {
 #include <libavutil/imgutils.h>
@@ -17,7 +17,7 @@ namespace yffplayer {
 class VideoDecoder : public Decoder {
 public:
     VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                 std::shared_ptr<FrameQueue<VideoFrame>> frameQueue);
+                 std::shared_ptr<FrameQueue<FrameHandle>> frameQueue);
     ~VideoDecoder() override;
 
     bool open(AVCodecParameters* codecParams, AVRational timeBase) override;
@@ -29,7 +29,7 @@ public:
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;
-    std::shared_ptr<FrameQueue<VideoFrame>> mFrameQueue;
+    std::shared_ptr<FrameQueue<FrameHandle>> mFrameQueue;
     AVCodecContext* mCodecCtx = nullptr;
     SwsContext* mSwsCtx = nullptr;
     AVPixelFormat mTargetFormat = AV_PIX_FMT_RGB24;

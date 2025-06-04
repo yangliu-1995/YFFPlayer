@@ -1,8 +1,6 @@
-// FrameQueue.cpp（建议你使用 .tpp 或全头文件实现，见下）
 #include "FrameQueue.h"
 
-#include "AudioFrame.h"
-#include "VideoFrame.h"
+#include "FrameHandle.h"
 
 namespace yffplayer {
 
@@ -75,7 +73,6 @@ size_t FrameQueue<T>::size() const {
 }
 
 // 显式实例化
-template class FrameQueue<AudioFrame>;
-template class FrameQueue<VideoFrame>;
+template class FrameQueue<FrameHandle>;
 
 }  // namespace yffplayer

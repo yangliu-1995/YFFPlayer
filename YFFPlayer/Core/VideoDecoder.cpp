@@ -26,7 +26,7 @@ static enum AVPixelFormat CodecContextGetFormat(struct AVCodecContext* s,
 }
 
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
-                           std::shared_ptr<FrameQueue<VideoFrame>> frameQueue)
+                           std::shared_ptr<FrameQueue<FrameHandle>> frameQueue)
     : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
 
 VideoDecoder::~VideoDecoder() {
@@ -200,13 +200,13 @@ void VideoDecoder::decodeLoop() {
 
                 rgbFrame->pts = pts;
                 rgbFrame->duration = dur;
-                mFrameQueue->push(std::make_shared<VideoFrame>(rgbFrame));
+                mFrameQueue->push(std::make_shared<FrameHandle>(rgbFrame));
             } else {
                 AVFrame* clonedFrame = av_frame_clone(frame);
                 if (clonedFrame) {
                     clonedFrame->pts = pts;
                     clonedFrame->duration = dur;
-                    auto videoFrame = std::make_shared<VideoFrame>(clonedFrame);
+                    auto videoFrame = std::make_shared<FrameHandle>(clonedFrame);
                     mFrameQueue->push(videoFrame);
                 }
             }
