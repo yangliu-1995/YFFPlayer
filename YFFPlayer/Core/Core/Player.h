@@ -5,8 +5,8 @@
 
 #include "AudioDecoder.h"
 #include "AudioFrame.h"
-#include "AudioOutput.h"
 #include "AudioFrameProcessor.h"
+#include "AudioOutput.h"
 #include "Demuxer.h"
 #include "DemuxerCallback.h"
 #include "FrameHandle.h"
@@ -17,8 +17,8 @@
 #include "SyncManager.h"
 #include "VideoDecoder.h"
 #include "VideoFrame.h"
-#include "VideoOutput.h"
 #include "VideoFrameProcessor.h"
+#include "VideoOutput.h"
 
 namespace yffplayer {
 class Player : public DemuxerCallback, public std::enable_shared_from_this<Player> {
@@ -72,14 +72,14 @@ private:
     std::atomic<bool> mRunning{false};
     std::atomic<bool> mPaused{false};
     std::atomic<int> mDroppedVideoFramesCount{0};
-    std::atomic<float> mPlaybackRate{1.0f};  // 播放倍率
-    std::atomic<bool> mRequiresSyncClock{true};   // 标记是否需要漂移同步
+    std::atomic<float> mPlaybackRate{1.0f};      // 播放倍率
+    std::atomic<bool> mRequiresSyncClock{true};  // 标记是否需要漂移同步
     std::shared_ptr<PlayerCallback> mCallback;
     std::unique_ptr<AudioFrameProcessor> mAudioProcessor;
     std::unique_ptr<VideoFrameProcessor> mVideoProcessor;
 
     double mFrameTimer{0};
-    double mLastVideoPts{0}; // 上一帧视频的PTS
-    std::atomic<float> mAudioPlaybackRateDelt {0.0f};
+    double mLastVideoPts{0};  // 上一帧视频的PTS
+    std::atomic<float> mAudioPlaybackRateDelt{0.0f};
 };
 }  // namespace yffplayer

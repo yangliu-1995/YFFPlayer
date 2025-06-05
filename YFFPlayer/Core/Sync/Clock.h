@@ -10,8 +10,8 @@ extern "C" {
 namespace yffplayer {
 class Clock {
 public:
-    void init() {};
-    
+    void init(){};
+
     double get() {
         if (mPaused) {
             return mPts;
@@ -28,7 +28,7 @@ public:
     };
 
     void setAt(double pts, double time) {
-        mPts=pts;
+        mPts = pts;
         mLastUpdated = time;
         mPtsDrift = mPts - time;
     };
@@ -38,27 +38,22 @@ public:
         mSpeed = speed;
     };
 
-    double getSpeed() const {
-        return mSpeed;
-    };
+    double getSpeed() const { return mSpeed; };
 
     void setPaused(bool paused) {
         set(get());
         mPaused = paused;
     };
 
-    void update(double time) {
-        mLastUpdated = av_gettime_relative() / 1000000.0;
-    };
+    void update(double time) { mLastUpdated = av_gettime_relative() / 1000000.0; };
 
-    bool isNAN() const {
-        return isnan(mPts);
-    }
+    bool isNAN() const { return isnan(mPts); }
+
 private:
-    std::atomic<double> mPts {NAN};
-    std::atomic<double> mPtsDrift {0.0};    // pts与系统时间的差值（秒）
-    std::atomic<double> mLastUpdated {NAN}; // 上次更新时间（秒）
-    std::atomic<double> mSpeed {1.0};       // 播放速度（1.0为正常速度）
-    std::atomic<bool> mPaused {false};      // 暂停状态
+    std::atomic<double> mPts{NAN};
+    std::atomic<double> mPtsDrift{0.0};     // pts与系统时间的差值（秒）
+    std::atomic<double> mLastUpdated{NAN};  // 上次更新时间（秒）
+    std::atomic<double> mSpeed{1.0};        // 播放速度（1.0为正常速度）
+    std::atomic<bool> mPaused{false};       // 暂停状态
 };
-} // namespace yffplayer
+}  // namespace yffplayer

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Clock.h"
-
 #include <atomic>
 #include <cstdint>
 #include <mutex>
+
+#include "Clock.h"
 
 namespace yffplayer {
 class SyncManager {
@@ -46,12 +46,12 @@ private:
 
     std::shared_ptr<Clock> getMasterClock() const;
 
-    SyncType mType { SyncType::Audio };
+    SyncType mType{SyncType::Audio};
 
     std::shared_ptr<Clock> mAudioClock;
 
     std::shared_ptr<Clock> mExternalClock;
-    
+
     std::shared_ptr<Clock> mVideoClock;
 
     mutable std::mutex mMutex;

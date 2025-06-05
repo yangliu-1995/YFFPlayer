@@ -25,7 +25,7 @@ void VideoFrame::setupDataPointers() {
     if (!mFrameHandle) {
         return;
     }
-    
+
     AVFrame* avFrame = static_cast<AVFrame*>(mFrameHandle);
 
     for (int i = 0; i < NUM_DATA_POINTERS; ++i) {
@@ -53,7 +53,7 @@ void VideoFrame::setupDataPointers() {
             mFormat = PixelFormat::VIDEOTOOLBOX;
             break;
         default:
-            mFormat = PixelFormat::YUV420P; // 默认格式
+            mFormat = PixelFormat::YUV420P;  // 默认格式
             break;
     }
 
@@ -61,13 +61,16 @@ void VideoFrame::setupDataPointers() {
 }
 
 VideoFrame::VideoFrame(VideoFrame&& other) noexcept
-    : mPts(other.mPts), mDuration(other.mDuration),
-      mWidth(other.mWidth), mHeight(other.mHeight),
-      mFormat(other.mFormat), mIsKeyFrame(other.mIsKeyFrame),
+    : mPts(other.mPts),
+      mDuration(other.mDuration),
+      mWidth(other.mWidth),
+      mHeight(other.mHeight),
+      mFormat(other.mFormat),
+      mIsKeyFrame(other.mIsKeyFrame),
       mFrameHandle(other.mFrameHandle) {
-          for (int i = 0; i < NUM_DATA_POINTERS; ++i) {
-              mLinesize[i] = other.mLinesize[i];
-          }
+    for (int i = 0; i < NUM_DATA_POINTERS; ++i) {
+        mLinesize[i] = other.mLinesize[i];
+    }
     std::copy(other.mData, other.mData + 4, mData);
     other.mFrameHandle = nullptr;
     std::fill(other.mData, other.mData + 4, nullptr);
@@ -87,7 +90,7 @@ VideoFrame& VideoFrame::operator=(VideoFrame&& other) noexcept {
         if (mFrameHandle) {
             releaseFrameHandle(mFrameHandle);
         }
-        
+
         // 移动数据
         mPts = other.mPts;
         mDuration = other.mDuration;
@@ -101,15 +104,13 @@ VideoFrame& VideoFrame::operator=(VideoFrame&& other) noexcept {
         }
 
         std::copy(other.mData, other.mData + 4, mData);
-        
+
         // 清空源对象
         other.mFrameHandle = nullptr;
         std::fill(other.mData, other.mData + 4, nullptr);
     }
     return *this;
 }
-
-
 
 // 获取指定平面的数据指针
 uint8_t* VideoFrame::getData(int plane) const {
@@ -128,8 +129,6 @@ int VideoFrame::getLinesize(int plane) const {
 }
 
 // 检查帧是否有效
-bool VideoFrame::isValid() const {
-    return mFrameHandle != nullptr && mWidth > 0 && mHeight > 0;
-}
+bool VideoFrame::isValid() const { return mFrameHandle != nullptr && mWidth > 0 && mHeight > 0; }
 
 }  // namespace yffplayer

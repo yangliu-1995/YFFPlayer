@@ -1,11 +1,11 @@
 #include "Player.h"
 
-#include "AudioResampleContext.h"
-#include "Log.h"
-
 #include <chrono>
 #include <iostream>
 #include <thread>
+
+#include "AudioResampleContext.h"
+#include "Log.h"
 
 #if defined(__APPLE__)
 #include <pthread.h>
@@ -30,7 +30,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mAudioFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(100)),
       mVideoFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(50)) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
-//    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
+    //    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
 }
 
 Player::~Player() { stop(); }
@@ -49,7 +49,9 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         mAudioDecoder->open(audioCodecParams, mMediaInfo.mAudioTimeBase);
         avcodec_parameters_free(&audioCodecParams);
         mAudioProcessor = std::make_unique<AudioFrameProcessor>();
-        if (!mAudioProcessor->initialize(mAudioDecoder->getSampleRate(), mAudioDecoder->getNbChannels(), mAudioDecoder->getFormat())) {
+        if (!mAudioProcessor->initialize(mAudioDecoder->getSampleRate(),
+                                         mAudioDecoder->getNbChannels(),
+                                         mAudioDecoder->getFormat())) {
             return false;
         }
         if (!mAudioOutput->init(48000, 2)) {
@@ -178,7 +180,7 @@ void Player::notifyProgressChanged() {
 
 void Player::syncClockIfNeeded(int64_t pts) {
     if (mRequiresSyncClock.load()) {
-//        mSyncManager->updateTime(pts / 1000.0);
+        //        mSyncManager->updateTime(pts / 1000.0);
         mRequiresSyncClock = false;
     }
 }
@@ -198,7 +200,7 @@ void Player::pause() {
     mDemuxer->pause();
     if (mAudioDecoder) {
         mAudioDecoder->pause();
-        mAudioPacketQueue->abort(); 
+        mAudioPacketQueue->abort();
         mAudioFrameQueue->abort();
     }
     if (mVideoDecoder) {
@@ -291,13 +293,13 @@ void Player::audioOutputThread() {
     if (mMediaInfo.mHasAudio) {
         mAudioFrameQueue->wait_for_frames(3);
     }
-    
+
     mAudioPlaybackRateDelt = 0;
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         int64_t adjustedDuration = duration / (mPlaybackRate + mAudioPlaybackRateDelt);
         mSyncManager->updateAudioTime(pts / 1000.0, adjustedDuration / 1000.0);
         double delay = mSyncManager->computeAudioTargetDelay((pts + adjustedDuration) / 1000.0);
-        LogInfo<<"audio delay: "<<delay<<std::endl;
+        LogInfo << "audio delay: " << delay << std::endl;
 
         double absDelay = fabs(delay);
         double sign = (delay > 0) ? 1.0 : -1.0;
@@ -369,7 +371,7 @@ void Player::videoOutputThread() {
     }
     while (mRunning) {
         if (mFrameTimer <= 0.0) {
-            mFrameTimer = av_gettime_relative() / 1000000.0; // 获取当前时间戳（秒）
+            mFrameTimer = av_gettime_relative() / 1000000.0;  // 获取当前时间戳（秒）
         }
         if (mPaused) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
@@ -388,7 +390,8 @@ void Player::videoOutputThread() {
             double delay = mSyncManager->computeVideoTargetDelay(lastDuration / 1000.0);
             double time = av_gettime_relative() / 1000000.0;
             double sleepTime = delay;
-            LogInfo<<"last duration: "<<lastDuration << ", sleep time: "<<sleepTime<<std::endl;
+            LogInfo << "last duration: " << lastDuration << ", sleep time: " << sleepTime
+                    << std::endl;
             if (time < mFrameTimer + delay) {
                 sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
                 sleepTime = FFMAX(sleepTime, 0.0);
@@ -396,8 +399,7 @@ void Player::videoOutputThread() {
             }
             mVideoOutput->renderVideoFrame(*videoFrame);
             mFrameTimer += delay;
-            if (delay > 0 && time - mFrameTimer> AV_SYNC_THRESHOLD_MAX)
-                mFrameTimer = time;
+            if (delay > 0 && time - mFrameTimer > AV_SYNC_THRESHOLD_MAX) mFrameTimer = time;
             mLastVideoPts = pts;
             mSyncManager->updateVideoTime(pts / 1000.0);
         }

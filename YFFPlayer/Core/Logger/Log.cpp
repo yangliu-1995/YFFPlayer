@@ -1,10 +1,7 @@
 #include "Log.h"
 
 namespace yffplayer {
-LogStream::LogStream(LogLevel level, Logger* logger)
-: mLevel(level)
-, mLogger(logger)
-{}
+LogStream::LogStream(LogLevel level, Logger* logger) : mLevel(level), mLogger(logger) {}
 
 LogStream::~LogStream() {
     if (mLogger) {
@@ -12,11 +9,19 @@ LogStream::~LogStream() {
     } else {
         // 默认输出，带等级前缀
         const char* levelStr = "";
-        switch(mLevel) {
-            case LogLevel::Debug: levelStr = "[DEBUG] "; break;
-            case LogLevel::Info: levelStr = "[INFO] "; break;
-            case LogLevel::Warning: levelStr = "[WARNING] "; break;
-            case LogLevel::Error: levelStr = "[ERROR] "; break;
+        switch (mLevel) {
+            case LogLevel::Debug:
+                levelStr = "[DEBUG] ";
+                break;
+            case LogLevel::Info:
+                levelStr = "[INFO] ";
+                break;
+            case LogLevel::Warning:
+                levelStr = "[WARNING] ";
+                break;
+            case LogLevel::Error:
+                levelStr = "[ERROR] ";
+                break;
         }
         std::cerr << levelStr << mStream.str() << std::flush;
     }
@@ -27,9 +32,7 @@ LogStream& LogStream::operator<<(StreamManipulator manip) {
     return *this;
 }
 
-void LogStream::setLogger(Logger* logger) {
-    mLogger = logger;
-}
+void LogStream::setLogger(Logger* logger) { mLogger = logger; }
 
 // Log
 
@@ -40,4 +43,4 @@ void Log::setLogger(Logger* logger) {
     std::lock_guard<std::mutex> lock(mutex_);
     logger_ = logger;
 }
-} // namespace yffplayer
+}  // namespace yffplayer

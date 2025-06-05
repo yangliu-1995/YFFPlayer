@@ -156,9 +156,12 @@ void VideoDecoder::decodeLoop() {
             }
             AVFrame* clonedFrame = av_frame_alloc();
             av_frame_ref(clonedFrame, frame);
-            int64_t pts = (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
+            int64_t pts =
+                (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
             pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
-            int64_t duration = (frame->duration == AV_NOPTS_VALUE) ? 0 : frame->duration * av_q2d(mTimeBase) * 1000;
+            int64_t duration = (frame->duration == AV_NOPTS_VALUE)
+                                   ? 0
+                                   : frame->duration * av_q2d(mTimeBase) * 1000;
             clonedFrame->pts = pts;
             clonedFrame->duration = duration;
             auto videoFrame = std::make_shared<FrameHandle>(clonedFrame);

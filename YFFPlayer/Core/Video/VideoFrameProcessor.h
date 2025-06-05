@@ -3,8 +3,8 @@
 #include <memory>
 #include <vector>
 
-#include "VideoFrame.h"
 #include "FrameHandle.h"
+#include "VideoFrame.h"
 
 extern "C" {
 #include <libavutil/pixfmt.h>
@@ -12,12 +12,13 @@ extern "C" {
 }
 
 namespace yffplayer {
-class VideoFrameProcessor{
+class VideoFrameProcessor {
 public:
     VideoFrameProcessor() = default;
     ~VideoFrameProcessor();
-    
+
     std::unique_ptr<VideoFrame> processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle);
+
 private:
     SwsContext* mSwsCtx = nullptr;
 };

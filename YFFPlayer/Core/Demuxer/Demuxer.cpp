@@ -35,24 +35,25 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     av_dict_set(&options, "fflags", "nobuffer", 0);
 
     // 设定最大探测时间（单位微秒，1000000 = 1 秒），越小启动越快（但不一定稳定）
-    av_dict_set(&options, "probesize", "32", 0);         // 默认 5MB，可设为更小
-    av_dict_set(&options, "analyzeduration", "100000", 0); // 默认 5 秒，这里设为 0.1 秒
+    av_dict_set(&options, "probesize", "32", 0);            // 默认 5MB，可设为更小
+    av_dict_set(&options, "analyzeduration", "100000", 0);  // 默认 5 秒，这里设为 0.1 秒
 
     // 如果是 RTMP 流，建议加上：
-    av_dict_set(&options, "rtmp_buffer", "100", 0);     // 缓冲时间，单位 ms
-    av_dict_set(&options, "rtmp_live", "live", 0);      // 告诉服务器这是直播
+    av_dict_set(&options, "rtmp_buffer", "100", 0);  // 缓冲时间，单位 ms
+    av_dict_set(&options, "rtmp_live", "live", 0);   // 告诉服务器这是直播
 
     // 更快地丢包处理（实时流更重要）
     av_dict_set(&options, "flush_packets", "1", 0);
 
     // 如果是 TCP 协议（如 HTTP-FLV），可以设置连接超时（单位微秒）
-    av_dict_set(&options, "timeout", "3000000", 0); // 3 秒
-    
+    av_dict_set(&options, "timeout", "3000000", 0);  // 3 秒
+
     int ret = avformat_open_input(&mFormatCtx, url.c_str(), nullptr, nullptr);
     if (ret < 0) {
         LogInfo << "Failed to open input: " << url << "ret: " << ret << "\n";
         if (auto callback = mCallback.lock()) {
-            Error error(ErrorCode::FILE_OPEN_FAILED, "Failed to open input file: " + url + ", error code: " + std::to_string(ret));
+            Error error(ErrorCode::FILE_OPEN_FAILED, "Failed to open input file: " + url +
+                                                         ", error code: " + std::to_string(ret));
             callback->onReadError(error);
         }
         return false;
@@ -62,7 +63,8 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     if (ret < 0) {
         LogInfo << "Failed to find stream info\n";
         if (auto callback = mCallback.lock()) {
-            Error error(ErrorCode::STREAM_INFO_FAILED, "Failed to find stream info, error code: " + std::to_string(ret));
+            Error error(ErrorCode::STREAM_INFO_FAILED,
+                        "Failed to find stream info, error code: " + std::to_string(ret));
             callback->onReadError(error);
         }
         return false;
@@ -83,8 +85,8 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
         }
     }
 
-    if (url.find("rtmp://") == 0 || url.find("rtsp://") == 0 ||
-        url.find("http://") == 0 || url.find("https://") == 0) {
+    if (url.find("rtmp://") == 0 || url.find("rtsp://") == 0 || url.find("http://") == 0 ||
+        url.find("https://") == 0) {
         // 对于网络流，进一步检查是否为直播
         if (mFormatCtx->duration == AV_NOPTS_VALUE) {
             mediaInfo.mIsLiveStream = true;
@@ -126,11 +128,12 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     bool hasStreams = mAudioStreamIndex != -1 || mVideoStreamIndex != -1;
     if (!hasStreams) {
         if (auto callback = mCallback.lock()) {
-            Error error(ErrorCode::NO_STREAMS_FOUND, "No audio or video streams found in the media file");
+            Error error(ErrorCode::NO_STREAMS_FOUND,
+                        "No audio or video streams found in the media file");
             callback->onReadError(error);
         }
     }
-    
+
     return hasStreams;
 }
 
@@ -139,13 +142,13 @@ void Demuxer::start() {
     mStopRequested = false;
     mRunning = true;
     mThread = std::thread(&Demuxer::demuxLoop, this);
-    
+
     if (auto callback = mCallback.lock()) {
         callback->onDemuxStarted();
     }
 }
 
-void Demuxer::pause() { 
+void Demuxer::pause() {
     mPaused = true;
     if (auto callback = mCallback.lock()) {
         callback->onDemuxPaused();
@@ -164,7 +167,7 @@ bool Demuxer::seek(int64_t timestampMs) {
     if (auto callback = mCallback.lock()) {
         callback->onSeekStarted(timestampMs);
     }
-    
+
     std::lock_guard<std::mutex> lock(mMutex);
     mSeeking = true;
 
@@ -173,7 +176,8 @@ bool Demuxer::seek(int64_t timestampMs) {
     if (ret < 0) {
         LogInfo << "av_seek_frame failed: " << ret << std::endl;
         if (auto callback = mCallback.lock()) {
-            Error error(ErrorCode::SEEK_FAILED, "Seek operation failed, error code: " + std::to_string(ret));
+            Error error(ErrorCode::SEEK_FAILED,
+                        "Seek operation failed, error code: " + std::to_string(ret));
             callback->onSeekFailed(timestampMs, error);
         }
         mSeeking = false;
@@ -186,7 +190,7 @@ bool Demuxer::seek(int64_t timestampMs) {
     mVideoQueue->clear();
 
     mSeeking = false;
-    
+
     if (auto callback = mCallback.lock()) {
         callback->onSeekCompleted(timestampMs);
     }
@@ -209,7 +213,7 @@ void Demuxer::stop() {
         mFormatCtx = nullptr;
     }
     mRunning = false;
-    
+
     if (auto callback = mCallback.lock()) {
         callback->onDemuxStopped();
     }
@@ -234,7 +238,7 @@ void Demuxer::demuxLoop() {
     }
 
     int64_t lastProgressTime = 0;
-    const int64_t progressInterval = 1000; // 每秒报告一次进度
+    const int64_t progressInterval = 1000;  // 每秒报告一次进度
 
     while (!mStopRequested) {
         // 暂停逻辑
@@ -262,7 +266,8 @@ void Demuxer::demuxLoop() {
                 }
             } else {
                 if (auto callback = mCallback.lock()) {
-                    Error error(ErrorCode::READ_FRAME_FAILED, "Failed to read frame, error code: " + std::to_string(ret));
+                    Error error(ErrorCode::READ_FRAME_FAILED,
+                                "Failed to read frame, error code: " + std::to_string(ret));
                     callback->onReadError(error);
                 }
             }
@@ -275,13 +280,21 @@ void Demuxer::demuxLoop() {
             if (pkt->pts != AV_NOPTS_VALUE) {
                 int64_t currentTime = 0;
                 if (pkt->stream_index == mVideoStreamIndex && mVideoStreamIndex >= 0) {
-                    currentTime = av_rescale_q(pkt->pts, mFormatCtx->streams[mVideoStreamIndex]->time_base, AV_TIME_BASE_Q) / 1000;
+                    currentTime =
+                        av_rescale_q(pkt->pts, mFormatCtx->streams[mVideoStreamIndex]->time_base,
+                                     AV_TIME_BASE_Q) /
+                        1000;
                 } else if (pkt->stream_index == mAudioStreamIndex && mAudioStreamIndex >= 0) {
-                    currentTime = av_rescale_q(pkt->pts, mFormatCtx->streams[mAudioStreamIndex]->time_base, AV_TIME_BASE_Q) / 1000;
+                    currentTime =
+                        av_rescale_q(pkt->pts, mFormatCtx->streams[mAudioStreamIndex]->time_base,
+                                     AV_TIME_BASE_Q) /
+                        1000;
                 }
-                
+
                 if (currentTime - lastProgressTime >= progressInterval) {
-                    int64_t duration = mFormatCtx->duration != AV_NOPTS_VALUE ? mFormatCtx->duration / (AV_TIME_BASE / 1000) : 0;
+                    int64_t duration = mFormatCtx->duration != AV_NOPTS_VALUE
+                                           ? mFormatCtx->duration / (AV_TIME_BASE / 1000)
+                                           : 0;
                     callback->onDemuxProgress(currentTime, duration);
                     lastProgressTime = currentTime;
                 }

@@ -27,7 +27,7 @@ FrameHandle& FrameHandle::operator=(FrameHandle&& other) noexcept {
         if (mFrame) {
             av_frame_free(&mFrame);
         }
-        
+
         // 移动资源
         mFrame = other.mFrame;
         other.mFrame = nullptr;
