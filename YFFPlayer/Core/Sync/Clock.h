@@ -44,8 +44,6 @@ public:
         mPaused = paused;
     };
 
-    void update(double time) { mLastUpdated = av_gettime_relative() / 1000000.0; };
-
     bool isNAN() const { return isnan(mPts); }
 
 private:

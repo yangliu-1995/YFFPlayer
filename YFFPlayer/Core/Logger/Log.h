@@ -6,15 +6,15 @@
 #include <sstream>
 
 #if defined(_WIN32)
-    #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #else
-    #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
 
-#define LogDebug   yffplayer::Log::Debug(__FILENAME__, __LINE__)
-#define LogInfo    yffplayer::Log::Info(__FILENAME__, __LINE__)
+#define LogDebug yffplayer::Log::Debug(__FILENAME__, __LINE__)
+#define LogInfo yffplayer::Log::Info(__FILENAME__, __LINE__)
 #define LogWarning yffplayer::Log::Warning(__FILENAME__, __LINE__)
-#define LogError   yffplayer::Log::Error(__FILENAME__, __LINE__)
+#define LogError yffplayer::Log::Error(__FILENAME__, __LINE__)
 
 namespace yffplayer {
 enum class LogLevel { Debug, Info, Warning, Error };

@@ -5,7 +5,8 @@ extern "C" {
 }
 
 namespace yffplayer {
-LogStream::LogStream(LogLevel level, const char* file, int line, Logger* logger) : mLevel(level), mFile(file), mLine(line), mLogger(logger) {}
+LogStream::LogStream(LogLevel level, const char* file, int line, Logger* logger)
+    : mLevel(level), mFile(file), mLine(line), mLogger(logger) {}
 
 LogStream::~LogStream() {
     std::ostringstream full;
@@ -19,10 +20,18 @@ LogStream::~LogStream() {
     } else {
         const char* levelStr = "";
         switch (mLevel) {
-            case LogLevel::Debug:   levelStr = "[DEBUG] "; break;
-            case LogLevel::Info:    levelStr = "[INFO] "; break;
-            case LogLevel::Warning: levelStr = "[WARNING] "; break;
-            case LogLevel::Error:   levelStr = "[ERROR] "; break;
+            case LogLevel::Debug:
+                levelStr = "[DEBUG] ";
+                break;
+            case LogLevel::Info:
+                levelStr = "[INFO] ";
+                break;
+            case LogLevel::Warning:
+                levelStr = "[WARNING] ";
+                break;
+            case LogLevel::Error:
+                levelStr = "[ERROR] ";
+                break;
         }
         std::cerr << levelStr << full.str() << std::endl;
     }
@@ -68,10 +77,18 @@ void ffmpegLogCallback(void* ptr, int level, const char* fmt, va_list vl) {
 
     LogLevel logLevel = mapFFmpegLevel(level);
     switch (logLevel) {
-        case LogLevel::Debug:   Log::Debug("", -1) << "[FFmpeg] " << msg; break;
-        case LogLevel::Info:    Log::Info("", -1)    << "[FFmpeg] " << msg; break;
-        case LogLevel::Warning: Log::Warning("", -1) << "[FFmpeg] " << msg; break;
-        case LogLevel::Error:   Log::Error("", -1)   << "[FFmpeg] " << msg; break;
+        case LogLevel::Debug:
+            Log::Debug("", -1) << "[FFmpeg] " << msg;
+            break;
+        case LogLevel::Info:
+            Log::Info("", -1) << "[FFmpeg] " << msg;
+            break;
+        case LogLevel::Warning:
+            Log::Warning("", -1) << "[FFmpeg] " << msg;
+            break;
+        case LogLevel::Error:
+            Log::Error("", -1) << "[FFmpeg] " << msg;
+            break;
     }
 }
 
