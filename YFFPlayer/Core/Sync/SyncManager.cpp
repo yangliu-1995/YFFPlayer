@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "Clock.h"
+#include "Log.h"
 
 extern "C" {
 #include <libavutil/time.h>
@@ -71,12 +72,7 @@ double SyncManager::computeVideoTargetDelay(double delay) {
     double videoTime = mVideoClock->get();
     double masterTime = getClockTime();
     double diff = videoTime - masterTime;
-    std::cerr << "compute video delay, video time: " << videoTime
-                << ", master time:" << masterTime
-                << ", diff: " << diff
-                << ", delay: " << delay
-                << ", fixed delay: " << delay + diff
-                << std::endl;
+    LogInfo << "compute video delay, video time: " << videoTime << ", master time:" << masterTime << ", diff: " << diff << ", delay: " << delay << ", fixed delay: " << delay + diff << std::endl;
     delay += diff;
     return delay;
 }

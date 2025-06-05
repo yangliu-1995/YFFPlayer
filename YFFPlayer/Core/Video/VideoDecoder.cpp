@@ -6,6 +6,7 @@
 #include <pthread.h>
 #endif
 
+#include "Log.h"
 #include "Packet.h"
 
 namespace yffplayer {
@@ -31,7 +32,7 @@ VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
 VideoDecoder::~VideoDecoder() {
     stop();
-    std::cerr << "~VideoDecoder" << std::endl;
+    LogInfo << "~VideoDecoder" << std::endl;
 }
 
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
@@ -39,18 +40,18 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 
     mCodecCtx = avcodec_alloc_context3(nullptr);
     if (!mCodecCtx) {
-        std::cerr << "Failed to allocate video codec context" << std::endl;
+        LogInfo << "Failed to allocate video codec context" << std::endl;
         return false;
     }
 
     if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
-        std::cerr << "Failed to copy codec parameters" << std::endl;
+        LogInfo << "Failed to copy codec parameters" << std::endl;
         return false;
     }
 
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
-        std::cerr << "Video codec not found" << std::endl;
+        LogInfo << "Video codec not found" << std::endl;
         return false;
     }
     if (codecParams->codec_id == AV_CODEC_ID_H264 || codecParams->codec_id == AV_CODEC_ID_HEVC) {
@@ -59,7 +60,7 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     }
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
-        std::cerr << "Failed to open codec" << std::endl;
+        LogInfo << "Failed to open codec" << std::endl;
         return false;
     }
 
@@ -70,7 +71,7 @@ void VideoDecoder::start() {
     mIsRunning = true;
     mPaused = false;
     mDecodeThread = std::thread(&VideoDecoder::decodeLoop, this);
-    std::cerr << "VideoDecoder started" << std::endl;
+    LogInfo << "VideoDecoder started" << std::endl;
 }
 
 void VideoDecoder::stop() {
@@ -124,7 +125,7 @@ void VideoDecoder::decodeLoop() {
 
         auto avPacket = pkt->mPacket;
         if (!avPacket) {
-            std::cerr << "Received empty packet, skipping\n";
+            LogInfo << "Received empty packet, skipping\n";
             continue;
         }
 

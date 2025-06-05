@@ -18,9 +18,6 @@ public:
         } else {
             double time = av_gettime_relative() / 1000000.0;
             double ct = mPtsDrift + time - (time - mLastUpdated) * (1 - mSpeed);
-            if (ct > 1000000.0) {
-                std::cerr << "Clock time is too large, resetting to 0" << std::endl;
-            }
             return ct;
         }
     };

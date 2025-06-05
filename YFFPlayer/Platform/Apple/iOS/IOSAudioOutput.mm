@@ -141,9 +141,6 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
         if (baseTime == 0) {
             baseTime = CFAbsoluteTimeGetCurrent();
         }
-        CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
-        double clock = (frame.mPts + frame.mDuration) / 1000.0;
-        NSLog(@"Delta since base: %.3f seconds，clock: %.3f, delt：%.3f", now - baseTime, clock, clock - (now - baseTime));
         mPlaybackCallback(frame.mPts, frame.mDuration);
     }
 }

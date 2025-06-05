@@ -1,4 +1,3 @@
-// AudioDecoder.cpp
 #include "AudioDecoder.h"
 
 #include <iostream>
@@ -8,6 +7,7 @@
 #include <pthread.h>
 #endif
 
+#include "Log.h"
 #include "Packet.h"
 
 namespace yffplayer {
@@ -18,7 +18,7 @@ AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
 AudioDecoder::~AudioDecoder() {
     stop();
-    std::cerr << "~AudioDecoder" << std::endl;
+    LogInfo << "~AudioDecoder" << std::endl;
 }
 
 bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
@@ -26,23 +26,23 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
-        std::cerr << "Audio codec not found" << std::endl;
+        LogInfo << "Audio codec not found" << std::endl;
         return false;
     }
 
     mCodecCtx = avcodec_alloc_context3(codec);
     if (!mCodecCtx) {
-        std::cerr << "Failed to allocate audio codec context" << std::endl;
+        LogInfo << "Failed to allocate audio codec context" << std::endl;
         return false;
     }
 
     if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
-        std::cerr << "Failed to copy codec parameters" << std::endl;
+        LogInfo << "Failed to copy codec parameters" << std::endl;
         return false;
     }
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
-        std::cerr << "Failed to open audio codec" << std::endl;
+        LogInfo << "Failed to open audio codec" << std::endl;
         return false;
     }
 
@@ -55,7 +55,7 @@ void AudioDecoder::start() {
     mIsRunning = true;
     mPaused = false;
     mDecodeThread = std::thread(&AudioDecoder::decodeLoop, this);
-    std::cerr << "AudioDecoder started" << std::endl;
+    LogInfo << "AudioDecoder started" << std::endl;
 }
 
 void AudioDecoder::stop() {
@@ -111,7 +111,7 @@ void AudioDecoder::decodeLoop() {
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
     if (!packet || !frame) {
-        std::cerr << "Failed to allocate packet or frame" << std::endl;
+        LogInfo << "Failed to allocate packet or frame" << std::endl;
         av_packet_free(&packet);
         av_frame_free(&frame);
         return;
@@ -142,7 +142,7 @@ void AudioDecoder::decodeLoop() {
 
         int ret = avcodec_send_packet(mCodecCtx, avPacket);
         if (ret < 0) {
-            std::cerr << "Failed to send packet: " << av_err2str(ret) << std::endl;
+            LogInfo << "Failed to send packet: " << av_err2str(ret) << std::endl;
             av_packet_unref(avPacket);
             continue;
         }
@@ -154,7 +154,7 @@ void AudioDecoder::decodeLoop() {
                 AVFrame* frameClone = av_frame_alloc();
                 av_frame_ref(frameClone, frame);
                 if (!frameClone) {
-                    std::cerr << "Failed to allocate frame clone" << std::endl;
+                    LogInfo << "Failed to allocate frame clone" << std::endl;
                     continue;
                 }
                 if (frameClone->pts != AV_NOPTS_VALUE) {
@@ -168,7 +168,7 @@ void AudioDecoder::decodeLoop() {
             } else if (ret == AVERROR_EOF) {
                 break;  // 解码结束
             } else {
-                std::cerr << "Failed to receive frame: " << av_err2str(ret) << std::endl;
+                LogInfo << "Failed to receive frame: " << av_err2str(ret) << std::endl;
                 break;
             }
         }
@@ -178,7 +178,7 @@ void AudioDecoder::decodeLoop() {
 
     av_frame_free(&frame);
     av_packet_free(&packet);
-    std::cerr << "AudioDecoder thread ended" << std::endl;
+    LogInfo << "AudioDecoder thread ended" << std::endl;
 }
 
 }  // namespace yffplayer

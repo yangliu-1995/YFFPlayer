@@ -4,6 +4,8 @@
 #include <cstring>
 #include <iostream>
 
+#include "Log.h"
+
 extern "C" {
 #include <libavutil/frame.h>
 #include <libavutil/samplefmt.h>
@@ -36,7 +38,7 @@ bool AudioFrameProcessor::initialize(int sampleRate, int channels, int format) {
 
     mSonicStream = sonicCreateStream(sampleRate, channels);
     if (!mSonicStream) {
-        std::cerr << "Failed to create Sonic stream" << std::endl;
+        LogInfo << "Failed to create Sonic stream" << std::endl;
         return false;
     }
 
@@ -154,7 +156,7 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
     uint8_t* out[] = {buffer.data()};
     int samples = swr_convert(swrContext, out, maxOutSamples, (const uint8_t**)frame.data, frame.nb_samples);
     if (samples < 0) {
-        std::cerr << "swr_convert failed: " << samples << std::endl;
+        LogInfo << "swr_convert failed: " << samples << std::endl;
         return nullptr;
     }
 

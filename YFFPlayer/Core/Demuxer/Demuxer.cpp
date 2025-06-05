@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "Log.h"
 #include "MediaInfo.h"
 #include "Packet.h"
 
@@ -49,7 +50,7 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     
     int ret = avformat_open_input(&mFormatCtx, url.c_str(), nullptr, nullptr);
     if (ret < 0) {
-        std::cerr << "Failed to open input: " << url << "ret: " << ret << "\n";
+        LogInfo << "Failed to open input: " << url << "ret: " << ret << "\n";
         if (auto callback = mCallback.lock()) {
             Error error(ErrorCode::FILE_OPEN_FAILED, "Failed to open input file: " + url + ", error code: " + std::to_string(ret));
             callback->onReadError(error);
@@ -59,7 +60,7 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
 
     ret = avformat_find_stream_info(mFormatCtx, nullptr);
     if (ret < 0) {
-        std::cerr << "Failed to find stream info\n";
+        LogInfo << "Failed to find stream info\n";
         if (auto callback = mCallback.lock()) {
             Error error(ErrorCode::STREAM_INFO_FAILED, "Failed to find stream info, error code: " + std::to_string(ret));
             callback->onReadError(error);
@@ -170,7 +171,7 @@ bool Demuxer::seek(int64_t timestampMs) {
     int64_t seekTarget = static_cast<int64_t>(timestampMs * AV_TIME_BASE / 1000);
     int ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, seekTarget, INT64_MAX, 0);
     if (ret < 0) {
-        std::cerr << "av_seek_frame failed: " << ret << std::endl;
+        LogInfo << "av_seek_frame failed: " << ret << std::endl;
         if (auto callback = mCallback.lock()) {
             Error error(ErrorCode::SEEK_FAILED, "Seek operation failed, error code: " + std::to_string(ret));
             callback->onSeekFailed(timestampMs, error);
@@ -249,7 +250,7 @@ void Demuxer::demuxLoop() {
         int ret = av_read_frame(mFormatCtx, pkt);
         if (ret < 0) {
             if (ret == AVERROR_EOF) {
-                std::cerr << "End of file\n";
+                LogInfo << "End of file\n";
                 if (auto callback = mCallback.lock()) {
                     callback->onEndOfFile();
                 }

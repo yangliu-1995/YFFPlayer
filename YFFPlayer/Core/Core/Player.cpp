@@ -1,6 +1,7 @@
 #include "Player.h"
 
 #include "AudioResampleContext.h"
+#include "Log.h"
 
 #include <chrono>
 #include <iostream>
@@ -296,7 +297,7 @@ void Player::audioOutputThread() {
         int64_t adjustedDuration = duration / (mPlaybackRate + mAudioPlaybackRateDelt);
         mSyncManager->updateAudioTime(pts / 1000.0, adjustedDuration / 1000.0);
         double delay = mSyncManager->computeAudioTargetDelay((pts + adjustedDuration) / 1000.0);
-        std::cerr<<"audio delay: "<<delay<<std::endl;
+        LogInfo<<"audio delay: "<<delay<<std::endl;
 
         double absDelay = fabs(delay);
         double sign = (delay > 0) ? 1.0 : -1.0;
@@ -387,7 +388,7 @@ void Player::videoOutputThread() {
             double delay = mSyncManager->computeVideoTargetDelay(lastDuration / 1000.0);
             double time = av_gettime_relative() / 1000000.0;
             double sleepTime = delay;
-            std::cerr<<"last duration: "<<lastDuration << ", sleep time: "<<sleepTime<<std::endl;
+            LogInfo<<"last duration: "<<lastDuration << ", sleep time: "<<sleepTime<<std::endl;
             if (time < mFrameTimer + delay) {
                 sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
                 sleepTime = FFMAX(sleepTime, 0.0);
