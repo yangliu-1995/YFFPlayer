@@ -70,7 +70,7 @@ void VideoDecoder::start() {
     mIsRunning = true;
     mPaused = false;
     mDecodeThread = std::thread(&VideoDecoder::decodeLoop, this);
-    std::cout << "VideoDecoder started" << std::endl;
+    std::cerr << "VideoDecoder started" << std::endl;
 }
 
 void VideoDecoder::stop() {

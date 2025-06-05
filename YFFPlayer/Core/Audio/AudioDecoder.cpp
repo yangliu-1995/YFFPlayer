@@ -55,7 +55,7 @@ void AudioDecoder::start() {
     mIsRunning = true;
     mPaused = false;
     mDecodeThread = std::thread(&AudioDecoder::decodeLoop, this);
-    std::cout << "AudioDecoder started" << std::endl;
+    std::cerr << "AudioDecoder started" << std::endl;
 }
 
 void AudioDecoder::stop() {

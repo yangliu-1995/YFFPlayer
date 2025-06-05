@@ -294,11 +294,16 @@ void Player::audioOutputThread() {
     }
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         mSyncManager->updateAudioTime(pts / 1000.0, duration / 1000.0);
+        std::cerr<<"audio pts: "<<pts<<", duration: "<<duration<<std::endl;
         notifyProgressChanged();
     });
 
     mAudioOutput->start();
 
+    mSyncManager->initAudioClock();
+    if (mMediaInfo.mHasVideo) {
+        mSyncManager->initVideoClock();
+    }
     while (mRunning) {
         if (mPaused) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
@@ -327,9 +332,15 @@ void Player::videoOutputThread() {
 #endif
 
     mVideoFrameQueue->wait_for_frames(3);
-    mFrameTimer = av_gettime_relative() / 1000000.0; // 获取当前时间戳（秒）
+    mSyncManager->initVideoClock();
+    if (mMediaInfo.mHasAudio) {
+        mSyncManager->initAudioClock();
+    }
     mLastVideoPts = 0;
     while (mRunning) {
+        if (mFrameTimer <= 0.0) {
+            mFrameTimer = av_gettime_relative() / 1000000.0; // 获取当前时间戳（秒）
+        }
         if (mPaused) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
             continue;
@@ -349,14 +360,17 @@ void Player::videoOutputThread() {
                 double delay = mSyncManager->computeVideoTargetDelay(lastDuration / 1000.0);
                 double time = av_gettime_relative() / 1000000.0;
                 double sleepTime = delay;
+//                std::cerr<<"frame timer: "<<mFrameTimer<<", time: "<<time<<", delay: "<<delay <<", sleep: "<<sleepTime<<std::endl;
+                std::cerr<<"last duration: "<<lastDuration << ", sleep time: "<<sleepTime<<std::endl;
                 if (time < mFrameTimer + delay) {
                     sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
                     sleepTime = FFMAX(sleepTime, 0.0);
-                    std::cerr<<"frame timer: "<<mFrameTimer<<", time: "<<time<<", delay: "<<delay <<", sleep: "<<sleepTime<<std::endl;
                     av_usleep(static_cast<unsigned int>(sleepTime * 1000 * 1000));
-                    mVideoOutput->renderVideoFrame(*videoFrame);
                 }
+                mVideoOutput->renderVideoFrame(*videoFrame);
                 mFrameTimer += delay;
+                if (delay > 0 && time - mFrameTimer> AV_SYNC_THRESHOLD_MAX)
+                    mFrameTimer = time;
                 mLastVideoPts = pts;
                 mSyncManager->updateVideoTime(pts / 1000.0);
             } else {

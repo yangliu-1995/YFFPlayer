@@ -25,6 +25,10 @@ public:
 
     double getSpeed() const;
 
+    void initAudioClock();
+
+    void initVideoClock();
+
     double computeAudioTargetDelay(double pts);
 
     double computeVideoTargetDelay(double delay);
@@ -44,5 +48,7 @@ private:
     std::shared_ptr<Clock> mAudioClock;
     std::shared_ptr<Clock> mExternalClock;
     std::shared_ptr<Clock> mVideoClock;
+
+    mutable std::mutex mMutex;
 };
 }  // namespace yffplayer
