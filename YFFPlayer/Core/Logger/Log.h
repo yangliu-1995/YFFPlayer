@@ -51,6 +51,7 @@ private:
 
 class Log {
 public:
+    static void redirectFFmpegLog();
     static void setLogger(Logger* logger);
 
     static LogStream Debug(const char* file, int line) {

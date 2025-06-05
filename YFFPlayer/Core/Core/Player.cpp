@@ -30,6 +30,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mVideoFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(50)) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
     //    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
+          Log::redirectFFmpegLog();
 }
 
 Player::~Player() { stop(); }

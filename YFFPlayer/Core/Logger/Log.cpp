@@ -1,5 +1,9 @@
 #include "Log.h"
 
+extern "C" {
+#include <libavutil/log.h>
+}
+
 namespace yffplayer {
 LogStream::LogStream(LogLevel level, const char* file, int line, Logger* logger) : mLevel(level), mFile(file), mLine(line), mLogger(logger) {}
 
@@ -35,5 +39,40 @@ std::mutex Log::mutex_;
 void Log::setLogger(Logger* logger) {
     std::lock_guard<std::mutex> lock(mutex_);
     logger_ = logger;
+}
+
+static LogLevel mapFFmpegLevel(int avLevel) {
+    if (avLevel <= AV_LOG_ERROR) return LogLevel::Error;
+    if (avLevel <= AV_LOG_WARNING) return LogLevel::Warning;
+    if (avLevel <= AV_LOG_INFO) return LogLevel::Info;
+    return LogLevel::Debug;
+}
+
+void ffmpegLogCallback(void* ptr, int level, const char* fmt, va_list vl) {
+    if (level > av_log_get_level()) {
+        return;
+    }
+
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), fmt, vl);
+
+    // 清理结尾多余换行符（FFmpeg 会带 \n）
+    std::string msg(buffer);
+    if (!msg.empty() && msg.back() == '\n') {
+        msg.pop_back();
+    }
+
+    LogLevel logLevel = mapFFmpegLevel(level);
+    switch (logLevel) {
+        case LogLevel::Debug:   LogDebug   << "[FFmpeg] " << msg; break;
+        case LogLevel::Info:    LogInfo    << "[FFmpeg] " << msg; break;
+        case LogLevel::Warning: LogWarning << "[FFmpeg] " << msg; break;
+        case LogLevel::Error:   LogError   << "[FFmpeg] " << msg; break;
+    }
+}
+
+void Log::redirectFFmpegLog() {
+    av_log_set_level(AV_LOG_DEBUG);
+    av_log_set_callback(ffmpegLogCallback);
 }
 }  // namespace yffplayer
