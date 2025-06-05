@@ -78,11 +78,7 @@ private:
     std::unique_ptr<AudioFrameProcessor> mAudioProcessor;
     std::unique_ptr<VideoFrameProcessor> mVideoProcessor;
 
-    double mAudioDiffCum = 0;
-    int mAudioDiffAvgCount = 0;
-    const double mAudioDiffAvgCoef = 0.95;
-    const double mAudioDiffThreshold = 0.01; // 可调
-    const int SAMPLE_CORRECTION_PERCENT_MAX = 10;
-    const int AUDIO_DIFF_AVG_NB = 20;
+    double mFrameTimer;
+    double mLastVideoPts = 0.0; // 上一帧视频的PTS
 };
 }  // namespace yffplayer

@@ -304,7 +304,6 @@ void Player::audioOutputThread() {
             av_usleep(static_cast<unsigned int>(10 * 1000));
             continue;
         }
-        syncClockIfNeeded(0);
         auto frameHandle = mAudioFrameQueue->pop();
         if (frameHandle) {
             double delay = mSyncManager->computeAudioFrameDelay(0);
@@ -335,25 +334,30 @@ void Player::videoOutputThread() {
             av_usleep(static_cast<unsigned int>(10 * 1000));
             continue;
         }
-        syncClockIfNeeded(0);
         auto frameHandle = mVideoFrameQueue->pop();
         if (!frameHandle) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
             continue;
         }
         auto videoFrame = mVideoProcessor->processAudioFrame(frameHandle);
+        mFrameTimer = av_gettime_relative() / 1000000.0; // 获取当前时间戳（秒）
+
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
             float playbackRate = mPlaybackRate.load();
             if (mMediaInfo.mHasAudio) {
-                double delay = mSyncManager->computeVideoFrameDelay(pts / 1000.0);
-                if (delay > 0.5) {
-                    ++mDroppedVideoFramesCount;
-                    continue;
-                } else {
-                    av_usleep(static_cast<unsigned int>(delay * 1000 * 1000));
+                double lastDuration = pts - mLastVideoPts;
+                double delay = mSyncManager->computeVideoTargetDelay(lastDuration / 1000.0);
+                double time = av_gettime_relative() / 1000000.0;
+                double sleepTime = delay;
+                if (time < mFrameTimer + delay) {
+                    sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
+                    av_usleep(static_cast<unsigned int>(sleepTime * 1000 * 1000));
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 }
+                mFrameTimer += delay;
+                mLastVideoPts = pts;
+                mSyncManager->updateVideoTime(pts / 1000.0);
             } else {
                 mVideoOutput->renderVideoFrame(*videoFrame);
                 int64_t frameDuration = videoFrame->mDuration;

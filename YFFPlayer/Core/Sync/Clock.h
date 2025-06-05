@@ -1,22 +1,59 @@
 #pragma once
 
+#include <atomic>
+
+extern "C" {
+#include <libavutil/time.h>
+}
+
 namespace yffplayer {
 class Clock {
 public:
-    Clock() = default;
-    ~Clock() = default;
-    Clock(const Clock&) = delete;
-    Clock& operator=(const Clock&) = delete;
-    Clock(Clock&&) = delete;
-    Clock& operator=(Clock&&) = delete;
+    void init() {};
     
-    virtual void init() = 0;
-    virtual double get() = 0;
-    virtual void set(double pts, double duration) = 0;
-    virtual void setAt(double pts, double duration, double time) = 0;
-    virtual void setSpeed(double speed) = 0;
-    virtual double getSpeed() const = 0;
-    virtual void setPaused(bool paused) = 0;
-    virtual void update(double time) = 0;
+    double get() {
+        if (mPaused) {
+            return mPts;
+        } else {
+            double time = av_gettime_relative() / 1000000.0;
+            double ct = mPtsDrift + time - (time - mLastUpdated) * (1 - mSpeed);
+            return ct;
+        }
+    };
+
+    void set(double pts) {
+        double time = av_gettime_relative() / 1000000.0;
+        setAt(pts, time);
+    };
+
+    void setAt(double pts, double time) {
+        mPts=pts;
+        mLastUpdated = time;
+        mPtsDrift = mPts - time;
+    };
+
+    void setSpeed(double speed) {
+        set(get());
+        mSpeed = speed;
+    };
+
+    double getSpeed() const {
+        return mSpeed;
+    };
+
+    void setPaused(bool paused) {
+        set(get());
+        mPaused = paused;
+    };
+
+    void update(double time) {
+        mLastUpdated = av_gettime_relative() / 1000000.0;
+    };
+private:
+    std::atomic<double> mPts = 0.0; 
+    std::atomic<double> mPtsDrift {0.0};    // pts与系统时间的差值（秒）
+    std::atomic<double> mLastUpdated {0.0}; // 上次更新时间（秒）
+    std::atomic<double> mSpeed {1.0};       // 播放速度（1.0为正常速度）
+    std::atomic<bool> mPaused {false};      // 暂停状态
 };
-} // yffplayer
+} // namespace yffplayer

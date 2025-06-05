@@ -128,6 +128,7 @@ void AudioDecoder::decodeLoop() {
         }
 
         while (true) {
+            av_frame_unref(frame);  // 清理当前帧
             ret = avcodec_receive_frame(mCodecCtx, frame);
             if (ret == 0) {
                 AVFrame* frameClone = av_frame_alloc();

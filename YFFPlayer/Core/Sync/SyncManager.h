@@ -25,21 +25,23 @@ public:
 
     double getSpeed() const;
 
-    double computeAudioFrameDelay(double pts);
+    double computeAudioTargetDelay(double pts);
 
-    double computeVideoFrameDelay(double pts);
-    
-    double getClock();
-    
-    void updateTime(double pts);
+    double computeVideoTargetDelay(double delay);
 
     void updateAudioTime(double pts, double duration);
 
+    void updateVideoTime(double pts);
+
     void updateClock(double pts);
 
-    std::atomic<double> mAudioClock{0};
 private:
-    SyncType mType { SyncType::External };  // 改为External模式
-    std::unique_ptr<Clock> mClock;
+    double getClockTime() const;
+    void syncClockToSlave(std::shared_ptr<Clock> clock, std::shared_ptr<Clock> slaveClock);
+    std::shared_ptr<Clock> getMasterClock() const;
+    SyncType mType { SyncType::Audio };
+    std::shared_ptr<Clock> mAudioClock;
+    std::shared_ptr<Clock> mExternalClock;
+    std::shared_ptr<Clock> mVideoClock;
 };
 }  // namespace yffplayer
