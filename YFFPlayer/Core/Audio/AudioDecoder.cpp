@@ -158,9 +158,11 @@ void AudioDecoder::decodeLoop() {
                     continue;
                 }
                 if (frameClone->pts != AV_NOPTS_VALUE) {
-                    frameClone->pts = static_cast<int64_t>(frameClone->pts * av_q2d(mTimeBase) * 1000);
+                    frameClone->pts =
+                        static_cast<int64_t>(frameClone->pts * av_q2d(mTimeBase) * 1000);
                 } else if (frameClone->best_effort_timestamp != AV_NOPTS_VALUE) {
-                    frameClone->pts = static_cast<int64_t>(frameClone->best_effort_timestamp * av_q2d(mTimeBase) * 1000);
+                    frameClone->pts = static_cast<int64_t>(frameClone->best_effort_timestamp *
+                                                           av_q2d(mTimeBase) * 1000);
                 }
                 mFrameQueue->push(std::make_shared<FrameHandle>(frameClone));
             } else if (ret == AVERROR(EAGAIN)) {

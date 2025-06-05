@@ -9,10 +9,11 @@ namespace {
 constexpr AVSampleFormat kTargetFormat = AV_SAMPLE_FMT_S16;
 constexpr int kTargetSampleRate = 48000;
 constexpr int kTargetNbChannels = 2;
-}
+}  // namespace
 
 namespace yffplayer {
-AudioResampleContext::AudioResampleContext(int sampleRate, int format, int nbChannels): mInSampleRate(sampleRate), mInFormat(format), mInNbChannels(nbChannels){
+AudioResampleContext::AudioResampleContext(int sampleRate, int format, int nbChannels)
+    : mInSampleRate(sampleRate), mInFormat(format), mInNbChannels(nbChannels) {
     AVChannelLayout outLayout;
     av_channel_layout_default(&outLayout, kTargetNbChannels);
 
@@ -23,7 +24,8 @@ AudioResampleContext::AudioResampleContext(int sampleRate, int format, int nbCha
     if (!mSwrContext) {
         return;
     }
-    if (swr_alloc_set_opts2(&mSwrContext, &outLayout, kTargetFormat, kTargetSampleRate, &inLayout, static_cast<AVSampleFormat>(format), sampleRate, 0, nullptr) < 0) {
+    if (swr_alloc_set_opts2(&mSwrContext, &outLayout, kTargetFormat, kTargetSampleRate, &inLayout,
+                            static_cast<AVSampleFormat>(format), sampleRate, 0, nullptr) < 0) {
         swr_free(&mSwrContext);
         return;
     }
@@ -42,19 +44,11 @@ AudioResampleContext::~AudioResampleContext() {
     }
 }
 
-SwrContext* AudioResampleContext::getSwrContext() const {
-    return mSwrContext;
-}
+SwrContext* AudioResampleContext::getSwrContext() const { return mSwrContext; }
 
-int AudioResampleContext::getOutSampleRate() const {
-    return kTargetSampleRate;
-}
+int AudioResampleContext::getOutSampleRate() const { return kTargetSampleRate; }
 
-int AudioResampleContext::getOutFormat() const {
-    return kTargetFormat;
-}
+int AudioResampleContext::getOutFormat() const { return kTargetFormat; }
 
-int AudioResampleContext::getOutNbChannels() const {
-    return kTargetNbChannels;
-}
-} // namespace yffplayer
+int AudioResampleContext::getOutNbChannels() const { return kTargetNbChannels; }
+}  // namespace yffplayer

@@ -14,9 +14,9 @@ extern "C" {
 
 // FFmpeg 重采样库
 extern "C" {
-#include <libswresample/swresample.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/samplefmt.h>
+#include <libswresample/swresample.h>
 }
 
 namespace yffplayer {
@@ -30,7 +30,8 @@ public:
     void setPlaybackRate(float rate);
     void setPitch(float pitch = 1.0f);  // 可选：保持音调不变
 
-    std::unique_ptr<AudioFrame> processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle, double delay);
+    std::unique_ptr<AudioFrame> processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle,
+                                                  double delay);
 
     void flush();
     void reset();
@@ -54,7 +55,7 @@ private:
     void floatToShort(const float* input, short* output, size_t samples);
     void shortToFloat(const short* input, float* output, size_t samples);
 
-    std::unique_ptr<AudioFrame> reSampleAVFrame(const AVFrame &frame);
+    std::unique_ptr<AudioFrame> reSampleAVFrame(const AVFrame& frame);
 };
 
 }  // namespace yffplayer

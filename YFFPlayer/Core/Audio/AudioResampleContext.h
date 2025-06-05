@@ -20,4 +20,4 @@ private:
     int mInFormat{0};
     int mInNbChannels{0};
 };
-} // namespace yffplayer
+}  // namespace yffplayer
