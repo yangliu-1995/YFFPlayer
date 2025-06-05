@@ -84,7 +84,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
             }
         }
     }
-    mSyncManager = std::make_unique<SyncManager>(SyncManager::SyncType::External);
+//    mSyncManager = std::make_unique<SyncManager>(SyncManager::SyncType::External);
     return true;
 }
 
@@ -94,12 +94,39 @@ void Player::start() {
     mDemuxer->start();
     if (mMediaInfo.mHasAudio) {
         mAudioDecoder->start();
-        mAudioOutputThread = std::thread(&Player::audioOutputThread, this);
+        mAudioFrameQueue->wait_for_frames(3);
+        auto frameHandle = mAudioFrameQueue->back();
+        if (frameHandle) {
+            auto frame = frameHandle->getFrame();
+            if (frame) {
+                int64_t pts = frame->pts;
+                int64_t duration = frame->duration;
+                duration /= mPlaybackRate;
+                mSyncManager->initAudioClock((pts + duration) / 1000.0);
+                mSyncManager->initVideoClock(0 / 1000.0);
+            }
+        }
     }
     if (mMediaInfo.mHasVideo) {
         mVideoDecoder->start();
+        mVideoFrameQueue->wait_for_frames(3);
+        auto frameHandle = mVideoFrameQueue->back();
+        if (frameHandle) {
+            auto frame = frameHandle->getFrame();
+            if (frame) {
+                int64_t pts = frame->pts;
+                mLastVideoPts = pts;
+                mSyncManager->initVideoClock(pts / 1000.0);
+            }
+        }
+    }
+    if (mMediaInfo.mHasAudio) {
+        mAudioOutputThread = std::thread(&Player::audioOutputThread, this);
+    }
+    if (mMediaInfo.mHasVideo) {
         mVideoOutputThread = std::thread(&Player::videoOutputThread, this);
     }
+
 }
 
 void Player::stop() {
@@ -290,10 +317,6 @@ void Player::audioOutputThread() {
         mAudioProcessor->setPlaybackRate(mPlaybackRate.load());
     }
 
-    if (mMediaInfo.mHasAudio) {
-        mAudioFrameQueue->wait_for_frames(3);
-    }
-
     mAudioPlaybackRateDelt = 0;
     mAudioOutput->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         int64_t adjustedDuration = duration / (mPlaybackRate + mAudioPlaybackRateDelt);
@@ -322,18 +345,6 @@ void Player::audioOutputThread() {
 
     mAudioOutput->start();
 
-    auto frameHandle = mAudioFrameQueue->back();
-    if (frameHandle) {
-        auto frame = frameHandle->getFrame();
-        if (frame) {
-            int64_t pts = frame->pts;
-            int64_t duration = frame->duration;
-            duration /= mPlaybackRate;
-            mLastVideoPts = pts;
-            mSyncManager->initAudioClock((pts + duration) / 1000.0);
-        }
-    }
-
     while (mRunning) {
         if (mPaused) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
@@ -359,16 +370,6 @@ void Player::videoOutputThread() {
     pthread_setname_np("com.yffplayer.output.video");
 #endif
 
-    mVideoFrameQueue->wait_for_frames(3);
-    auto frameHandle = mVideoFrameQueue->back();
-    if (frameHandle) {
-        auto frame = frameHandle->getFrame();
-        if (frame) {
-            int64_t pts = frame->pts;
-            mLastVideoPts = pts;
-            mSyncManager->initVideoClock(pts / 1000.0);
-        }
-    }
     while (mRunning) {
         if (mFrameTimer <= 0.0) {
             mFrameTimer = av_gettime_relative() / 1000000.0;  // 获取当前时间戳（秒）
@@ -394,7 +395,7 @@ void Player::videoOutputThread() {
                    ;
             if (time < mFrameTimer + delay) {
                 sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
-                sleepTime = FFMAX(sleepTime, 0.0);
+                sleepTime = FFMAX(sleepTime, 0.1);
                 av_usleep(static_cast<unsigned int>(sleepTime * 1000 * 1000));
             }
             mVideoOutput->renderVideoFrame(*videoFrame);

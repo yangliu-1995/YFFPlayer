@@ -78,7 +78,7 @@ std::shared_ptr<T> FrameQueue<T>::back() const {
     if (mQueue.empty()) {
         return nullptr;
     }
-    return mQueue.back();
+    return mQueue.front();
 }
 
 template <typename T>

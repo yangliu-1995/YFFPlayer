@@ -354,21 +354,18 @@ typedef struct {
     // 保持新的pixelBuffer引用
     self.currentPixelBuffer = CVPixelBufferRetain(pixelBuffer);
 
-    if (!_textureCache) {
-        CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_textureCache);
-        if (result != kCVReturnSuccess) {
-            NSLog(@"Error creating CVMetalTextureCache: %d", result);
-        }
+    CVMetalTextureCacheRef textureCache = nil;
+    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_textureCache);
+    if (result != kCVReturnSuccess) {
+        NSLog(@"Error creating CVMetalTextureCache: %d", result);
     }
-
-    CVMetalTextureCacheRef textureCache = _textureCache;
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
 
     // 创建Y纹理
     CVMetalTextureRef yTextureRef = NULL;
-    CVReturn result = CVMetalTextureCacheCreateTextureFromImage(
+    result = CVMetalTextureCacheCreateTextureFromImage(
         kCFAllocatorDefault,
         textureCache,
         pixelBuffer,
