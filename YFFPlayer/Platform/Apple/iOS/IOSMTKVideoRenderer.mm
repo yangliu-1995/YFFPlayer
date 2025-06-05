@@ -355,9 +355,10 @@ typedef struct {
     self.currentPixelBuffer = CVPixelBufferRetain(pixelBuffer);
 
     CVMetalTextureCacheRef textureCache = nil;
-    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_textureCache);
+    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
     if (result != kCVReturnSuccess) {
         NSLog(@"Error creating CVMetalTextureCache: %d", result);
+        retrun;
     }
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
