@@ -73,6 +73,15 @@ void FrameQueue<T>::wait_for_frames(size_t min_frames) {
 }
 
 template <typename T>
+std::shared_ptr<T> FrameQueue<T>::back() const {
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mQueue.empty()) {
+        return nullptr;
+    }
+    return mQueue.back();
+}
+
+template <typename T>
 size_t FrameQueue<T>::size() const {
     std::lock_guard<std::mutex> lock(mMutex);
     return mSize;

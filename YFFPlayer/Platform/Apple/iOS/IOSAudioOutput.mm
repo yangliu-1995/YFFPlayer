@@ -11,7 +11,7 @@ IOSAudioOutput::~IOSAudioOutput() { stop(); }
 bool IOSAudioOutput::init(int sampleRate, int channels) {
     mSampleRate = sampleRate;
     mChannels = channels;
-    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.2s of audio data
+    mFrameBytes = (UInt32)(sampleRate * 0.5 * channels * 2);  // 0.2s of audio data
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
 

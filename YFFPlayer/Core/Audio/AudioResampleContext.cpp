@@ -7,7 +7,7 @@ extern "C" {
 
 namespace {
 constexpr AVSampleFormat kTargetFormat = AV_SAMPLE_FMT_S16;
-constexpr int kTargetSampleRate = 44100;
+constexpr int kTargetSampleRate = 48000;
 constexpr int kTargetNbChannels = 2;
 }
 
@@ -44,5 +44,17 @@ AudioResampleContext::~AudioResampleContext() {
 
 SwrContext* AudioResampleContext::getSwrContext() const {
     return mSwrContext;
+}
+
+int AudioResampleContext::getOutSampleRate() const {
+    return kTargetSampleRate;
+}
+
+int AudioResampleContext::getOutFormat() const {
+    return kTargetFormat;
+}
+
+int AudioResampleContext::getOutNbChannels() const {
+    return kTargetNbChannels;
 }
 } // namespace yffplayer

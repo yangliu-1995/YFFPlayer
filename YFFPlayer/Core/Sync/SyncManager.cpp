@@ -27,14 +27,22 @@ SyncManager::SyncManager(SyncType type): mType(type) {
 SyncManager::~SyncManager() {
 }
 
-void SyncManager::initAudioClock() {
-    mAudioClock->set(0.0);
-    mExternalClock->set(0.0);
+void SyncManager::initAudioClock(double pts) {
+    if (mAudioClock->isNAN()) {
+        mAudioClock->set(pts);
+    }
+    if (mExternalClock->isNAN()) {
+        mExternalClock->set(pts);
+    }
 }
 
-void SyncManager::initVideoClock() {
-    mVideoClock->set(0.0);
-    mExternalClock->set(0.0);
+void SyncManager::initVideoClock(double pts) {
+    if (mVideoClock->isNAN()) {
+        mVideoClock->set(pts);
+    }
+    if (mExternalClock->isNAN()) {
+        mExternalClock->set(pts);
+    }
 }
 
 void SyncManager::pause() {
@@ -60,10 +68,15 @@ double SyncManager::getSpeed() const {
 }
 
 double SyncManager::computeVideoTargetDelay(double delay) {
-    if (mType == SyncType::Video) {
-        return delay;
-    }
-    double diff = mVideoClock->get() - getClockTime();
+    double videoTime = mVideoClock->get();
+    double masterTime = getClockTime();
+    double diff = videoTime - masterTime;
+    std::cerr << "compute video delay, video time: " << videoTime
+                << ", master time:" << masterTime
+                << ", diff: " << diff
+                << ", delay: " << delay
+                << ", fixed delay: " << delay + diff
+                << std::endl;
     delay += diff;
     return delay;
 }
@@ -86,20 +99,13 @@ void SyncManager::syncClockToSlave(std::shared_ptr<Clock> clock, std::shared_ptr
 }
 
 void SyncManager::updateAudioTime(double pts, double duration) {
-    mAudioClock->set(pts + duration / getSpeed());
-//    std::cerr << "Update audio time, pts: " << pts * 1000.0
-//                << ", duration: " << duration * 1000.0
-      std::cerr          << "Update audio time, master time: " << getClockTime() << std::endl;
-
+    mAudioClock->set(pts + duration);
     syncClockToSlave(mExternalClock, mAudioClock);
 }
 
 double SyncManager::getClockTime() const {
     std::lock_guard<std::mutex> lock(mMutex);
     double clockTime = getMasterClock()->get();
-    if (clockTime > 1000000.0) {
-        std::cerr << "Clock time is too large, resetting to 0" << std::endl;
-    }
     return clockTime;
 }
 

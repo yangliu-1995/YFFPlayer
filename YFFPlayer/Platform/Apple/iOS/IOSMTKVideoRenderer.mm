@@ -39,6 +39,7 @@ typedef struct {
 
 @property (nonatomic) dispatch_queue_t renderQueue;
 @property (nonatomic) CVPixelBufferRef currentPixelBuffer;
+@property (nonatomic) CVMetalTextureCacheRef textureCache;
 
 @end
 
@@ -88,7 +89,6 @@ typedef struct {
     self.mtkView.enableSetNeedsDisplay = YES;
 
     [parentView addSubview:self.mtkView];
-    
     // Setup auto layout
     self.mtkView.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
@@ -360,20 +360,21 @@ static CFAbsoluteTime baseTime = 0;
     // 保持新的pixelBuffer引用
     self.currentPixelBuffer = CVPixelBufferRetain(pixelBuffer);
 
-    // 创建纹理缓存（每次重新创建以避免缓存问题）
-    CVMetalTextureCacheRef textureCache = NULL;
-    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
-    if (result != kCVReturnSuccess) {
-        NSLog(@"Error creating CVMetalTextureCache: %d", result);
-        return;
+    if (!_textureCache) {
+        CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &_textureCache);
+        if (result != kCVReturnSuccess) {
+            NSLog(@"Error creating CVMetalTextureCache: %d", result);
+        }
     }
+
+    CVMetalTextureCacheRef textureCache = _textureCache;
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
 
     // 创建Y纹理
     CVMetalTextureRef yTextureRef = NULL;
-    result = CVMetalTextureCacheCreateTextureFromImage(
+    CVReturn result = CVMetalTextureCacheCreateTextureFromImage(
         kCFAllocatorDefault,
         textureCache,
         pixelBuffer,
@@ -419,7 +420,6 @@ static CFAbsoluteTime baseTime = 0;
     // 清理临时引用
     CFRelease(yTextureRef);
     CFRelease(uvTextureRef);
-    CFRelease(textureCache);
 }
 
 - (void)dealloc {

@@ -10,6 +10,9 @@ public:
     explicit AudioResampleContext(int sampleRate, int format, int nbChannels);
     ~AudioResampleContext();
     SwrContext* getSwrContext() const;
+    int getOutSampleRate() const;
+    int getOutFormat() const;
+    int getOutNbChannels() const;
 
 private:
     SwrContext* mSwrContext{nullptr};

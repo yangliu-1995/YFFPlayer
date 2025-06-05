@@ -28,6 +28,9 @@ public:
     void pause() override;
     void resume() override;
     void flush() override;
+    AVSampleFormat getFormat() const;
+    int getSampleRate() const;
+    int getNbChannels() const;
 
 private:
     std::shared_ptr<PacketQueue> mPacketQueue;

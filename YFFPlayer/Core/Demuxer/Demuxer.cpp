@@ -28,6 +28,25 @@ Demuxer::~Demuxer() {
 }
 
 bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
+    AVDictionary* options = nullptr;
+
+    // 尽快打开流，尽量不要缓冲太久
+    av_dict_set(&options, "fflags", "nobuffer", 0);
+
+    // 设定最大探测时间（单位微秒，1000000 = 1 秒），越小启动越快（但不一定稳定）
+    av_dict_set(&options, "probesize", "32", 0);         // 默认 5MB，可设为更小
+    av_dict_set(&options, "analyzeduration", "100000", 0); // 默认 5 秒，这里设为 0.1 秒
+
+    // 如果是 RTMP 流，建议加上：
+    av_dict_set(&options, "rtmp_buffer", "100", 0);     // 缓冲时间，单位 ms
+    av_dict_set(&options, "rtmp_live", "live", 0);      // 告诉服务器这是直播
+
+    // 更快地丢包处理（实时流更重要）
+    av_dict_set(&options, "flush_packets", "1", 0);
+
+    // 如果是 TCP 协议（如 HTTP-FLV），可以设置连接超时（单位微秒）
+    av_dict_set(&options, "timeout", "3000000", 0); // 3 秒
+    
     int ret = avformat_open_input(&mFormatCtx, url.c_str(), nullptr, nullptr);
     if (ret < 0) {
         std::cerr << "Failed to open input: " << url << "ret: " << ret << "\n";
@@ -177,12 +196,14 @@ void Demuxer::stop() {
     if (!mRunning) return;
     mStopRequested = true;
     resume();  // 防止阻塞在 paused
+    if (mFormatCtx) {
+        avformat_flush(mFormatCtx);
+        avformat_close_input(&mFormatCtx);
+    }
     if (mThread.joinable()) {
         mThread.join();
     }
     if (mFormatCtx) {
-        avformat_flush(mFormatCtx);
-        avformat_close_input(&mFormatCtx);
         avformat_free_context(mFormatCtx);
         mFormatCtx = nullptr;
     }

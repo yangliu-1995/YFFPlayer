@@ -84,6 +84,26 @@ void AudioDecoder::flush() {
     }
 }
 
+AVSampleFormat AudioDecoder::getFormat() const {
+    if (!mCodecCtx) {
+        return AV_SAMPLE_FMT_NONE;
+    }
+    return mCodecCtx->sample_fmt;
+}
+
+int AudioDecoder::getSampleRate() const {
+    if (!mCodecCtx) {
+        return 0;
+    }
+    return mCodecCtx->sample_rate;
+}
+int AudioDecoder::getNbChannels() const {
+    if (!mCodecCtx) {
+        return 0;
+    }
+    return mCodecCtx->ch_layout.nb_channels;
+}
+
 void AudioDecoder::decodeLoop() {
 #if defined(__APPLE__)
     pthread_setname_np("com.yffplayer.decoder.audio");

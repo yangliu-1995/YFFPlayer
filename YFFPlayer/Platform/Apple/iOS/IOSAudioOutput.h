@@ -47,6 +47,6 @@ private:
     std::mutex mMutex;
     std::condition_variable mCond;
     std::deque<yffplayer::AudioFrame> mFrameQueue;
-    const size_t mMaxQueueSize = 2;
+    const size_t mMaxQueueSize = 20;
     yffplayer::AudioPlaybackCallback mPlaybackCallback;
 };

@@ -80,5 +80,6 @@ private:
 
     double mFrameTimer{0};
     double mLastVideoPts{0}; // 上一帧视频的PTS
+    std::atomic<float> mAudioPlaybackRateDelt {0.0f};
 };
 }  // namespace yffplayer

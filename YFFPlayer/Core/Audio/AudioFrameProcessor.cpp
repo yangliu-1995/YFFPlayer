@@ -9,13 +9,6 @@ extern "C" {
 #include <libavutil/samplefmt.h>
 }
 
-namespace {
-constexpr AVSampleFormat kTargetFormat = AV_SAMPLE_FMT_S16;
-constexpr int kTargetSampleRate = 44100;
-constexpr int kTargetNbChannles = 2;
-constexpr double kMaxDelay = 0.05; // 50ms
-}
-
 namespace yffplayer {
 
 AudioFrameProcessor::AudioFrameProcessor()
@@ -112,28 +105,20 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(const std::sh
 
 std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame) {
     int inSampleRate = frame.sample_rate;
-    int outSampleRate = 44100; // 固定输出采样率 44100 Hz
-    int outChannels = 2; // 固定输出为 2 通道（立体声）
-    AVSampleFormat sampleFmt = AV_SAMPLE_FMT_S16; // 固定输出为 16-bit PCM
+    int outSampleRate = mResampleContext->getOutSampleRate();
+    int outChannels = mResampleContext->getOutNbChannels();
+    AVSampleFormat outSampleFmt = static_cast<AVSampleFormat>(mResampleContext->getOutFormat());
 
     SwrContext* swrContext = mResampleContext->getSwrContext();
     if (!swrContext) {
         return nullptr;
     }
 
-    // 检查输入帧的通道数
     int inChannels = frame.ch_layout.nb_channels;
 
-    // 判断是否需要直接拷贝（样本数相同且格式一致）
-    if (inSampleRate == outSampleRate && sampleFmt == frame.format && inChannels == outChannels) {
-        // 直接拷贝原始数据
-        int bufferSize = av_samples_get_buffer_size(
-            nullptr,
-            outChannels,
-            frame.nb_samples,
-            sampleFmt,
-            0
-        );
+    // 直接拷贝无需重采样
+    if (inSampleRate == outSampleRate && outSampleFmt == frame.format && inChannels == outChannels) {
+        int bufferSize = av_samples_get_buffer_size(nullptr, outChannels, frame.nb_samples, outSampleFmt, 0);
         if (bufferSize < 0) {
             return nullptr;
         }
@@ -141,8 +126,7 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
         std::vector<uint8_t> audioBuffer(bufferSize);
         memcpy(audioBuffer.data(), frame.data[0], bufferSize);
 
-        // 计算 duration
-        int64_t duration = av_rescale_q(frame.nb_samples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000.f;
+        int64_t duration = av_rescale_q(frame.nb_samples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000;
 
         return std::make_unique<AudioFrame>(
             frame.pts,
@@ -154,28 +138,38 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
         );
     }
 
-    int outSamples = (int)av_rescale_rnd(swr_get_delay(swrContext, mSampleRate) + frame.nb_samples, outSampleRate, mSampleRate, AV_ROUND_UP);
+    // 重采样
+    int maxOutSamples = (int)av_rescale_rnd(
+        swr_get_delay(swrContext, inSampleRate) + frame.nb_samples,
+        outSampleRate,
+        inSampleRate,
+        AV_ROUND_UP
+    );
 
-    int bytesPerSample = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-    int outBufferSize = outSamples * outChannels * bytesPerSample;
+    int bytesPerSample = av_get_bytes_per_sample(outSampleFmt);
+    int outBufferSize = maxOutSamples * outChannels * bytesPerSample;
     std::vector<uint8_t> buffer(outBufferSize);
-    uint8_t* out[] = {buffer.data()};
+    memset(buffer.data(), 0, outBufferSize); // 清除未写部分残留值
 
-    int samples = swr_convert(swrContext, out, outSamples, (const uint8_t**)frame.data, frame.nb_samples);
+    uint8_t* out[] = {buffer.data()};
+    int samples = swr_convert(swrContext, out, maxOutSamples, (const uint8_t**)frame.data, frame.nb_samples);
     if (samples < 0) {
         std::cerr << "swr_convert failed: " << samples << std::endl;
+        return nullptr;
     }
 
-    int64_t pts = (frame.pts == AV_NOPTS_VALUE) ? frame.best_effort_timestamp : frame.pts;
+    int validSize = samples * outChannels * bytesPerSample;
+    buffer.resize(validSize); // 精准修剪为实际数据长度
 
-    int64_t duration = av_rescale_q(outSamples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000.f;
+    int64_t pts = (frame.pts == AV_NOPTS_VALUE) ? frame.best_effort_timestamp : frame.pts;
+    int64_t duration = av_rescale_q(samples, {1, outSampleRate}, {1, AV_TIME_BASE}) / 1000;
 
     return std::make_unique<AudioFrame>(
         pts,
         duration,
         outSampleRate,
         outChannels,
-        outSamples,
+        samples,
         std::move(buffer)
     );
 }

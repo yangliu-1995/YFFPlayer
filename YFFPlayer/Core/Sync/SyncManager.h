@@ -25,9 +25,9 @@ public:
 
     double getSpeed() const;
 
-    void initAudioClock();
+    void initAudioClock(double pts);
 
-    void initVideoClock();
+    void initVideoClock(double pts);
 
     double computeAudioTargetDelay(double pts);
 
@@ -43,10 +43,15 @@ public:
 
 private:
     void syncClockToSlave(std::shared_ptr<Clock> clock, std::shared_ptr<Clock> slaveClock);
+
     std::shared_ptr<Clock> getMasterClock() const;
+
     SyncType mType { SyncType::Audio };
+
     std::shared_ptr<Clock> mAudioClock;
+
     std::shared_ptr<Clock> mExternalClock;
+    
     std::shared_ptr<Clock> mVideoClock;
 
     mutable std::mutex mMutex;

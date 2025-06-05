@@ -16,6 +16,7 @@ public:
 
     void push(std::shared_ptr<T> frame);
     std::shared_ptr<T> pop();
+    std::shared_ptr<T> back() const;
 
     void clear();
     void abort();  // 中断阻塞操作
