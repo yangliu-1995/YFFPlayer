@@ -35,8 +35,9 @@ public:
 
     void updateClock(double pts);
 
-private:
     double getClockTime() const;
+
+private:
     void syncClockToSlave(std::shared_ptr<Clock> clock, std::shared_ptr<Clock> slaveClock);
     std::shared_ptr<Clock> getMasterClock() const;
     SyncType mType { SyncType::Audio };

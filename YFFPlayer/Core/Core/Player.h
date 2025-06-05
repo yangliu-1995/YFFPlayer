@@ -78,7 +78,7 @@ private:
     std::unique_ptr<AudioFrameProcessor> mAudioProcessor;
     std::unique_ptr<VideoFrameProcessor> mVideoProcessor;
 
-    double mFrameTimer;
-    double mLastVideoPts = 0.0; // 上一帧视频的PTS
+    double mFrameTimer{0};
+    double mLastVideoPts{0}; // 上一帧视频的PTS
 };
 }  // namespace yffplayer

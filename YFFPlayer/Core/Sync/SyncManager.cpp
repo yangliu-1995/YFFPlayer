@@ -51,7 +51,12 @@ double SyncManager::computeVideoTargetDelay(double delay) {
         return delay;
     }
     double diff = mVideoClock->get() - getClockTime();
-    return delay + diff;
+    delay += diff;
+    std::cerr << "Computed video target delay, delay: " << delay
+                << ", video clock: " << mVideoClock->get()
+                << ", master clock: " << getClockTime()
+                << ", diff: " << diff << std::endl;
+    return delay;
 }
 
 double SyncManager::computeAudioTargetDelay(double pts) {

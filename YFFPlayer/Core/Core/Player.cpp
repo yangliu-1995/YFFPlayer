@@ -168,13 +168,13 @@ void Player::stop() {
 
 void Player::notifyProgressChanged() {
     if (mCallback) {
-        mCallback->onProgress(mSyncManager->getClock(), mMediaInfo.mDurationMs);
+        mCallback->onProgress(mSyncManager->getClockTime(), mMediaInfo.mDurationMs);
     }
 }
 
 void Player::syncClockIfNeeded(int64_t pts) {
     if (mRequiresSyncClock.load()) {
-        mSyncManager->updateTime(pts / 1000.0);
+//        mSyncManager->updateTime(pts / 1000.0);
         mRequiresSyncClock = false;
     }
 }
@@ -306,7 +306,7 @@ void Player::audioOutputThread() {
         }
         auto frameHandle = mAudioFrameQueue->pop();
         if (frameHandle) {
-            double delay = mSyncManager->computeAudioFrameDelay(0);
+            double delay = mSyncManager->computeAudioTargetDelay(0);
             std::cerr<<"audio delay: "<<delay<<std::endl;
             auto audioFrame = mAudioProcessor->processAudioFrame(frameHandle, delay);
             if (audioFrame) {
@@ -326,9 +326,9 @@ void Player::videoOutputThread() {
     pthread_setname_np("com.yffplayer.output.video");
 #endif
 
-    if (mMediaInfo.mHasVideo) {
-        mVideoFrameQueue->wait_for_frames(3);
-    }
+    mVideoFrameQueue->wait_for_frames(3);
+    mFrameTimer = av_gettime_relative() / 1000000.0; // 获取当前时间戳（秒）
+    mLastVideoPts = 0;
     while (mRunning) {
         if (mPaused) {
             av_usleep(static_cast<unsigned int>(10 * 1000));
@@ -340,7 +340,6 @@ void Player::videoOutputThread() {
             continue;
         }
         auto videoFrame = mVideoProcessor->processAudioFrame(frameHandle);
-        mFrameTimer = av_gettime_relative() / 1000000.0; // 获取当前时间戳（秒）
 
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
@@ -352,6 +351,8 @@ void Player::videoOutputThread() {
                 double sleepTime = delay;
                 if (time < mFrameTimer + delay) {
                     sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
+                    sleepTime = FFMAX(sleepTime, 0.0);
+                    std::cerr<<"frame timer: "<<mFrameTimer<<", time: "<<time<<", delay: "<<delay <<", sleep: "<<sleepTime<<std::endl;
                     av_usleep(static_cast<unsigned int>(sleepTime * 1000 * 1000));
                     mVideoOutput->renderVideoFrame(*videoFrame);
                 }
