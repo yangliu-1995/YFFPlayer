@@ -1,29 +1,22 @@
 #include "Log.h"
 
 namespace yffplayer {
-LogStream::LogStream(LogLevel level, Logger* logger) : mLevel(level), mLogger(logger) {}
+LogStream::LogStream(LogLevel level, const char* file, int line, Logger* logger) : mLevel(level), mFile(file), mLine(line), mLogger(logger) {}
 
 LogStream::~LogStream() {
+    std::ostringstream full;
+    full << "[" << mFile << ":" << mLine << "] " << mStream.str();
     if (mLogger) {
-        mLogger->log(mLevel, mStream.str());
+        mLogger->log(mLevel, full.str());
     } else {
-        // 默认输出，带等级前缀
         const char* levelStr = "";
         switch (mLevel) {
-            case LogLevel::Debug:
-                levelStr = "[DEBUG] ";
-                break;
-            case LogLevel::Info:
-                levelStr = "[INFO] ";
-                break;
-            case LogLevel::Warning:
-                levelStr = "[WARNING] ";
-                break;
-            case LogLevel::Error:
-                levelStr = "[ERROR] ";
-                break;
+            case LogLevel::Debug:   levelStr = "[DEBUG] "; break;
+            case LogLevel::Info:    levelStr = "[INFO] "; break;
+            case LogLevel::Warning: levelStr = "[WARNING] "; break;
+            case LogLevel::Error:   levelStr = "[ERROR] "; break;
         }
-        std::cerr << levelStr << mStream.str() << std::flush;
+        std::cerr << levelStr << full.str() << std::endl;
     }
 }
 

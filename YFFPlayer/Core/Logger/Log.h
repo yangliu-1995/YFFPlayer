@@ -5,10 +5,16 @@
 #include <mutex>
 #include <sstream>
 
-#define LogDebug yffplayer::Log::Debug()
-#define LogInfo yffplayer::Log::Info()
-#define LogWarning yffplayer::Log::Warning()
-#define LogError yffplayer::Log::Error()
+#if defined(_WIN32)
+    #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#else
+    #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
+#define LogDebug   yffplayer::Log::Debug(__FILENAME__, __LINE__)
+#define LogInfo    yffplayer::Log::Info(__FILENAME__, __LINE__)
+#define LogWarning yffplayer::Log::Warning(__FILENAME__, __LINE__)
+#define LogError   yffplayer::Log::Error(__FILENAME__, __LINE__)
 
 namespace yffplayer {
 enum class LogLevel { Debug, Info, Warning, Error };
@@ -21,7 +27,7 @@ public:
 
 class LogStream {
 public:
-    LogStream(LogLevel level, Logger* logger = nullptr);
+    LogStream(LogLevel level, const char* file, int line, Logger* logger = nullptr);
     ~LogStream();
 
     template <typename T>
@@ -36,8 +42,10 @@ public:
     void setLogger(Logger* logger);
 
 private:
-    std::ostringstream mStream;
     LogLevel mLevel;
+    std::ostringstream mStream;
+    const char* mFile;
+    int mLine;
     Logger* mLogger;
 };
 
@@ -45,24 +53,24 @@ class Log {
 public:
     static void setLogger(Logger* logger);
 
-    static LogStream Debug() {
+    static LogStream Debug(const char* file, int line) {
         std::lock_guard<std::mutex> lock(mutex_);
-        return LogStream(LogLevel::Debug, logger_);
+        return LogStream(LogLevel::Debug, file, line, logger_);
     }
 
-    static LogStream Info() {
+    static LogStream Info(const char* file, int line) {
         std::lock_guard<std::mutex> lock(mutex_);
-        return LogStream(LogLevel::Info, logger_);
+        return LogStream(LogLevel::Info, file, line, logger_);
     }
 
-    static LogStream Warning() {
+    static LogStream Warning(const char* file, int line) {
         std::lock_guard<std::mutex> lock(mutex_);
-        return LogStream(LogLevel::Warning, logger_);
+        return LogStream(LogLevel::Warning, file, line, logger_);
     }
 
-    static LogStream Error() {
+    static LogStream Error(const char* file, int line) {
         std::lock_guard<std::mutex> lock(mutex_);
-        return LogStream(LogLevel::Info, logger_);
+        return LogStream(LogLevel::Info, file, line, logger_);
     }
 
 private:
