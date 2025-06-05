@@ -1,7 +1,5 @@
 #include "VideoDecoder.h"
 
-#include <iostream>
-
 #if defined(__APPLE__)
 #include <pthread.h>
 #endif
@@ -32,7 +30,7 @@ VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
 VideoDecoder::~VideoDecoder() {
     stop();
-    LogInfo << "~VideoDecoder" << std::endl;
+    LogInfo << "~VideoDecoder";
 }
 
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
@@ -40,18 +38,18 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 
     mCodecCtx = avcodec_alloc_context3(nullptr);
     if (!mCodecCtx) {
-        LogInfo << "Failed to allocate video codec context" << std::endl;
+        LogInfo << "Failed to allocate video codec context";
         return false;
     }
 
     if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
-        LogInfo << "Failed to copy codec parameters" << std::endl;
+        LogInfo << "Failed to copy codec parameters";
         return false;
     }
 
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
-        LogInfo << "Video codec not found" << std::endl;
+        LogInfo << "Video codec not found";
         return false;
     }
     if (codecParams->codec_id == AV_CODEC_ID_H264 || codecParams->codec_id == AV_CODEC_ID_HEVC) {
@@ -60,7 +58,7 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
     }
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
-        LogInfo << "Failed to open codec" << std::endl;
+        LogInfo << "Failed to open codec";
         return false;
     }
 
@@ -71,7 +69,7 @@ void VideoDecoder::start() {
     mIsRunning = true;
     mPaused = false;
     mDecodeThread = std::thread(&VideoDecoder::decodeLoop, this);
-    LogInfo << "VideoDecoder started" << std::endl;
+    LogInfo << "VideoDecoder started";
 }
 
 void VideoDecoder::stop() {

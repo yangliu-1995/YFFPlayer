@@ -1,7 +1,5 @@
 #include "Demuxer.h"
 
-#include <iostream>
-
 #include "Log.h"
 #include "MediaInfo.h"
 #include "Packet.h"
@@ -174,7 +172,7 @@ bool Demuxer::seek(int64_t timestampMs) {
     int64_t seekTarget = static_cast<int64_t>(timestampMs * AV_TIME_BASE / 1000);
     int ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, seekTarget, INT64_MAX, 0);
     if (ret < 0) {
-        LogInfo << "av_seek_frame failed: " << ret << std::endl;
+        LogInfo << "av_seek_frame failed: " << ret;
         if (auto callback = mCallback.lock()) {
             Error error(ErrorCode::SEEK_FAILED,
                         "Seek operation failed, error code: " + std::to_string(ret));

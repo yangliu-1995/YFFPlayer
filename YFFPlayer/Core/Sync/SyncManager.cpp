@@ -1,7 +1,6 @@
 #include "SyncManager.h"
 
 #include <algorithm>
-#include <iostream>
 
 #include "Clock.h"
 #include "Log.h"
@@ -72,7 +71,7 @@ double SyncManager::computeVideoTargetDelay(double delay) {
     double diff = videoTime - masterTime;
     LogInfo << "compute video delay, video time: " << videoTime << ", master time:" << masterTime
             << ", diff: " << diff << ", delay: " << delay << ", fixed delay: " << delay + diff
-            << std::endl;
+           ;
     delay += diff;
     return delay;
 }

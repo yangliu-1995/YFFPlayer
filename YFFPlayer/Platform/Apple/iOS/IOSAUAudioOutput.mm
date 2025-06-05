@@ -1,7 +1,6 @@
 #include "IOSAUAudioOutput.h"
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 
 #include "Log.h"
 
@@ -33,13 +32,13 @@ bool IOSAUAudioOutput::init(int sampleRate, int channels) {
 
     AudioComponent comp = AudioComponentFindNext(nullptr, &desc);
     if (!comp) {
-        LogInfo << "Failed to find audio component" << std::endl;
+        LogInfo << "Failed to find audio component";
         return false;
     }
 
     OSStatus status = AudioComponentInstanceNew(comp, &mAudioUnit);
     if (status != noErr) {
-        LogInfo << "AudioComponentInstanceNew failed: " << status << std::endl;
+        LogInfo << "AudioComponentInstanceNew failed: " << status;
         return false;
     }
 
@@ -57,7 +56,7 @@ bool IOSAUAudioOutput::init(int sampleRate, int channels) {
     status = AudioUnitSetProperty(mAudioUnit, kAudioUnitProperty_StreamFormat,
                                   kAudioUnitScope_Input, 0, &audioFormat, sizeof(audioFormat));
     if (status != noErr) {
-        LogInfo << "AudioUnitSetProperty(StreamFormat) failed: " << status << std::endl;
+        LogInfo << "AudioUnitSetProperty(StreamFormat) failed: " << status;
         AudioComponentInstanceDispose(mAudioUnit);
         mAudioUnit = nullptr;
         return false;
@@ -71,7 +70,7 @@ bool IOSAUAudioOutput::init(int sampleRate, int channels) {
         AudioUnitSetProperty(mAudioUnit, kAudioUnitProperty_SetRenderCallback,
                              kAudioUnitScope_Input, 0, &callbackStruct, sizeof(callbackStruct));
     if (status != noErr) {
-        LogInfo << "AudioUnitSetProperty(SetRenderCallback) failed: " << status << std::endl;
+        LogInfo << "AudioUnitSetProperty(SetRenderCallback) failed: " << status;
         AudioComponentInstanceDispose(mAudioUnit);
         mAudioUnit = nullptr;
         return false;
@@ -79,7 +78,7 @@ bool IOSAUAudioOutput::init(int sampleRate, int channels) {
 
     status = AudioUnitInitialize(mAudioUnit);
     if (status != noErr) {
-        LogInfo << "AudioUnitInitialize failed: " << status << std::endl;
+        LogInfo << "AudioUnitInitialize failed: " << status;
         AudioComponentInstanceDispose(mAudioUnit);
         mAudioUnit = nullptr;
         return false;
@@ -96,7 +95,7 @@ void IOSAUAudioOutput::start() {
     if (status == noErr) {
         mIsRunning.store(true);
     } else {
-        LogInfo << "AudioOutputUnitStart failed: " << status << std::endl;
+        LogInfo << "AudioOutputUnitStart failed: " << status;
     }
 }
 

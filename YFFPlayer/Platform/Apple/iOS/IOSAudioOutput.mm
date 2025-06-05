@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cstring>
 #import <AVFoundation/AVFoundation.h>
-#import <iostream>
 
 IOSAudioOutput::IOSAudioOutput() : mVolume(1.0f), mMute(false) {}
 

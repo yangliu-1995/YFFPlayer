@@ -1,6 +1,5 @@
 #include "AudioDecoder.h"
 
-#include <iostream>
 #include <vector>
 
 #if defined(__APPLE__)
@@ -18,7 +17,7 @@ AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
 
 AudioDecoder::~AudioDecoder() {
     stop();
-    LogInfo << "~AudioDecoder" << std::endl;
+    LogInfo << "~AudioDecoder";
 }
 
 bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
@@ -26,23 +25,23 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
-        LogInfo << "Audio codec not found" << std::endl;
+        LogInfo << "Audio codec not found";
         return false;
     }
 
     mCodecCtx = avcodec_alloc_context3(codec);
     if (!mCodecCtx) {
-        LogInfo << "Failed to allocate audio codec context" << std::endl;
+        LogInfo << "Failed to allocate audio codec context";
         return false;
     }
 
     if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
-        LogInfo << "Failed to copy codec parameters" << std::endl;
+        LogInfo << "Failed to copy codec parameters";
         return false;
     }
 
     if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
-        LogInfo << "Failed to open audio codec" << std::endl;
+        LogInfo << "Failed to open audio codec";
         return false;
     }
 
@@ -55,7 +54,7 @@ void AudioDecoder::start() {
     mIsRunning = true;
     mPaused = false;
     mDecodeThread = std::thread(&AudioDecoder::decodeLoop, this);
-    LogInfo << "AudioDecoder started" << std::endl;
+    LogInfo << "AudioDecoder started";
 }
 
 void AudioDecoder::stop() {
@@ -111,7 +110,7 @@ void AudioDecoder::decodeLoop() {
     AVPacket* packet = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
     if (!packet || !frame) {
-        LogInfo << "Failed to allocate packet or frame" << std::endl;
+        LogInfo << "Failed to allocate packet or frame";
         av_packet_free(&packet);
         av_frame_free(&frame);
         return;
@@ -142,7 +141,7 @@ void AudioDecoder::decodeLoop() {
 
         int ret = avcodec_send_packet(mCodecCtx, avPacket);
         if (ret < 0) {
-            LogInfo << "Failed to send packet: " << av_err2str(ret) << std::endl;
+            LogInfo << "Failed to send packet: " << av_err2str(ret);
             av_packet_unref(avPacket);
             continue;
         }
@@ -154,7 +153,7 @@ void AudioDecoder::decodeLoop() {
                 AVFrame* frameClone = av_frame_alloc();
                 av_frame_ref(frameClone, frame);
                 if (!frameClone) {
-                    LogInfo << "Failed to allocate frame clone" << std::endl;
+                    LogInfo << "Failed to allocate frame clone";
                     continue;
                 }
                 if (frameClone->pts != AV_NOPTS_VALUE) {
@@ -170,7 +169,7 @@ void AudioDecoder::decodeLoop() {
             } else if (ret == AVERROR_EOF) {
                 break;  // 解码结束
             } else {
-                LogInfo << "Failed to receive frame: " << av_err2str(ret) << std::endl;
+                LogInfo << "Failed to receive frame: " << av_err2str(ret);
                 break;
             }
         }
@@ -180,7 +179,7 @@ void AudioDecoder::decodeLoop() {
 
     av_frame_free(&frame);
     av_packet_free(&packet);
-    LogInfo << "AudioDecoder thread ended" << std::endl;
+    LogInfo << "AudioDecoder thread ended";
 }
 
 }  // namespace yffplayer

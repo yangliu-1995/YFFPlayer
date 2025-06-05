@@ -1,7 +1,5 @@
 #include "VideoFrame.h"
 
-#include <iostream>
-
 extern "C" {
 #include <libavutil/frame.h>
 }
