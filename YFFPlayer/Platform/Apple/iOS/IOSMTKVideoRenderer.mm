@@ -358,7 +358,7 @@ typedef struct {
     CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
     if (result != kCVReturnSuccess) {
         NSLog(@"Error creating CVMetalTextureCache: %d", result);
-        retrun;
+        return;
     }
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
