@@ -9,7 +9,11 @@ LogStream::LogStream(LogLevel level, const char* file, int line, Logger* logger)
 
 LogStream::~LogStream() {
     std::ostringstream full;
-    full << "[" << mFile << ":" << mLine << "] " << mStream.str();
+    if (mLine >= 0) {
+        full << mFile << ":" << mLine << " " << mStream.str();
+    } else {
+        full << mStream.str();
+    }
     if (mLogger) {
         mLogger->log(mLevel, full.str());
     } else {
@@ -64,10 +68,10 @@ void ffmpegLogCallback(void* ptr, int level, const char* fmt, va_list vl) {
 
     LogLevel logLevel = mapFFmpegLevel(level);
     switch (logLevel) {
-        case LogLevel::Debug:   LogDebug   << "[FFmpeg] " << msg; break;
-        case LogLevel::Info:    LogInfo    << "[FFmpeg] " << msg; break;
-        case LogLevel::Warning: LogWarning << "[FFmpeg] " << msg; break;
-        case LogLevel::Error:   LogError   << "[FFmpeg] " << msg; break;
+        case LogLevel::Debug:   Log::Debug("", -1) << "[FFmpeg] " << msg; break;
+        case LogLevel::Info:    Log::Info("", -1)    << "[FFmpeg] " << msg; break;
+        case LogLevel::Warning: Log::Warning("", -1) << "[FFmpeg] " << msg; break;
+        case LogLevel::Error:   Log::Error("", -1)   << "[FFmpeg] " << msg; break;
     }
 }
 

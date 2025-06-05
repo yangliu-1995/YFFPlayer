@@ -71,7 +71,7 @@ public:
 
     static LogStream Error(const char* file, int line) {
         std::lock_guard<std::mutex> lock(mutex_);
-        return LogStream(LogLevel::Info, file, line, logger_);
+        return LogStream(LogLevel::Error, file, line, logger_);
     }
 
 private:
