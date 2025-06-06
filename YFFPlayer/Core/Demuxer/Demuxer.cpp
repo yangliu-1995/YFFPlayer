@@ -123,6 +123,8 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
             frameRate.num && frameRate.den ? static_cast<int>(av_q2d(frameRate) + 0.5) : 0;
     }
 
+    mediaInfo.mIsTsDiscont = mFormatCtx->flags & AVFMT_TS_DISCONT;
+
     bool hasStreams = mAudioStreamIndex != -1 || mVideoStreamIndex != -1;
     if (!hasStreams) {
         if (auto callback = mCallback.lock()) {

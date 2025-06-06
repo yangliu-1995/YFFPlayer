@@ -19,6 +19,7 @@ struct MediaInfo {
     bool mHasVideo{false};
     bool mHasAudio{false};
     bool mIsLiveStream{false};
+    bool mIsTsDiscont{false};
 
     int mVideoWidth{0};
     int mVideoHeight{0};

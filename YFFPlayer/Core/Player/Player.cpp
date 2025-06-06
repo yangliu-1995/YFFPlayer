@@ -29,8 +29,7 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
       mAudioFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(100)),
       mVideoFrameQueue(std::make_shared<FrameQueue<FrameHandle>>(50)) {
     mDemuxer = std::make_unique<Demuxer>(mAudioPacketQueue, mVideoPacketQueue);
-    //    mSyncManager->setSyncMode(SyncMode::EXTERNAL_CLOCK);
-          Log::redirectFFmpegLog();
+    Log::redirectFFmpegLog();
 }
 
 Player::~Player() { stop(); }
@@ -84,6 +83,8 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
             }
         }
     }
+    mSyncManager->setMaxFrameDuration(mMediaInfo.mIsTsDiscont ? 10.0 : 3600.0);
+    // Just for testing, use external sync manager
     mSyncManager = std::make_unique<SyncManager>(SyncManager::SyncType::External);
     return true;
 }
@@ -91,44 +92,16 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
 void Player::start() {
     mRunning = true;
     mRequiresSyncClock = true;
+    mLastVideoPts = NAN;
     mDemuxer->start();
     if (mMediaInfo.mHasAudio) {
         mAudioDecoder->start();
-        mAudioFrameQueue->wait_for_frames(3);
-        auto frameHandle = mAudioFrameQueue->back();
-        if (frameHandle) {
-            auto frame = frameHandle->getFrame();
-            if (frame) {
-                int64_t pts = frame->pts;
-                int64_t duration = frame->duration;
-                duration /= mPlaybackRate;
-                mSyncManager->initAudioClock((pts) / 1000.0);
-                if (mMediaInfo.mHasVideo) {
-                    mSyncManager->initVideoClock(pts / 1000.0);
-                }
-            }
-        }
-    }
-    if (mMediaInfo.mHasVideo) {
-        mVideoDecoder->start();
-        mVideoFrameQueue->wait_for_frames(3);
-        auto frameHandle = mVideoFrameQueue->back();
-        if (frameHandle) {
-            auto frame = frameHandle->getFrame();
-            if (frame) {
-                int64_t pts = frame->pts;
-                mLastVideoPts = pts;
-                mSyncManager->initVideoClock(pts / 1000.0);
-            }
-        }
-    }
-    if (mMediaInfo.mHasAudio) {
         mAudioOutputThread = std::thread(&Player::audioOutputThread, this);
     }
     if (mMediaInfo.mHasVideo) {
+        mVideoDecoder->start();
         mVideoOutputThread = std::thread(&Player::videoOutputThread, this);
     }
-
 }
 
 void Player::stop() {
@@ -389,12 +362,15 @@ void Player::videoOutputThread() {
 
         if (videoFrame) {
             int64_t pts = videoFrame->mPts;
+            if (std::isnan(mLastVideoPts)) {
+                mLastVideoPts = pts;
+                mSyncManager->updateVideoTime(pts / 1000.0);
+            }
             double lastDuration = pts - mLastVideoPts;
             double delay = mSyncManager->computeVideoTargetDelay(lastDuration / 1000.0);
             double time = av_gettime_relative() / 1000000.0;
             double sleepTime = delay;
-            LogInfo << "last duration: " << lastDuration << ", sleep time: " << sleepTime
-                   ;
+            LogInfo << "last duration: " << lastDuration << ", sleep time: " << sleepTime;
             if (time < mFrameTimer + delay) {
                 sleepTime = FFMIN(mFrameTimer + delay - time, sleepTime);
                 sleepTime = FFMAX(sleepTime, 0.1);

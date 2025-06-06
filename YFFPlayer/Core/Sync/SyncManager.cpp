@@ -69,10 +69,20 @@ double SyncManager::computeVideoTargetDelay(double delay) {
     double videoTime = mVideoClock->get();
     double masterTime = getClockTime();
     double diff = videoTime - masterTime;
+
+    double originalDelay = delay;
+    double sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
+    if (!isnan(diff) && fabs(diff) < mMaxFrameDuration) {
+        if (diff <= -sync_threshold)
+            delay = FFMAX(0, delay + diff);
+        else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD)
+            delay = delay + diff;
+        else if (diff >= sync_threshold)
+            delay = 2 * delay;
+    }
+
     LogInfo << "compute video delay, video time: " << videoTime << ", master time:" << masterTime
-            << ", diff: " << diff << ", delay: " << delay << ", fixed delay: " << delay + diff
-           ;
-    delay += diff;
+            << ", diff: " << diff << ", delay: " << originalDelay << ", fixed delay: " << delay;
     return delay;
 }
 
@@ -87,7 +97,7 @@ void SyncManager::syncClockToSlave(std::shared_ptr<Clock> clock,
                                    std::shared_ptr<Clock> slaveClock) {
     double time = clock->get();
     double slaveTime = slaveClock->get();
-    if (fabs(time - slaveTime) > AV_NOSYNC_THRESHOLD) {
+    if (!slaveClock->isNAN() && (clock->isNAN() || fabs(time - slaveTime) > AV_NOSYNC_THRESHOLD)) {
         clock->set(slaveTime);
     }
 }
@@ -115,5 +125,7 @@ std::shared_ptr<Clock> SyncManager::getMasterClock() const {
             return mExternalClock;  // Default to external clock for unknown types
     }
 }
+
+void SyncManager::setMaxFrameDuration(float duration) { mMaxFrameDuration = duration; }
 
 }  // namespace yffplayer

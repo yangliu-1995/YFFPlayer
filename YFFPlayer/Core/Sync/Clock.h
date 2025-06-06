@@ -9,7 +9,7 @@ extern "C" {
 namespace yffplayer {
 class Clock {
 public:
-    void init(){};
+    void init() {};
 
     double get() {
         if (mPaused) {

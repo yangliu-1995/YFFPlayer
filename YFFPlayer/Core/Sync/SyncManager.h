@@ -41,6 +41,8 @@ public:
 
     double getClockTime() const;
 
+    void setMaxFrameDuration(float duration);
+
 private:
     void syncClockToSlave(std::shared_ptr<Clock> clock, std::shared_ptr<Clock> slaveClock);
 
@@ -55,5 +57,7 @@ private:
     std::shared_ptr<Clock> mVideoClock;
 
     mutable std::mutex mMutex;
+
+    std::atomic<float> mMaxFrameDuration{10.0f};
 };
 }  // namespace yffplayer
