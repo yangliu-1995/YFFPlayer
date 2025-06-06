@@ -204,6 +204,8 @@ typedef struct {
         self.currentFormat = frame.format_;
         self.videoSize = CGSizeMake(frame.width_, frame.height_);
 
+        BOOL shouldDisplay = YES;
+
         switch (frame.format_) {
             case yffplayer::PixelFormat::YUV420P:
                 [self createYUV420PTextures:frame];
@@ -215,8 +217,13 @@ typedef struct {
                 [self createRGB24Texture:frame];
                 break;
             case yffplayer::PixelFormat::VIDEOTOOLBOX:
-                [self createVTNV12Textures:frame];
+                shouldDisplay = [self createVTNV12Textures:frame];
                 break;
+        }
+
+        if (!shouldDisplay) {
+            NSLog(@"Failed to create textures for format: %d", (int)frame.format_);
+            return;
         }
 
         // Update uniform buffer
@@ -339,11 +346,11 @@ typedef struct {
     free(rgbaData);
 }
 
-- (void)createVTNV12Textures:(const yffplayer::VideoFrame&)frame {
+- (BOOL)createVTNV12Textures:(const yffplayer::VideoFrame&)frame {
     CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.data_[3];
     if (!pixelBuffer) {
         NSLog(@"Error: CVPixelBufferRef is null");
-        return;
+        return NO;
     }
 
     // 释放之前的pixelBuffer
@@ -358,7 +365,7 @@ typedef struct {
     CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
     if (result != kCVReturnSuccess) {
         NSLog(@"Error creating CVMetalTextureCache: %d", result);
-        return;
+        return NO;
     }
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
@@ -381,7 +388,7 @@ typedef struct {
     if (result != kCVReturnSuccess || !yTextureRef) {
         NSLog(@"Error creating Y texture from CVPixelBuffer: %d", result);
         CFRelease(textureCache);
-        return;
+        return NO;
     }
 
     // 创建UV纹理
@@ -402,7 +409,7 @@ typedef struct {
         NSLog(@"Error creating UV texture from CVPixelBuffer: %d", result);
         CFRelease(yTextureRef);
         CFRelease(textureCache);
-        return;
+        return NO;
     }
 
     // 获取Metal纹理（这些纹理会保持对CVPixelBuffer的引用）
@@ -412,6 +419,8 @@ typedef struct {
     // 清理临时引用
     CFRelease(yTextureRef);
     CFRelease(uvTextureRef);
+    CFRelease(textureCache);
+    return YES;
 }
 
 - (void)dealloc {
