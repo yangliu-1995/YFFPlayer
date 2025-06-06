@@ -2,7 +2,6 @@
 #include "Player.h"
 #include "IOSAudioOutput.h"
 #include "IOSVideoOutput.h"
-#include "IOSAUAudioOutput.h"
 
 @protocol PlayerCoreDelegate <NSObject>
 
