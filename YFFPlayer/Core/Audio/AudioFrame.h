@@ -6,11 +6,11 @@
 namespace yffplayer {
 
 struct AudioFrame {
-    int64_t pts_ = 0;
-    int64_t duration_ = 0;
-    int sampleRate_ = 0;
-    int channels_ = 0;
-    int nbSamples_ = 0;  // 每帧的采样点数
+    int64_t pts_ {0};
+    int64_t duration_ {0};
+    int sampleRate_ {0};
+    int channels_ {0};
+    int nbSamples_ {0};
     std::vector<uint8_t> data_;
 
     AudioFrame() = default;

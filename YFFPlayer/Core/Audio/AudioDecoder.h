@@ -35,7 +35,7 @@ public:
 private:
     std::shared_ptr<PacketQueue> packetQueue_;
     std::shared_ptr<FrameQueue<FrameHandle>> frameQueue_;
-    AVCodecContext* codecCtx_ = nullptr;
+    AVCodecContext* codecCtx_{nullptr};
     AVRational timeBase_;
     std::atomic<bool> paused_{false};
     std::mutex mutex_;

@@ -45,9 +45,9 @@ private:
     std::mutex mutex_;
     std::condition_variable cond_;
 
-    AVFormatContext* formatCtx_ = nullptr;
-    int audioStreamIndex_ = -1;
-    int videoStreamIndex_ = -1;
+    AVFormatContext* formatCtx_{nullptr};
+    int audioStreamIndex_{-1};
+    int videoStreamIndex_{-1};
 
     std::weak_ptr<DemuxerCallback> callback_;
 };
