@@ -51,8 +51,8 @@ private:
     yffplayer::MediaInfo mediaInfo;
     if (_player->open(url.absoluteString.UTF8String, mediaInfo)) {
         NSLog(@"Media Info, hasAudio: %d, sampleRate: %d, channels: %d, hasVideo: %d, width: %d, height: %d, frameRate: %d",
-              mediaInfo.mHasAudio, mediaInfo.mAudioSampleRate, mediaInfo.mAudioChannels,
-              mediaInfo.mHasVideo, mediaInfo.mVideoWidth, mediaInfo.mVideoHeight, mediaInfo.mVideoFrameRate);
+              mediaInfo.hasAudio_, mediaInfo.audioSampleRate_, mediaInfo.audioChannels_,
+              mediaInfo.hasVideo_, mediaInfo.videoWidth_, mediaInfo.videoHeight_, mediaInfo.videoFrameRate_);
         _player->start();
     }
 }

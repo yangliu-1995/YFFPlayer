@@ -6,72 +6,72 @@ extern "C" {
 
 namespace yffplayer {
 
-VideoFrame::VideoFrame(void* frameHandle) : mFrameHandle(frameHandle) {
-    if (mFrameHandle) {
+VideoFrame::VideoFrame(void* frameHandle) : frameHandle_(frameHandle) {
+    if (frameHandle_) {
         setupDataPointers();
     }
 }
 
 VideoFrame::~VideoFrame() {
-    if (mFrameHandle) {
-        releaseFrameHandle(mFrameHandle);
-        mFrameHandle = nullptr;
+    if (frameHandle_) {
+        releaseFrameHandle(frameHandle_);
+        frameHandle_ = nullptr;
     }
 }
 
 void VideoFrame::setupDataPointers() {
-    if (!mFrameHandle) {
+    if (!frameHandle_) {
         return;
     }
 
-    AVFrame* avFrame = static_cast<AVFrame*>(mFrameHandle);
+    AVFrame* avFrame = static_cast<AVFrame*>(frameHandle_);
 
     for (int i = 0; i < NUM_DATA_POINTERS; ++i) {
-        mData[i] = avFrame->data[i];
-        mLinesize[i] = avFrame->linesize[i];
+        data_[i] = avFrame->data[i];
+        linesize_[i] = avFrame->linesize[i];
     }
 
-    mWidth = avFrame->width;
-    mHeight = avFrame->height;
+    width_ = avFrame->width;
+    height_ = avFrame->height;
 
-    mPts = (avFrame->pts == AV_NOPTS_VALUE) ? avFrame->best_effort_timestamp : avFrame->pts;
-    mDuration = (avFrame->duration == AV_NOPTS_VALUE) ? 0 : avFrame->duration;
+    pts_ = (avFrame->pts == AV_NOPTS_VALUE) ? avFrame->best_effort_timestamp : avFrame->pts;
+    duration_ = (avFrame->duration == AV_NOPTS_VALUE) ? 0 : avFrame->duration;
 
     switch (avFrame->format) {
         case AV_PIX_FMT_YUV420P:
-            mFormat = PixelFormat::YUV420P;
+            format_ = PixelFormat::YUV420P;
             break;
         case AV_PIX_FMT_NV12:
-            mFormat = PixelFormat::NV12;
+            format_ = PixelFormat::NV12;
             break;
         case AV_PIX_FMT_RGB24:
-            mFormat = PixelFormat::RGB24;
+            format_ = PixelFormat::RGB24;
             break;
         case AV_PIX_FMT_VIDEOTOOLBOX:
-            mFormat = PixelFormat::VIDEOTOOLBOX;
+            format_ = PixelFormat::VIDEOTOOLBOX;
             break;
         default:
-            mFormat = PixelFormat::YUV420P;  // 默认格式
+            format_ = PixelFormat::YUV420P;  // 默认格式
             break;
     }
 
-    mIsKeyFrame = (avFrame->key_frame == 1);
+    isKeyFrame_ = (avFrame->key_frame == 1);
 }
 
 VideoFrame::VideoFrame(VideoFrame&& other) noexcept
-    : mPts(other.mPts),
-      mDuration(other.mDuration),
-      mWidth(other.mWidth),
-      mHeight(other.mHeight),
-      mFormat(other.mFormat),
-      mIsKeyFrame(other.mIsKeyFrame),
-      mFrameHandle(other.mFrameHandle) {
+    : pts_(other.pts_),
+      duration_(other.duration_),
+      width_(other.width_),
+      height_(other.height_),
+      format_(other.format_),
+      isKeyFrame_(other.isKeyFrame_),
+      frameHandle_(other.frameHandle_) {
     for (int i = 0; i < NUM_DATA_POINTERS; ++i) {
-        mLinesize[i] = other.mLinesize[i];
+        linesize_[i] = other.linesize_[i];
     }
-    std::copy(other.mData, other.mData + 4, mData);
-    other.mFrameHandle = nullptr;
-    std::fill(other.mData, other.mData + 4, nullptr);
+    std::copy(other.data_, other.data_ + 4, data_);
+    other.frameHandle_ = nullptr;
+    std::fill(other.data_, other.data_ + 4, nullptr);
 }
 
 void VideoFrame::releaseFrameHandle(void* handle) {
@@ -85,27 +85,27 @@ void VideoFrame::releaseFrameHandle(void* handle) {
 VideoFrame& VideoFrame::operator=(VideoFrame&& other) noexcept {
     if (this != &other) {
         // 释放当前资源
-        if (mFrameHandle) {
-            releaseFrameHandle(mFrameHandle);
+        if (frameHandle_) {
+            releaseFrameHandle(frameHandle_);
         }
 
         // 移动数据
-        mPts = other.mPts;
-        mDuration = other.mDuration;
-        mWidth = other.mWidth;
-        mHeight = other.mHeight;
-        mFormat = other.mFormat;
-        mIsKeyFrame = other.mIsKeyFrame;
-        mFrameHandle = other.mFrameHandle;
+        pts_ = other.pts_;
+        duration_ = other.duration_;
+        width_ = other.width_;
+        height_ = other.height_;
+        format_ = other.format_;
+        isKeyFrame_ = other.isKeyFrame_;
+        frameHandle_ = other.frameHandle_;
         for (int i = 0; i < NUM_DATA_POINTERS; ++i) {
-            mLinesize[i] = other.mLinesize[i];
+            linesize_[i] = other.linesize_[i];
         }
 
-        std::copy(other.mData, other.mData + 4, mData);
+        std::copy(other.data_, other.data_ + 4, data_);
 
         // 清空源对象
-        other.mFrameHandle = nullptr;
-        std::fill(other.mData, other.mData + 4, nullptr);
+        other.frameHandle_ = nullptr;
+        std::fill(other.data_, other.data_ + 4, nullptr);
     }
     return *this;
 }
@@ -113,7 +113,7 @@ VideoFrame& VideoFrame::operator=(VideoFrame&& other) noexcept {
 // 获取指定平面的数据指针
 uint8_t* VideoFrame::getData(int plane) const {
     if (plane >= 0 && plane < 4) {
-        return mData[plane];
+        return data_[plane];
     }
     return nullptr;
 }
@@ -121,12 +121,12 @@ uint8_t* VideoFrame::getData(int plane) const {
 // 获取指定平面的行步长
 int VideoFrame::getLinesize(int plane) const {
     if (plane >= 0 && plane < 4) {
-        return mLinesize[plane];
+        return linesize_[plane];
     }
     return 0;
 }
 
 // 检查帧是否有效
-bool VideoFrame::isValid() const { return mFrameHandle != nullptr && mWidth > 0 && mHeight > 0; }
+bool VideoFrame::isValid() const { return frameHandle_ != nullptr && width_ > 0 && height_ > 0; }
 
 }  // namespace yffplayer

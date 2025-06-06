@@ -10,16 +10,16 @@ namespace yffplayer {
 enum class PixelFormat { YUV420P, NV12, RGB24, VIDEOTOOLBOX };
 
 struct VideoFrame {
-    int64_t mPts = 0;
-    int64_t mDuration = 0;
-    int mWidth = 0;
-    int mHeight = 0;
-    PixelFormat mFormat = PixelFormat::YUV420P;
-    bool mIsKeyFrame = false;
-    int mLinesize[NUM_DATA_POINTERS];
+    int64_t pts_ = 0;
+    int64_t duration_ = 0;
+    int width_ = 0;
+    int height_ = 0;
+    PixelFormat format_ = PixelFormat::YUV420P;
+    bool isKeyFrame_ = false;
+    int linesize_[NUM_DATA_POINTERS];
 
-    void* mFrameHandle = nullptr;
-    uint8_t* mData[NUM_DATA_POINTERS] = {nullptr};
+    void* frameHandle_ = nullptr;
+    uint8_t* data_[NUM_DATA_POINTERS] = {nullptr};
 
     VideoFrame() = default;
 

@@ -6,9 +6,9 @@ extern "C" {
 
 namespace yffplayer {
 VideoFrameProcessor::~VideoFrameProcessor() {
-    if (mSwsCtx) {
-        sws_freeContext(mSwsCtx);
-        mSwsCtx = nullptr;
+    if (swsCtx_) {
+        sws_freeContext(swsCtx_);
+        swsCtx_ = nullptr;
     }
 }
 
@@ -24,14 +24,14 @@ std::unique_ptr<VideoFrame> VideoFrameProcessor::processAudioFrame(
     if (sourceFormat != AV_PIX_FMT_YUV420P && sourceFormat != AV_PIX_FMT_NV12 &&
         sourceFormat != AV_PIX_FMT_RGB24 && sourceFormat != AV_PIX_FMT_VIDEOTOOLBOX) {
         AVFrame* nv12Frame = av_frame_alloc();
-        if (!mSwsCtx) {
-            mSwsCtx = sws_getContext(frame->width, frame->height, sourceFormat, frame->width,
+        if (!swsCtx_) {
+            swsCtx_ = sws_getContext(frame->width, frame->height, sourceFormat, frame->width,
                                      frame->height, AV_PIX_FMT_NV12, SWS_FAST_BILINEAR, nullptr,
                                      nullptr, nullptr);
         }
         av_image_alloc(nv12Frame->data, nv12Frame->linesize, frame->width, frame->height,
                        AV_PIX_FMT_NV12, 1);
-        sws_scale(mSwsCtx, frame->data, frame->linesize, 0, frame->height, nv12Frame->data,
+        sws_scale(swsCtx_, frame->data, frame->linesize, 0, frame->height, nv12Frame->data,
                   nv12Frame->linesize);
 
         std::array<int, 4> lineSize;

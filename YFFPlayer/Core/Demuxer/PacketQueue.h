@@ -29,15 +29,15 @@ public:
     size_t size() const;
 
 private:
-    std::queue<std::shared_ptr<Packet>> mQueue;
-    size_t mCapacity;
-    size_t mSize;
+    std::queue<std::shared_ptr<Packet>> queue_;
+    size_t capacity_;
+    size_t size_;
 
-    mutable std::mutex mMutex;
-    std::condition_variable mCondFull;
-    std::condition_variable mCondEmpty;
+    mutable std::mutex mutex_;
+    std::condition_variable condFull_;
+    std::condition_variable condEmpty_;
 
-    std::atomic<bool> mAborted{false};
+    std::atomic<bool> aborted_{false};
 };
 
 }  // namespace yffplayer

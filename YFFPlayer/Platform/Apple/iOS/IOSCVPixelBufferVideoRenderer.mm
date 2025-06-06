@@ -80,9 +80,9 @@
         
         // 创建CMSampleBuffer
         CMSampleBufferRef sampleBuffer = [self createSampleBufferFromPixelBuffer:processedPixelBuffer
-                                                                        withPTS:frame.mPts
-                                                                       duration:frame.mDuration];
-        
+                                                                        withPTS:frame.pts_
+                                                                       duration:frame.duration_];
+
         if (sampleBuffer) {
             [self->_displayLayer enqueueSampleBuffer:sampleBuffer];
             CFRelease(sampleBuffer);
@@ -97,14 +97,14 @@
 }
 
 - (CVPixelBufferRef)createCVPixelBufferFromVideoFrame:(const yffplayer::VideoFrame &)frame {
-    // VIDEOTOOLBOX格式直接从mData[3]获取CVPixelBufferRef
-    if (frame.mFormat == yffplayer::PixelFormat::VIDEOTOOLBOX) {
-        CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.mData[3];
+    // VIDEOTOOLBOX格式直接从data_[3]获取CVPixelBufferRef
+    if (frame.format_ == yffplayer::PixelFormat::VIDEOTOOLBOX) {
+        CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.data_[3];
         if (pixelBuffer) {
             CVPixelBufferRetain(pixelBuffer);
             return pixelBuffer;
         } else {
-            NSLog(@"VIDEOTOOLBOX format but mData[3] is NULL");
+            NSLog(@"VIDEOTOOLBOX format but data_[3] is NULL");
             return NULL;
         }
     }
@@ -113,7 +113,7 @@
     
     // 根据像素格式创建CVPixelBuffer
     OSType pixelFormat;
-    switch (frame.mFormat) {
+    switch (frame.format_) {
         case yffplayer::PixelFormat::YUV420P:
             pixelFormat = kCVPixelFormatType_420YpCbCr8Planar;
             break;
@@ -124,21 +124,21 @@
             pixelFormat = kCVPixelFormatType_24RGB;
             break;
         default:
-            NSLog(@"Unsupported pixel format: %d", (int)frame.mFormat);
+            NSLog(@"Unsupported pixel format: %d", (int)frame.format_);
             return NULL;
     }
     
     // 创建像素缓冲区属性
     NSDictionary *pixelBufferAttributes = @{
         (NSString *)kCVPixelBufferPixelFormatTypeKey: @(pixelFormat),
-        (NSString *)kCVPixelBufferWidthKey: @(frame.mWidth),
-        (NSString *)kCVPixelBufferHeightKey: @(frame.mHeight),
+        (NSString *)kCVPixelBufferWidthKey: @(frame.width_),
+        (NSString *)kCVPixelBufferHeightKey: @(frame.height_),
         (NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
     };
     
     CVReturn result = CVPixelBufferCreate(kCFAllocatorDefault,
-                                         frame.mWidth,
-                                         frame.mHeight,
+                                         frame.width_,
+                                         frame.height_,
                                          pixelFormat,
                                          (__bridge CFDictionaryRef)pixelBufferAttributes,
                                          &pixelBuffer);
@@ -151,46 +151,46 @@
     // 锁定像素缓冲区
     CVPixelBufferLockBaseAddress(pixelBuffer, 0);
     
-    if (frame.mFormat == yffplayer::PixelFormat::YUV420P) {
+    if (frame.format_ == yffplayer::PixelFormat::YUV420P) {
         // YUV420P格式：3个平面
         for (int i = 0; i < 3; i++) {
             void *baseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, i);
             size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, i);
-            size_t height = (i == 0) ? frame.mHeight : frame.mHeight / 2;
+            size_t height = (i == 0) ? frame.height_ : frame.height_ / 2;
             
             for (size_t row = 0; row < height; row++) {
                 memcpy((uint8_t *)baseAddress + row * bytesPerRow,
-                       frame.mData[i] + row * frame.mLinesize[i],
-                       (i == 0) ? frame.mWidth : frame.mWidth / 2);
+                       frame.data_[i] + row * frame.linesize_[i],
+                       (i == 0) ? frame.width_ : frame.width_ / 2);
             }
         }
-    } else if (frame.mFormat == yffplayer::PixelFormat::NV12) {
+    } else if (frame.format_ == yffplayer::PixelFormat::NV12) {
         // NV12格式：2个平面
         // Y平面
         void *yBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
         size_t yBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0);
-        for (size_t row = 0; row < frame.mHeight; row++) {
+        for (size_t row = 0; row < frame.height_; row++) {
             memcpy((uint8_t *)yBaseAddress + row * yBytesPerRow,
-                   frame.mData[0] + row * frame.mLinesize[0],
-                   frame.mWidth);
+                   frame.data_[0] + row * frame.linesize_[0],
+                   frame.width_);
         }
         
         // UV平面
         void *uvBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
         size_t uvBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1);
-        for (size_t row = 0; row < frame.mHeight / 2; row++) {
+        for (size_t row = 0; row < frame.height_ / 2; row++) {
             memcpy((uint8_t *)uvBaseAddress + row * uvBytesPerRow,
-                   frame.mData[1] + row * frame.mLinesize[1],
-                   frame.mWidth);
+                   frame.data_[1] + row * frame.linesize_[1],
+                   frame.width_);
         }
-    } else if (frame.mFormat == yffplayer::PixelFormat::RGB24) {
+    } else if (frame.format_ == yffplayer::PixelFormat::RGB24) {
         // RGB24格式：单个平面
         void *baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer);
         size_t bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer);
-        for (size_t row = 0; row < frame.mHeight; row++) {
+        for (size_t row = 0; row < frame.height_; row++) {
             memcpy((uint8_t *)baseAddress + row * bytesPerRow,
-                   frame.mData[0] + row * frame.mLinesize[0],
-                   frame.mWidth * 3);
+                   frame.data_[0] + row * frame.linesize_[0],
+                   frame.width_ * 3);
         }
     }
     

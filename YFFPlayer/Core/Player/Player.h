@@ -55,31 +55,31 @@ private:
     void notifyProgressChanged();
     void syncClockIfNeeded(int64_t pts);
 
-    std::unique_ptr<SyncManager> mSyncManager;
-    std::unique_ptr<Demuxer> mDemuxer;
-    std::shared_ptr<PacketQueue> mAudioPacketQueue;
-    std::shared_ptr<PacketQueue> mVideoPacketQueue;
-    std::shared_ptr<FrameQueue<FrameHandle>> mAudioFrameQueue;
-    std::shared_ptr<FrameQueue<FrameHandle>> mVideoFrameQueue;
-    std::unique_ptr<AudioDecoder> mAudioDecoder;
-    std::unique_ptr<VideoDecoder> mVideoDecoder;
-    std::shared_ptr<AudioOutput> mAudioOutput;
-    std::shared_ptr<VideoOutput> mVideoOutput;
-    std::thread mAudioOutputThread;
-    std::thread mVideoOutputThread;
-    std::thread mStopThread;
-    MediaInfo mMediaInfo;
-    std::atomic<bool> mRunning{false};
-    std::atomic<bool> mPaused{false};
-    std::atomic<int> mDroppedVideoFramesCount{0};
-    std::atomic<float> mPlaybackRate{1.0f};      // 播放倍率
-    std::atomic<bool> mRequiresSyncClock{true};  // 标记是否需要漂移同步
-    std::shared_ptr<PlayerCallback> mCallback;
-    std::unique_ptr<AudioFrameProcessor> mAudioProcessor;
-    std::unique_ptr<VideoFrameProcessor> mVideoProcessor;
+    std::unique_ptr<SyncManager> syncManager_;
+    std::unique_ptr<Demuxer> demuxer_;
+    std::shared_ptr<PacketQueue> audioPacketQueue_;
+    std::shared_ptr<PacketQueue> videoPacketQueue_;
+    std::shared_ptr<FrameQueue<FrameHandle>> audioFrameQueue_;
+    std::shared_ptr<FrameQueue<FrameHandle>> videoFrameQueue_;
+    std::unique_ptr<AudioDecoder> audioDecoder_;
+    std::unique_ptr<VideoDecoder> videoDecoder_;
+    std::shared_ptr<AudioOutput> audioOutput_;
+    std::shared_ptr<VideoOutput> videoOutput_;
+    std::thread audioOutputThread_;
+    std::thread videoOutputThread_;
+    std::thread stopThread_;
+    MediaInfo mediaInfo_;
+    std::atomic<bool> running_{false};
+    std::atomic<bool> paused_{false};
+    std::atomic<int> droppedVideoFramesCount_{0};
+    std::atomic<float> playbackRate_{1.0f};      // 播放倍率
+    std::atomic<bool> requiresSyncClock_{true};  // 标记是否需要漂移同步
+    std::shared_ptr<PlayerCallback> callback_;
+    std::unique_ptr<AudioFrameProcessor> audioProcessor_;
+    std::unique_ptr<VideoFrameProcessor> videoProcessor_;
 
-    double mFrameTimer{0};
-    double mLastVideoPts{0};  // 上一帧视频的PTS
-    std::atomic<float> mAudioPlaybackRateDelt{0.0f};
+    double frameTimer_{0};
+    double lastVideoPts_{0};  // 上一帧视频的PTS
+    std::atomic<float> audioPlaybackRateDelt_{0.0f};
 };
 }  // namespace yffplayer

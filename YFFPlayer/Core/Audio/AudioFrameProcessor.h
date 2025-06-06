@@ -37,19 +37,19 @@ public:
     void reset();
 
 private:
-    sonicStream mSonicStream;
-    int mSampleRate;
-    int mChannels;
-    int mFormat;
-    float mCurrentRate;
-    bool mInitialized;
-    std::unique_ptr<AudioResampleContext> mResampleContext;
+    sonicStream sonicStream_;
+    int sampleRate_;
+    int channels_;
+    int format_;
+    float currentRate_;
+    bool initialized_;
+    std::unique_ptr<AudioResampleContext> resampleContext_;
 
     // 内部缓冲区
-    std::vector<short> mInputBuffer;
-    std::vector<short> mOutputBuffer;
-    std::vector<uint8_t*> mSwrInputData;
-    std::vector<uint8_t*> mSwrOutputData;
+    std::vector<short> inputBuffer_;
+    std::vector<short> outputBuffer_;
+    std::vector<uint8_t*> swrInputData_;
+    std::vector<uint8_t*> swrOutputData_;
 
     // 转换函数
     void floatToShort(const float* input, short* output, size_t samples);

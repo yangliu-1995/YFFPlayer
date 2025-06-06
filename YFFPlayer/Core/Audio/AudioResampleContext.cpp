@@ -13,24 +13,24 @@ constexpr int kTargetNbChannels = 2;
 
 namespace yffplayer {
 AudioResampleContext::AudioResampleContext(int sampleRate, int format, int nbChannels)
-    : mInSampleRate(sampleRate), mInFormat(format), mInNbChannels(nbChannels) {
+    : inSampleRate_(sampleRate), inFormat_(format), inNbChannels_(nbChannels) {
     AVChannelLayout outLayout;
     av_channel_layout_default(&outLayout, kTargetNbChannels);
 
     AVChannelLayout inLayout;
     av_channel_layout_default(&inLayout, nbChannels);
 
-    mSwrContext = swr_alloc();
-    if (!mSwrContext) {
+    swrContext_ = swr_alloc();
+    if (!swrContext_) {
         return;
     }
-    if (swr_alloc_set_opts2(&mSwrContext, &outLayout, kTargetFormat, kTargetSampleRate, &inLayout,
+    if (swr_alloc_set_opts2(&swrContext_, &outLayout, kTargetFormat, kTargetSampleRate, &inLayout,
                             static_cast<AVSampleFormat>(format), sampleRate, 0, nullptr) < 0) {
-        swr_free(&mSwrContext);
+        swr_free(&swrContext_);
         return;
     }
-    if (swr_init(mSwrContext) < 0) {
-        swr_free(&mSwrContext);
+    if (swr_init(swrContext_) < 0) {
+        swr_free(&swrContext_);
         return;
     }
     av_channel_layout_uninit(&outLayout);
@@ -38,13 +38,13 @@ AudioResampleContext::AudioResampleContext(int sampleRate, int format, int nbCha
 }
 
 AudioResampleContext::~AudioResampleContext() {
-    if (mSwrContext) {
-        swr_free(&mSwrContext);
-        mSwrContext = nullptr;
+    if (swrContext_) {
+        swr_free(&swrContext_);
+        swrContext_ = nullptr;
     }
 }
 
-SwrContext* AudioResampleContext::getSwrContext() const { return mSwrContext; }
+SwrContext* AudioResampleContext::getSwrContext() const { return swrContext_; }
 
 int AudioResampleContext::getOutSampleRate() const { return kTargetSampleRate; }
 

@@ -21,8 +21,8 @@ public:
     virtual void flush() = 0;
 
 protected:
-    std::atomic<bool> mIsRunning{false};
-    std::thread mDecodeThread;
+    std::atomic<bool> isRunning_{false};
+    std::thread decodeThread_;
 
     virtual void decodeLoop() = 0;
 };

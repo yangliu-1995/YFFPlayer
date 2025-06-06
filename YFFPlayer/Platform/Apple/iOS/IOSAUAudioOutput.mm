@@ -206,16 +206,16 @@ void IOSAUAudioOutput::fillBuffer(AudioBufferList* ioData, UInt32 inNumberFrames
         }
 
         auto frame = mFrameQueue.front();
-        size_t frameSize = frame->mData.size();
+        size_t frameSize = frame->data_.size();
         size_t copySize = std::min(frameSize, requestedBytes - copiedBytes);
 
-        memcpy(outPtr + copiedBytes, frame->mData.data(), copySize);
+        memcpy(outPtr + copiedBytes, frame->data_.data(), copySize);
 
         if (copySize < frameSize) {
-            frame->mData.erase(frame->mData.begin(), frame->mData.begin() + copySize);
+            frame->data_.erase(frame->data_.begin(), frame->data_.begin() + copySize);
         } else {
             if (mPlaybackCallback) {
-                mPlaybackCallback(frame->mPts, frame->mDuration);
+                mPlaybackCallback(frame->pts_, frame->duration_);
             }
             mFrameQueue.pop_front();
             mCond.notify_one();

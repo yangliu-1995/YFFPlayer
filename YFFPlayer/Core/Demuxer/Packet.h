@@ -6,44 +6,44 @@ extern "C" {
 
 namespace yffplayer {
 struct Packet {
-    AVPacket *mPacket = nullptr;
+    AVPacket *packet_ = nullptr;
 
-    explicit Packet(AVPacket *packet) : mPacket(packet) {}
+    explicit Packet(AVPacket *packet) : packet_(packet) {}
 
     Packet(const Packet &other) {
-        if (other.mPacket) {
-            mPacket = av_packet_clone(other.mPacket);
+        if (other.packet_) {
+            packet_ = av_packet_clone(other.packet_);
         }
     }
 
-    Packet(Packet &&other) noexcept : mPacket(other.mPacket) { other.mPacket = nullptr; }
+    Packet(Packet &&other) noexcept : packet_(other.packet_) { other.packet_ = nullptr; }
 
     Packet &operator=(const Packet &other) {
         if (this != &other) {
-            if (mPacket) {
-                av_packet_free(&mPacket);
+            if (packet_) {
+                av_packet_free(&packet_);
             }
-            mPacket = other.mPacket ? av_packet_clone(other.mPacket) : nullptr;
+            packet_ = other.packet_ ? av_packet_clone(other.packet_) : nullptr;
         }
         return *this;
     }
 
     Packet &operator=(Packet &&other) noexcept {
         if (this != &other) {
-            if (mPacket) {
-                av_packet_free(&mPacket);
+            if (packet_) {
+                av_packet_free(&packet_);
             }
-            mPacket = other.mPacket;
-            other.mPacket = nullptr;
+            packet_ = other.packet_;
+            other.packet_ = nullptr;
         }
         return *this;
     }
 
-    bool isKeyFrame() const { return mPacket->flags & AV_PKT_FLAG_KEY; }
+    bool isKeyFrame() const { return packet_->flags & AV_PKT_FLAG_KEY; }
 
     ~Packet() {
-        if (mPacket) {
-            av_packet_free(&mPacket);
+        if (packet_) {
+            av_packet_free(&packet_);
         }
     }
 };

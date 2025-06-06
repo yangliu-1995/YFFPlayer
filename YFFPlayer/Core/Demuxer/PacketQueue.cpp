@@ -2,40 +2,40 @@
 
 namespace yffplayer {
 
-PacketQueue::PacketQueue(size_t capacity) : mCapacity(capacity), mSize(0) {}
+PacketQueue::PacketQueue(size_t capacity) : capacity_(capacity), size_(0) {}
 
 bool PacketQueue::try_push(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout) {
-    std::unique_lock<std::mutex> lock(mMutex);
-    if (!mCondFull.wait_for(lock, timeout,
-                            [this]() { return mSize < mCapacity || mAborted.load(); })) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!condFull_.wait_for(lock, timeout,
+                            [this]() { return size_ < capacity_ || aborted_.load(); })) {
         return false;
     }
-    if (mAborted.load()) return false;
+    if (aborted_.load()) return false;
 
-    mQueue.push(std::move(packet));
-    ++mSize;
-    if (mSize == 1) {
-        mCondEmpty.notify_one();
+    queue_.push(std::move(packet));
+    ++size_;
+    if (size_ == 1) {
+        condEmpty_.notify_one();
     }
     return true;
 }
 
 bool PacketQueue::pop_last() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    if (mQueue.empty()) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (queue_.empty()) return false;
 
     std::queue<std::shared_ptr<Packet>> temp;
-    while (mQueue.size() > 1) {
-        temp.push(std::move(mQueue.front()));
-        mQueue.pop();
+    while (queue_.size() > 1) {
+        temp.push(std::move(queue_.front()));
+        queue_.pop();
     }
-    mQueue.pop();  // 丢掉最后一个
-    --mSize;
+    queue_.pop();  // 丢掉最后一个
+    --size_;
     while (!temp.empty()) {
-        mQueue.push(std::move(temp.front()));
+        queue_.push(std::move(temp.front()));
         temp.pop();
     }
-    mCondFull.notify_one();
+    condFull_.notify_one();
     return true;
 }
 
@@ -50,48 +50,48 @@ bool PacketQueue::try_push_with_drop_if_keyframe(std::shared_ptr<Packet> packet,
 }
 
 void PacketQueue::push(std::shared_ptr<Packet> packet) {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mCondFull.wait(lock, [this]() { return mSize < mCapacity || mAborted.load(); });
-    if (mAborted.load()) return;
+    std::unique_lock<std::mutex> lock(mutex_);
+    condFull_.wait(lock, [this]() { return size_ < capacity_ || aborted_.load(); });
+    if (aborted_.load()) return;
 
-    mQueue.push(std::move(packet));
-    ++mSize;
-    if (mSize == 1) {
-        mCondEmpty.notify_one();
+    queue_.push(std::move(packet));
+    ++size_;
+    if (size_ == 1) {
+        condEmpty_.notify_one();
     }
 }
 
 std::shared_ptr<Packet> PacketQueue::pop() {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mCondEmpty.wait(lock, [this]() { return mSize > 0 || mAborted.load(); });
-    if (mAborted.load()) return nullptr;
+    std::unique_lock<std::mutex> lock(mutex_);
+    condEmpty_.wait(lock, [this]() { return size_ > 0 || aborted_.load(); });
+    if (aborted_.load()) return nullptr;
 
-    auto packet = mQueue.front();
-    mQueue.pop();
-    --mSize;
-    if (mSize == mCapacity - 1) {
-        mCondFull.notify_one();
+    auto packet = queue_.front();
+    queue_.pop();
+    --size_;
+    if (size_ == capacity_ - 1) {
+        condFull_.notify_one();
     }
     return packet;
 }
 
 void PacketQueue::clear() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    while (!mQueue.empty()) {
-        mQueue.pop();
+    std::lock_guard<std::mutex> lock(mutex_);
+    while (!queue_.empty()) {
+        queue_.pop();
     }
-    mSize = 0;
-    mCondFull.notify_all();
-    mCondEmpty.notify_all();
+    size_ = 0;
+    condFull_.notify_all();
+    condEmpty_.notify_all();
 }
 
 void PacketQueue::abort() {
-    mAborted.store(true);
-    mCondFull.notify_all();
-    mCondEmpty.notify_all();
+    aborted_.store(true);
+    condFull_.notify_all();
+    condEmpty_.notify_all();
 }
 
-void PacketQueue::start() { mAborted.store(false); }
+void PacketQueue::start() { aborted_.store(false); }
 
 void PacketQueue::flush() {
     abort();
@@ -100,8 +100,8 @@ void PacketQueue::flush() {
 }
 
 size_t PacketQueue::size() const {
-    std::lock_guard<std::mutex> lock(mMutex);
-    return mSize;
+    std::lock_guard<std::mutex> lock(mutex_);
+    return size_;
 }
 
 }  // namespace yffplayer

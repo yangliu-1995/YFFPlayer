@@ -15,9 +15,9 @@ public:
     int getOutNbChannels() const;
 
 private:
-    SwrContext* mSwrContext{nullptr};
-    int mInSampleRate{0};
-    int mInFormat{0};
-    int mInNbChannels{0};
+    SwrContext* swrContext_{nullptr};
+    int inSampleRate_{0};
+    int inFormat_{0};
+    int inNbChannels_{0};
 };
 }  // namespace yffplayer

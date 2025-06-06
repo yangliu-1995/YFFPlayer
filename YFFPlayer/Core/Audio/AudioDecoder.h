@@ -33,13 +33,13 @@ public:
     int getNbChannels() const;
 
 private:
-    std::shared_ptr<PacketQueue> mPacketQueue;
-    std::shared_ptr<FrameQueue<FrameHandle>> mFrameQueue;
-    AVCodecContext* mCodecCtx = nullptr;
-    AVRational mTimeBase;
-    std::atomic<bool> mPaused{false};
-    std::mutex mMutex;
-    std::condition_variable mCond;
+    std::shared_ptr<PacketQueue> packetQueue_;
+    std::shared_ptr<FrameQueue<FrameHandle>> frameQueue_;
+    AVCodecContext* codecCtx_ = nullptr;
+    AVRational timeBase_;
+    std::atomic<bool> paused_{false};
+    std::mutex mutex_;
+    std::condition_variable cond_;
 
     void decodeLoop() override;
 };

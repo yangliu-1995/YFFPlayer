@@ -201,10 +201,10 @@ typedef struct {
             return;
         }
 
-        self.currentFormat = frame.mFormat;
-        self.videoSize = CGSizeMake(frame.mWidth, frame.mHeight);
+        self.currentFormat = frame.format_;
+        self.videoSize = CGSizeMake(frame.width_, frame.height_);
 
-        switch (frame.mFormat) {
+        switch (frame.format_) {
             case yffplayer::PixelFormat::YUV420P:
                 [self createYUV420PTextures:frame];
                 break;
@@ -232,24 +232,24 @@ typedef struct {
     // Y plane texture
     MTLTextureDescriptor *yDescriptor = [MTLTextureDescriptor
             texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                         width:frame.mWidth
-                                        height:frame.mHeight
+                                         width:frame.width_
+                                        height:frame.height_
                                      mipmapped:NO];
     yDescriptor.usage = MTLTextureUsageShaderRead;
     
     // U plane texture
     MTLTextureDescriptor *uDescriptor = [MTLTextureDescriptor
             texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                         width:frame.mWidth / 2
-                                        height:frame.mHeight / 2
+                                         width:frame.width_ / 2
+                                        height:frame.height_ / 2
                                      mipmapped:NO];
     uDescriptor.usage = MTLTextureUsageShaderRead;
     
     // V plane texture
     MTLTextureDescriptor *vDescriptor = [MTLTextureDescriptor
             texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                         width:frame.mWidth / 2
-                                        height:frame.mHeight / 2
+                                         width:frame.width_ / 2
+                                        height:frame.height_ / 2
                                      mipmapped:NO];
     vDescriptor.usage = MTLTextureUsageShaderRead;
     
@@ -258,89 +258,89 @@ typedef struct {
     self.vTexture = [self.device newTextureWithDescriptor:vDescriptor];
     
     // Upload Y plane
-    [self.yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth, frame.mHeight)
+    [self.yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.width_, frame.height_)
                      mipmapLevel:0
-                       withBytes:frame.mData[0]
-                     bytesPerRow:frame.mLinesize[0]];
+                       withBytes:frame.data_[0]
+                     bytesPerRow:frame.linesize_[0]];
     
     // Upload U plane
-    [self.uTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
+    [self.uTexture replaceRegion:MTLRegionMake2D(0, 0, frame.width_ / 2, frame.height_ / 2)
                      mipmapLevel:0
-                       withBytes:frame.mData[1]
-                     bytesPerRow:frame.mLinesize[1]];
+                       withBytes:frame.data_[1]
+                     bytesPerRow:frame.linesize_[1]];
     
     // Upload V plane
-    [self.vTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
+    [self.vTexture replaceRegion:MTLRegionMake2D(0, 0, frame.width_ / 2, frame.height_ / 2)
                      mipmapLevel:0
-                       withBytes:frame.mData[2]
-                     bytesPerRow:frame.mLinesize[2]];
+                       withBytes:frame.data_[2]
+                     bytesPerRow:frame.linesize_[2]];
 }
 
 - (void)createNV12Textures:(const yffplayer::VideoFrame &)frame {
     // Create Y texture
     MTLTextureDescriptor *yDescriptor = [MTLTextureDescriptor
             texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
-                                         width:frame.mWidth
-                                        height:frame.mHeight
+                                         width:frame.width_
+                                        height:frame.height_
                                      mipmapped:NO];
     yDescriptor.usage = MTLTextureUsageShaderRead;
     self.yTexture = [self.device newTextureWithDescriptor:yDescriptor];
     
-    [self.yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth, frame.mHeight)
+    [self.yTexture replaceRegion:MTLRegionMake2D(0, 0, frame.width_, frame.height_)
                      mipmapLevel:0
-                       withBytes:frame.mData[0]
-                     bytesPerRow:frame.mLinesize[0]];
+                       withBytes:frame.data_[0]
+                     bytesPerRow:frame.linesize_[0]];
     
     // Create UV texture (already interleaved in NV12)
     MTLTextureDescriptor *uvDescriptor = [MTLTextureDescriptor
              texture2DDescriptorWithPixelFormat:MTLPixelFormatRG8Unorm
-                                          width:frame.mWidth / 2
-                                         height:frame.mHeight / 2
+                                          width:frame.width_ / 2
+                                         height:frame.height_ / 2
                                       mipmapped:NO];
     uvDescriptor.usage = MTLTextureUsageShaderRead;
     self.uvTexture = [self.device newTextureWithDescriptor:uvDescriptor];
     
-    [self.uvTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth / 2, frame.mHeight / 2)
+    [self.uvTexture replaceRegion:MTLRegionMake2D(0, 0, frame.width_ / 2, frame.height_ / 2)
                       mipmapLevel:0
-                        withBytes:frame.mData[1]
-                      bytesPerRow:frame.mLinesize[1]];
+                        withBytes:frame.data_[1]
+                      bytesPerRow:frame.linesize_[1]];
 }
 
 - (void)createRGB24Texture:(const yffplayer::VideoFrame &)frame {
     // Convert RGB24 to RGBA for Metal
-    NSUInteger rgbaDataSize = frame.mWidth * frame.mHeight * 4;
+    NSUInteger rgbaDataSize = frame.width_ * frame.height_ * 4;
     uint8_t *rgbaData = (uint8_t *)malloc(rgbaDataSize);
     
-    for (NSUInteger y = 0; y < frame.mHeight; y++) {
-        for (NSUInteger x = 0; x < frame.mWidth; x++) {
-            NSUInteger srcIndex = y * frame.mLinesize[0] + x * 3;
-            NSUInteger dstIndex = (y * frame.mWidth + x) * 4;
+    for (NSUInteger y = 0; y < frame.height_; y++) {
+        for (NSUInteger x = 0; x < frame.width_; x++) {
+            NSUInteger srcIndex = y * frame.linesize_[0] + x * 3;
+            NSUInteger dstIndex = (y * frame.width_ + x) * 4;
             
-            rgbaData[dstIndex] = frame.mData[0][srcIndex];     // R
-            rgbaData[dstIndex + 1] = frame.mData[0][srcIndex + 1]; // G
-            rgbaData[dstIndex + 2] = frame.mData[0][srcIndex + 2]; // B
+            rgbaData[dstIndex] = frame.data_[0][srcIndex];     // R
+            rgbaData[dstIndex + 1] = frame.data_[0][srcIndex + 1]; // G
+            rgbaData[dstIndex + 2] = frame.data_[0][srcIndex + 2]; // B
             rgbaData[dstIndex + 3] = 255; // A
         }
     }
     
     MTLTextureDescriptor *rgbDescriptor = [MTLTextureDescriptor
               texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
-                                           width:frame.mWidth
-                                          height:frame.mHeight
+                                           width:frame.width_
+                                          height:frame.height_
                                        mipmapped:NO];
     rgbDescriptor.usage = MTLTextureUsageShaderRead;
     self.rgbTexture = [self.device newTextureWithDescriptor:rgbDescriptor];
     
-    [self.rgbTexture replaceRegion:MTLRegionMake2D(0, 0, frame.mWidth, frame.mHeight)
+    [self.rgbTexture replaceRegion:MTLRegionMake2D(0, 0, frame.width_, frame.height_)
                        mipmapLevel:0
                          withBytes:rgbaData
-                       bytesPerRow:frame.mWidth * 4];
+                       bytesPerRow:frame.width_ * 4];
     
     free(rgbaData);
 }
 
 - (void)createVTNV12Textures:(const yffplayer::VideoFrame&)frame {
-    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.mData[3];
+    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame.data_[3];
     if (!pixelBuffer) {
         NSLog(@"Error: CVPixelBufferRef is null");
         return;

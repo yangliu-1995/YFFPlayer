@@ -35,8 +35,8 @@ enum class ErrorCode {
 };
 
 struct Error {
-    ErrorCode mCode;
-    std::string mMessage;
-    Error(ErrorCode code, const std::string& message) : mCode(code), mMessage(message){};
+    ErrorCode code_;
+    std::string message_;
+    Error(ErrorCode code, const std::string& message) : code_(code), message_(message){};
 };
 }  // namespace yffplayer

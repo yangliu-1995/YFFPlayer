@@ -32,7 +32,7 @@ public:
 
     template <typename T>
     LogStream& operator<<(const T& value) {
-        mStream << value;
+        stream_ << value;
         return *this;
     }
 
@@ -42,11 +42,11 @@ public:
     void setLogger(Logger* logger);
 
 private:
-    LogLevel mLevel;
-    std::ostringstream mStream;
-    const char* mFile;
-    int mLine;
-    Logger* mLogger;
+    LogLevel level_;
+    std::ostringstream stream_;
+    const char* file_;
+    int line_;
+    Logger* logger_;
 };
 
 class Log {

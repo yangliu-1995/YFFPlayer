@@ -6,31 +6,31 @@ extern "C" {
 
 namespace yffplayer {
 
-FrameHandle::FrameHandle(AVFrame* frame) : mFrame(frame) {
+FrameHandle::FrameHandle(AVFrame* frame) : frame_(frame) {
     // 构造函数接收AVFrame指针，不进行拷贝
 }
 
 FrameHandle::~FrameHandle() {
-    if (mFrame) {
-        av_frame_free(&mFrame);
-        mFrame = nullptr;
+    if (frame_) {
+        av_frame_free(&frame_);
+        frame_ = nullptr;
     }
 }
 
-FrameHandle::FrameHandle(FrameHandle&& other) noexcept : mFrame(other.mFrame) {
-    other.mFrame = nullptr;
+FrameHandle::FrameHandle(FrameHandle&& other) noexcept : frame_(other.frame_) {
+    other.frame_ = nullptr;
 }
 
 FrameHandle& FrameHandle::operator=(FrameHandle&& other) noexcept {
     if (this != &other) {
         // 释放当前资源
-        if (mFrame) {
-            av_frame_free(&mFrame);
+        if (frame_) {
+            av_frame_free(&frame_);
         }
 
         // 移动资源
-        mFrame = other.mFrame;
-        other.mFrame = nullptr;
+        frame_ = other.frame_;
+        other.frame_ = nullptr;
     }
     return *this;
 }

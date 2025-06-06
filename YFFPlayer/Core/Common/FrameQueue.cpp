@@ -5,58 +5,58 @@
 namespace yffplayer {
 
 template <typename T>
-FrameQueue<T>::FrameQueue(size_t capacity) : mCapacity(capacity), mSize(0), mAborted(false) {}
+FrameQueue<T>::FrameQueue(size_t capacity) : capacity_(capacity), size_(0), aborted_(false) {}
 
 template <typename T>
 void FrameQueue<T>::push(std::shared_ptr<T> frame) {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mCondFull.wait(lock, [this]() { return mSize < mCapacity || mAborted.load(); });
-    if (mAborted.load()) return;
+    std::unique_lock<std::mutex> lock(mutex_);
+    condFull_.wait(lock, [this]() { return size_ < capacity_ || aborted_.load(); });
+    if (aborted_.load()) return;
 
-    mQueue.push(std::move(frame));
-    ++mSize;
+    queue_.push(std::move(frame));
+    ++size_;
 
     lock.unlock();
-    mCondEmpty.notify_all();
+    condEmpty_.notify_all();
 }
 
 template <typename T>
 std::shared_ptr<T> FrameQueue<T>::pop() {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mCondEmpty.wait(lock, [this]() { return mSize > 0 || mAborted.load(); });
-    if (mAborted.load()) return nullptr;
+    std::unique_lock<std::mutex> lock(mutex_);
+    condEmpty_.wait(lock, [this]() { return size_ > 0 || aborted_.load(); });
+    if (aborted_.load()) return nullptr;
 
-    auto frame = mQueue.front();
-    mQueue.pop();
-    --mSize;
+    auto frame = queue_.front();
+    queue_.pop();
+    --size_;
 
     lock.unlock();
-    mCondFull.notify_all();
+    condFull_.notify_all();
     return frame;
 }
 
 template <typename T>
 void FrameQueue<T>::clear() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    while (!mQueue.empty()) {
-        mQueue.pop();
+    std::lock_guard<std::mutex> lock(mutex_);
+    while (!queue_.empty()) {
+        queue_.pop();
     }
-    mSize = 0;
+    size_ = 0;
 
-    mCondFull.notify_all();
-    mCondEmpty.notify_all();
+    condFull_.notify_all();
+    condEmpty_.notify_all();
 }
 
 template <typename T>
 void FrameQueue<T>::abort() {
-    mAborted.store(true);
-    mCondFull.notify_all();
-    mCondEmpty.notify_all();
+    aborted_.store(true);
+    condFull_.notify_all();
+    condEmpty_.notify_all();
 }
 
 template <typename T>
 void FrameQueue<T>::start() {
-    mAborted.store(false);
+    aborted_.store(false);
 }
 
 template <typename T>
@@ -68,23 +68,23 @@ void FrameQueue<T>::flush() {
 
 template <typename T>
 void FrameQueue<T>::wait_for_frames(size_t min_frames) {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mCondEmpty.wait(lock, [this, min_frames]() { return mSize >= min_frames || mAborted.load(); });
+    std::unique_lock<std::mutex> lock(mutex_);
+    condEmpty_.wait(lock, [this, min_frames]() { return size_ >= min_frames || aborted_.load(); });
 }
 
 template <typename T>
 std::shared_ptr<T> FrameQueue<T>::back() const {
-    std::lock_guard<std::mutex> lock(mMutex);
-    if (mQueue.empty()) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (queue_.empty()) {
         return nullptr;
     }
-    return mQueue.front();
+    return queue_.front();
 }
 
 template <typename T>
 size_t FrameQueue<T>::size() const {
-    std::lock_guard<std::mutex> lock(mMutex);
-    return mSize;
+    std::lock_guard<std::mutex> lock(mutex_);
+    return size_;
 }
 
 // 显式实例化

@@ -26,7 +26,7 @@ static enum AVPixelFormat CodecContextGetFormat(struct AVCodecContext* s,
 
 VideoDecoder::VideoDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<FrameHandle>> frameQueue)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
+    : packetQueue_(std::move(packetQueue)), frameQueue_(std::move(frameQueue)) {}
 
 VideoDecoder::~VideoDecoder() {
     stop();
@@ -34,15 +34,15 @@ VideoDecoder::~VideoDecoder() {
 }
 
 bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
-    mTimeBase = timeBase;
+    timeBase_ = timeBase;
 
-    mCodecCtx = avcodec_alloc_context3(nullptr);
-    if (!mCodecCtx) {
+    codecCtx_ = avcodec_alloc_context3(nullptr);
+    if (!codecCtx_) {
         LogInfo << "Failed to allocate video codec context";
         return false;
     }
 
-    if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
+    if (avcodec_parameters_to_context(codecCtx_, codecParams) < 0) {
         LogInfo << "Failed to copy codec parameters";
         return false;
     }
@@ -53,11 +53,11 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
     if (codecParams->codec_id == AV_CODEC_ID_H264 || codecParams->codec_id == AV_CODEC_ID_HEVC) {
-        mCodecCtx->get_format = CodecContextGetFormat;
-        mCodecCtx->codec_id = codec->id;
+        codecCtx_->get_format = CodecContextGetFormat;
+        codecCtx_->codec_id = codec->id;
     }
 
-    if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
+    if (avcodec_open2(codecCtx_, codec, nullptr) < 0) {
         LogInfo << "Failed to open codec";
         return false;
     }
@@ -66,35 +66,35 @@ bool VideoDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 }
 
 void VideoDecoder::start() {
-    mIsRunning = true;
-    mPaused = false;
-    mDecodeThread = std::thread(&VideoDecoder::decodeLoop, this);
+    isRunning_ = true;
+    paused_ = false;
+    decodeThread_ = std::thread(&VideoDecoder::decodeLoop, this);
     LogInfo << "VideoDecoder started";
 }
 
 void VideoDecoder::stop() {
-    mIsRunning = false;
+    isRunning_ = false;
     resume();  // 防止线程阻塞在暂停状态
-    if (mDecodeThread.joinable()) {
-        mDecodeThread.join();
+    if (decodeThread_.joinable()) {
+        decodeThread_.join();
     }
-    if (mCodecCtx && avcodec_is_open(mCodecCtx)) {
-        avcodec_free_context(&mCodecCtx);
-        mCodecCtx = nullptr;
+    if (codecCtx_ && avcodec_is_open(codecCtx_)) {
+        avcodec_free_context(&codecCtx_);
+        codecCtx_ = nullptr;
     }
 }
 
-void VideoDecoder::pause() { mPaused = true; }
+void VideoDecoder::pause() { paused_ = true; }
 
 void VideoDecoder::resume() {
-    mPaused = false;
-    mCond.notify_all();
+    paused_ = false;
+    cond_.notify_all();
 }
 
 void VideoDecoder::flush() {
-    mFrameQueue->clear();
-    if (mCodecCtx) {
-        avcodec_flush_buffers(mCodecCtx);
+    frameQueue_->clear();
+    if (codecCtx_) {
+        avcodec_flush_buffers(codecCtx_);
     }
 }
 
@@ -106,28 +106,28 @@ void VideoDecoder::decodeLoop() {
     AVFrame* frame = av_frame_alloc();
     AVFrame* rgbFrame = av_frame_alloc();
 
-    while (mIsRunning) {
+    while (isRunning_) {
         // 处理暂停逻辑
-        std::unique_lock<std::mutex> lock(mMutex);
-        mCond.wait(lock, [this] { return !mPaused; });
+        std::unique_lock<std::mutex> lock(mutex_);
+        cond_.wait(lock, [this] { return !paused_; });
         lock.unlock();
 
-        if (!mIsRunning) {
+        if (!isRunning_) {
             break;
         }
 
-        auto pkt = mPacketQueue->pop();
+        auto pkt = packetQueue_->pop();
         if (!pkt) {
             continue;
         }
 
-        auto avPacket = pkt->mPacket;
+        auto avPacket = pkt->packet_;
         if (!avPacket) {
             LogInfo << "Received empty packet, skipping\n";
             continue;
         }
 
-        int ret = avcodec_send_packet(mCodecCtx, avPacket);
+        int ret = avcodec_send_packet(codecCtx_, avPacket);
         if (ret < 0) {
             if (ret == AVERROR(EAGAIN)) {
                 av_log(NULL, AV_LOG_WARNING,
@@ -145,9 +145,9 @@ void VideoDecoder::decodeLoop() {
 
         while (true) {
             av_frame_unref(frame);
-            int ret = avcodec_receive_frame(mCodecCtx, frame);
+            int ret = avcodec_receive_frame(codecCtx_, frame);
             if (ret == AVERROR_EOF) {
-                mIsRunning = false;
+                isRunning_ = false;
             }
             if (ret < 0) {
                 break;
@@ -156,14 +156,14 @@ void VideoDecoder::decodeLoop() {
             av_frame_ref(clonedFrame, frame);
             int64_t pts =
                 (frame->pts == AV_NOPTS_VALUE) ? frame->best_effort_timestamp : frame->pts;
-            pts = static_cast<int64_t>(pts * av_q2d(mTimeBase) * 1000);
+            pts = static_cast<int64_t>(pts * av_q2d(timeBase_) * 1000);
             int64_t duration = (frame->duration == AV_NOPTS_VALUE)
                                    ? 0
-                                   : frame->duration * av_q2d(mTimeBase) * 1000;
+                                   : frame->duration * av_q2d(timeBase_) * 1000;
             clonedFrame->pts = pts;
             clonedFrame->duration = duration;
             auto videoFrame = std::make_shared<FrameHandle>(clonedFrame);
-            mFrameQueue->push(videoFrame);
+            frameQueue_->push(videoFrame);
         }
     }
 

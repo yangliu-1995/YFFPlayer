@@ -13,106 +13,106 @@ extern "C" {
 namespace yffplayer {
 
 AudioFrameProcessor::AudioFrameProcessor()
-    : mSonicStream(nullptr),
-      mSampleRate(0),
-      mChannels(0),
-      mCurrentRate(1.0f),
-      mInitialized(false) {}
+    : sonicStream_(nullptr),
+      sampleRate_(0),
+      channels_(0),
+      currentRate_(1.0f),
+      initialized_(false) {}
 
 AudioFrameProcessor::~AudioFrameProcessor() {
-    if (mSonicStream) {
-        sonicDestroyStream(mSonicStream);
-        mSonicStream = nullptr;
+    if (sonicStream_) {
+        sonicDestroyStream(sonicStream_);
+        sonicStream_ = nullptr;
     }
 }
 
 bool AudioFrameProcessor::initialize(int sampleRate, int channels, int format) {
-    if (mSonicStream) {
-        sonicDestroyStream(mSonicStream);
+    if (sonicStream_) {
+        sonicDestroyStream(sonicStream_);
     }
 
-    mSampleRate = sampleRate;
-    mChannels = channels;
-    mFormat = format;
+    sampleRate_ = sampleRate;
+    channels_ = channels;
+    format_ = format;
 
-    mSonicStream = sonicCreateStream(sampleRate, channels);
-    if (!mSonicStream) {
+    sonicStream_ = sonicCreateStream(sampleRate, channels);
+    if (!sonicStream_) {
         LogInfo << "Failed to create Sonic stream";
         return false;
     }
 
     // 设置默认参数
-    sonicSetSpeed(mSonicStream, mCurrentRate);
-    sonicSetPitch(mSonicStream, 1.0f);  // 保持音调不变
+    sonicSetSpeed(sonicStream_, currentRate_);
+    sonicSetPitch(sonicStream_, 1.0f);  // 保持音调不变
 
-    mResampleContext = std::make_unique<AudioResampleContext>(sampleRate, format, channels);
+    resampleContext_ = std::make_unique<AudioResampleContext>(sampleRate, format, channels);
 
-    mInitialized = true;
+    initialized_ = true;
     return true;
 }
 
 void AudioFrameProcessor::setPlaybackRate(float rate) {
-    if (!mInitialized || !mSonicStream) {
+    if (!initialized_ || !sonicStream_) {
         return;
     }
 
-    mCurrentRate = rate;
-    sonicSetSpeed(mSonicStream, rate);
+    currentRate_ = rate;
+    sonicSetSpeed(sonicStream_, rate);
 }
 
 void AudioFrameProcessor::setPitch(float pitch) {
-    if (!mInitialized || !mSonicStream) {
+    if (!initialized_ || !sonicStream_) {
         return;
     }
-    sonicSetPitch(mSonicStream, pitch);
+    sonicSetPitch(sonicStream_, pitch);
 }
 
 std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(
     const std::shared_ptr<FrameHandle> frameHandle, double delay) {
     AVFrame* frame = frameHandle->getFrame();
-    SwrContext* swrContext = mResampleContext->getSwrContext();
+    SwrContext* swrContext = resampleContext_->getSwrContext();
     if (!swrContext) {
         return nullptr;
     }
     auto audioFrame = reSampleAVFrame(*frame);
-    if (std::abs(mCurrentRate - 1.0f) < 0.01f) {
+    if (std::abs(currentRate_ - 1.0f) < 0.01f) {
         return audioFrame;
     }
-    int inputSamples = audioFrame->mNbSamples;
-    short* inputData = (short*)audioFrame->mData.data();
-    __unused int samplesWritten = sonicWriteShortToStream(mSonicStream, inputData, inputSamples);
-    int availableSamples = sonicSamplesAvailable(mSonicStream);
+    int inputSamples = audioFrame->nbSamples_;
+    short* inputData = (short*)audioFrame->data_.data();
+    __unused int samplesWritten = sonicWriteShortToStream(sonicStream_, inputData, inputSamples);
+    int availableSamples = sonicSamplesAvailable(sonicStream_);
     if (availableSamples <= 0) {
         return nullptr;
     }
-    int totalOutputSamples = availableSamples * audioFrame->mChannels;
-    mOutputBuffer.resize(totalOutputSamples);
+    int totalOutputSamples = availableSamples * audioFrame->channels_;
+    outputBuffer_.resize(totalOutputSamples);
     int samplesRead =
-        sonicReadShortFromStream(mSonicStream, mOutputBuffer.data(), availableSamples);
+        sonicReadShortFromStream(sonicStream_, outputBuffer_.data(), availableSamples);
 
     if (samplesRead <= 0) {
         return nullptr;
     }
     auto outputFrame = std::make_unique<AudioFrame>();
-    outputFrame->mPts = audioFrame->mPts;
-    outputFrame->mDuration = static_cast<int64_t>(audioFrame->mDuration / mCurrentRate);
-    outputFrame->mSampleRate = audioFrame->mSampleRate;
-    outputFrame->mChannels = audioFrame->mChannels;
-    outputFrame->mNbSamples = samplesRead;
+    outputFrame->pts_ = audioFrame->pts_;
+    outputFrame->duration_ = static_cast<int64_t>(audioFrame->duration_ / currentRate_);
+    outputFrame->sampleRate_ = audioFrame->sampleRate_;
+    outputFrame->channels_ = audioFrame->channels_;
+    outputFrame->nbSamples_ = samplesRead;
 
-    size_t dataSize = samplesRead * audioFrame->mChannels * sizeof(int16_t);
-    outputFrame->mData.resize(dataSize);
-    std::memcpy(outputFrame->mData.data(), mOutputBuffer.data(), dataSize);
+    size_t dataSize = samplesRead * audioFrame->channels_ * sizeof(int16_t);
+    outputFrame->data_.resize(dataSize);
+    std::memcpy(outputFrame->data_.data(), outputBuffer_.data(), dataSize);
     return outputFrame;
 }
 
 std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame) {
     int inSampleRate = frame.sample_rate;
-    int outSampleRate = mResampleContext->getOutSampleRate();
-    int outChannels = mResampleContext->getOutNbChannels();
-    AVSampleFormat outSampleFmt = static_cast<AVSampleFormat>(mResampleContext->getOutFormat());
+    int outSampleRate = resampleContext_->getOutSampleRate();
+    int outChannels = resampleContext_->getOutNbChannels();
+    AVSampleFormat outSampleFmt = static_cast<AVSampleFormat>(resampleContext_->getOutFormat());
 
-    SwrContext* swrContext = mResampleContext->getSwrContext();
+    SwrContext* swrContext = resampleContext_->getSwrContext();
     if (!swrContext) {
         return nullptr;
     }
@@ -167,17 +167,17 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
 }
 
 void AudioFrameProcessor::flush() {
-    if (mSonicStream) {
-        sonicFlushStream(mSonicStream);
+    if (sonicStream_) {
+        sonicFlushStream(sonicStream_);
     }
 }
 
 void AudioFrameProcessor::reset() {
-    if (mInitialized) {
+    if (initialized_) {
         flush();
         // 重新初始化
-        initialize(mSampleRate, mChannels, mFormat);
-        setPlaybackRate(mCurrentRate);
+        initialize(sampleRate_, channels_, format_);
+        setPlaybackRate(currentRate_);
     }
 }
 

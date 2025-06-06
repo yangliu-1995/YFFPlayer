@@ -33,23 +33,23 @@ public:
 private:
     void demuxLoop();
 
-    std::shared_ptr<PacketQueue> mAudioQueue;
-    std::shared_ptr<PacketQueue> mVideoQueue;
+    std::shared_ptr<PacketQueue> audioQueue_;
+    std::shared_ptr<PacketQueue> videoQueue_;
 
-    std::thread mThread;
-    std::atomic<bool> mRunning{false};
-    std::atomic<bool> mPaused{false};
-    std::atomic<bool> mSeeking{false};
-    std::atomic<bool> mStopRequested{false};
+    std::thread thread_;
+    std::atomic<bool> running_{false};
+    std::atomic<bool> paused_{false};
+    std::atomic<bool> seeking_{false};
+    std::atomic<bool> stopRequested_{false};
 
-    std::mutex mMutex;
-    std::condition_variable mCond;
+    std::mutex mutex_;
+    std::condition_variable cond_;
 
-    AVFormatContext* mFormatCtx = nullptr;
-    int mAudioStreamIndex = -1;
-    int mVideoStreamIndex = -1;
+    AVFormatContext* formatCtx_ = nullptr;
+    int audioStreamIndex_ = -1;
+    int videoStreamIndex_ = -1;
 
-    std::weak_ptr<DemuxerCallback> mCallback;
+    std::weak_ptr<DemuxerCallback> callback_;
 };
 
 }  // namespace yffplayer

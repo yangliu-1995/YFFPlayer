@@ -128,8 +128,8 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
             mCond.notify_one();
             hasFrame = true;
 
-            size_t dataSize = std::min(frame.mData.size(), (size_t)mFrameBytes);
-            memcpy(inBuffer->mAudioData, frame.mData.data(), dataSize);
+            size_t dataSize = std::min(frame.data_.size(), (size_t)mFrameBytes);
+            memcpy(inBuffer->mAudioData, frame.data_.data(), dataSize);
             inBuffer->mAudioDataByteSize = (UInt32)dataSize;
         }
         AudioQueueEnqueueBuffer(mAudioQueue, inBuffer, 0, nullptr);
@@ -140,7 +140,7 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
         if (baseTime == 0) {
             baseTime = CFAbsoluteTimeGetCurrent();
         }
-        mPlaybackCallback(frame.mPts, frame.mDuration);
+        mPlaybackCallback(frame.pts_, frame.duration_);
     }
 }
 

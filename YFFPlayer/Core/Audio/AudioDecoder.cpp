@@ -13,7 +13,7 @@ namespace yffplayer {
 
 AudioDecoder::AudioDecoder(std::shared_ptr<PacketQueue> packetQueue,
                            std::shared_ptr<FrameQueue<FrameHandle>> frameQueue)
-    : mPacketQueue(std::move(packetQueue)), mFrameQueue(std::move(frameQueue)) {}
+    : packetQueue_(std::move(packetQueue)), frameQueue_(std::move(frameQueue)) {}
 
 AudioDecoder::~AudioDecoder() {
     stop();
@@ -21,7 +21,7 @@ AudioDecoder::~AudioDecoder() {
 }
 
 bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
-    mTimeBase = timeBase;
+    timeBase_ = timeBase;
 
     const AVCodec* codec = avcodec_find_decoder(codecParams->codec_id);
     if (!codec) {
@@ -29,18 +29,18 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
 
-    mCodecCtx = avcodec_alloc_context3(codec);
-    if (!mCodecCtx) {
+    codecCtx_ = avcodec_alloc_context3(codec);
+    if (!codecCtx_) {
         LogInfo << "Failed to allocate audio codec context";
         return false;
     }
 
-    if (avcodec_parameters_to_context(mCodecCtx, codecParams) < 0) {
+    if (avcodec_parameters_to_context(codecCtx_, codecParams) < 0) {
         LogInfo << "Failed to copy codec parameters";
         return false;
     }
 
-    if (avcodec_open2(mCodecCtx, codec, nullptr) < 0) {
+    if (avcodec_open2(codecCtx_, codec, nullptr) < 0) {
         LogInfo << "Failed to open audio codec";
         return false;
     }
@@ -51,56 +51,56 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
 }
 
 void AudioDecoder::start() {
-    mIsRunning = true;
-    mPaused = false;
-    mDecodeThread = std::thread(&AudioDecoder::decodeLoop, this);
+    isRunning_ = true;
+    paused_ = false;
+    decodeThread_ = std::thread(&AudioDecoder::decodeLoop, this);
     LogInfo << "AudioDecoder started";
 }
 
 void AudioDecoder::stop() {
-    mIsRunning = false;
+    isRunning_ = false;
     resume();  // 防止线程阻塞在暂停状态
-    if (mDecodeThread.joinable()) {
-        mDecodeThread.join();
+    if (decodeThread_.joinable()) {
+        decodeThread_.join();
     }
-    if (mCodecCtx && avcodec_is_open(mCodecCtx)) {
-        avcodec_free_context(&mCodecCtx);
-        mCodecCtx = nullptr;
+    if (codecCtx_ && avcodec_is_open(codecCtx_)) {
+        avcodec_free_context(&codecCtx_);
+        codecCtx_ = nullptr;
     }
 }
 
-void AudioDecoder::pause() { mPaused = true; }
+void AudioDecoder::pause() { paused_ = true; }
 
 void AudioDecoder::resume() {
-    mPaused = false;
-    mCond.notify_all();
+    paused_ = false;
+    cond_.notify_all();
 }
 
 void AudioDecoder::flush() {
-    mFrameQueue->clear();
-    if (mCodecCtx) {
-        avcodec_flush_buffers(mCodecCtx);
+    frameQueue_->clear();
+    if (codecCtx_) {
+        avcodec_flush_buffers(codecCtx_);
     }
 }
 
 AVSampleFormat AudioDecoder::getFormat() const {
-    if (!mCodecCtx) {
+    if (!codecCtx_) {
         return AV_SAMPLE_FMT_NONE;
     }
-    return mCodecCtx->sample_fmt;
+    return codecCtx_->sample_fmt;
 }
 
 int AudioDecoder::getSampleRate() const {
-    if (!mCodecCtx) {
+    if (!codecCtx_) {
         return 0;
     }
-    return mCodecCtx->sample_rate;
+    return codecCtx_->sample_rate;
 }
 int AudioDecoder::getNbChannels() const {
-    if (!mCodecCtx) {
+    if (!codecCtx_) {
         return 0;
     }
-    return mCodecCtx->ch_layout.nb_channels;
+    return codecCtx_->ch_layout.nb_channels;
 }
 
 void AudioDecoder::decodeLoop() {
@@ -116,30 +116,30 @@ void AudioDecoder::decodeLoop() {
         return;
     }
 
-    while (mIsRunning) {  // 使用mIsRunning替代!mStopped
+    while (isRunning_) {  // 使用mIsRunning替代!stopped_
         // 处理暂停逻辑
-        std::unique_lock<std::mutex> lock(mMutex);
-        mCond.wait(lock, [this] {
-            return !mPaused;  // 使用!mIsRunning替代mStopped
+        std::unique_lock<std::mutex> lock(mutex_);
+        cond_.wait(lock, [this] {
+            return !paused_;  // 使用!mIsRunning替代mStopped
         });
         lock.unlock();
 
-        if (!mIsRunning) {  // 使用!mIsRunning替代mStopped
+        if (!isRunning_) {  // 使用!mIsRunning替代mStopped
             break;
         }
 
-        auto pkt = mPacketQueue->pop();
+        auto pkt = packetQueue_->pop();
         if (!pkt) {
             continue;
         }
 
-        auto avPacket = pkt->mPacket;
+        auto avPacket = pkt->packet_;
         if (!avPacket) {
-            av_packet_unref(pkt->mPacket);  // 清理 Packet 内的 AVPacket
+            av_packet_unref(pkt->packet_);  // 清理 Packet 内的 AVPacket
             continue;
         }
 
-        int ret = avcodec_send_packet(mCodecCtx, avPacket);
+        int ret = avcodec_send_packet(codecCtx_, avPacket);
         if (ret < 0) {
             LogInfo << "Failed to send packet: " << av_err2str(ret);
             av_packet_unref(avPacket);
@@ -148,7 +148,7 @@ void AudioDecoder::decodeLoop() {
 
         while (true) {
             av_frame_unref(frame);  // 清理当前帧
-            ret = avcodec_receive_frame(mCodecCtx, frame);
+            ret = avcodec_receive_frame(codecCtx_, frame);
             if (ret == 0) {
                 AVFrame* frameClone = av_frame_alloc();
                 av_frame_ref(frameClone, frame);
@@ -158,12 +158,12 @@ void AudioDecoder::decodeLoop() {
                 }
                 if (frameClone->pts != AV_NOPTS_VALUE) {
                     frameClone->pts =
-                        static_cast<int64_t>(frameClone->pts * av_q2d(mTimeBase) * 1000);
+                        static_cast<int64_t>(frameClone->pts * av_q2d(timeBase_) * 1000);
                 } else if (frameClone->best_effort_timestamp != AV_NOPTS_VALUE) {
                     frameClone->pts = static_cast<int64_t>(frameClone->best_effort_timestamp *
-                                                           av_q2d(mTimeBase) * 1000);
+                                                           av_q2d(timeBase_) * 1000);
                 }
-                mFrameQueue->push(std::make_shared<FrameHandle>(frameClone));
+                frameQueue_->push(std::make_shared<FrameHandle>(frameClone));
             } else if (ret == AVERROR(EAGAIN)) {
                 break;  // 需要更多输入
             } else if (ret == AVERROR_EOF) {

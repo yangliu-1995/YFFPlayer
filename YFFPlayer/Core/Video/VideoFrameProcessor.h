@@ -20,6 +20,6 @@ public:
     std::unique_ptr<VideoFrame> processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle);
 
 private:
-    SwsContext* mSwsCtx = nullptr;
+    SwsContext* swsCtx_ = nullptr;
 };
 }  // namespace yffplayer

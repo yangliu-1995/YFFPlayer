@@ -48,16 +48,16 @@ private:
 
     std::shared_ptr<Clock> getMasterClock() const;
 
-    SyncType mType{SyncType::Audio};
+    SyncType type_{SyncType::Audio};
 
-    std::shared_ptr<Clock> mAudioClock;
+    std::shared_ptr<Clock> audioClock_;
 
-    std::shared_ptr<Clock> mExternalClock;
+    std::shared_ptr<Clock> externalClock_;
 
-    std::shared_ptr<Clock> mVideoClock;
+    std::shared_ptr<Clock> videoClock_;
 
-    mutable std::mutex mMutex;
+    mutable std::mutex mutex_;
 
-    std::atomic<float> mMaxFrameDuration{10.0f};
+    std::atomic<float> maxFrameDuration_{10.0f};
 };
 }  // namespace yffplayer

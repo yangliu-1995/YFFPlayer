@@ -10,25 +10,25 @@ struct AVCodecParameters;
 
 namespace yffplayer {
 struct MediaInfo {
-    AVCodecParameters *mAudioCodecParameters{nullptr};
-    AVRational mAudioTimeBase{0, 1};
-    AVCodecParameters *mVideoCodecParameters{nullptr};
-    AVRational mVideoTimeBase{0, 1};
-    int mVideoFrameRate{30};
-    int64_t mDurationMs{0};
-    bool mHasVideo{false};
-    bool mHasAudio{false};
-    bool mIsLiveStream{false};
-    bool mIsTsDiscont{false};
+    AVCodecParameters *audioCodecParameters_{nullptr};
+    AVRational audioTimeBase_{0, 1};
+    AVCodecParameters *videoCodecParameters_{nullptr};
+    AVRational videoTimeBase_{0, 1};
+    int videoFrameRate_{30};
+    int64_t durationMs_{0};
+    bool hasVideo_{false};
+    bool hasAudio_{false};
+    bool isLiveStream_{false};
+    bool isTsDiscont_{false};
 
-    int mVideoWidth{0};
-    int mVideoHeight{0};
-    int mAudioChannels{0};
-    int mAudioSampleRate{0};
+    int videoWidth_{0};
+    int videoHeight_{0};
+    int audioChannels_{0};
+    int audioSampleRate_{0};
 
     ~MediaInfo() {
-        avcodec_parameters_free(&mAudioCodecParameters);
-        avcodec_parameters_free(&mVideoCodecParameters);
+        avcodec_parameters_free(&audioCodecParameters_);
+        avcodec_parameters_free(&videoCodecParameters_);
     };
 };
 }  // namespace yffplayer

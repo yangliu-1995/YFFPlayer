@@ -19,60 +19,60 @@ extern "C" {
 #define AV_SYNC_FRAMEDUP_THRESHOLD 0.1
 
 namespace yffplayer {
-SyncManager::SyncManager(SyncType type) : mType(type) {
-    mAudioClock = std::make_shared<Clock>();
-    mExternalClock = std::make_shared<Clock>();
-    mVideoClock = std::make_shared<Clock>();
+SyncManager::SyncManager(SyncType type) : type_(type) {
+    audioClock_ = std::make_shared<Clock>();
+    externalClock_ = std::make_shared<Clock>();
+    videoClock_ = std::make_shared<Clock>();
 }
 
 SyncManager::~SyncManager() {}
 
 void SyncManager::initAudioClock(double pts) {
-    if (mAudioClock->isNAN()) {
-        mAudioClock->set(pts);
+    if (audioClock_->isNAN()) {
+        audioClock_->set(pts);
     }
-    if (mExternalClock->isNAN()) {
-        mExternalClock->set(pts);
+    if (externalClock_->isNAN()) {
+        externalClock_->set(pts);
     }
 }
 
 void SyncManager::initVideoClock(double pts) {
-    if (mVideoClock->isNAN()) {
-        mVideoClock->set(pts);
+    if (videoClock_->isNAN()) {
+        videoClock_->set(pts);
     }
-    if (mExternalClock->isNAN()) {
-        mExternalClock->set(pts);
+    if (externalClock_->isNAN()) {
+        externalClock_->set(pts);
     }
 }
 
 void SyncManager::pause() {
-    mAudioClock->setPaused(true);
-    mExternalClock->setPaused(true);
-    mVideoClock->setPaused(true);
+    audioClock_->setPaused(true);
+    externalClock_->setPaused(true);
+    videoClock_->setPaused(true);
 }
 
 void SyncManager::resume() {
-    mAudioClock->setPaused(false);
-    mExternalClock->setPaused(false);
-    mVideoClock->setPaused(false);
+    audioClock_->setPaused(false);
+    externalClock_->setPaused(false);
+    videoClock_->setPaused(false);
 }
 
 void SyncManager::setSpeed(double speed) {
-    mAudioClock->setSpeed(speed);
-    mExternalClock->setSpeed(speed);
-    mVideoClock->setSpeed(speed);
+    audioClock_->setSpeed(speed);
+    externalClock_->setSpeed(speed);
+    videoClock_->setSpeed(speed);
 }
 
-double SyncManager::getSpeed() const { return mExternalClock->getSpeed(); }
+double SyncManager::getSpeed() const { return externalClock_->getSpeed(); }
 
 double SyncManager::computeVideoTargetDelay(double delay) {
-    double videoTime = mVideoClock->get();
+    double videoTime = videoClock_->get();
     double masterTime = getClockTime();
     double diff = videoTime - masterTime;
 
     double originalDelay = delay;
     double sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
-    if (!isnan(diff) && fabs(diff) < mMaxFrameDuration) {
+    if (!isnan(diff) && fabs(diff) < maxFrameDuration_) {
         if (diff <= -sync_threshold)
             delay = FFMAX(0, delay + diff);
         else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD)
@@ -89,8 +89,8 @@ double SyncManager::computeVideoTargetDelay(double delay) {
 double SyncManager::computeAudioTargetDelay(double pts) { return getClockTime() - pts; }
 
 void SyncManager::updateVideoTime(double pts) {
-    mVideoClock->set(pts);
-    syncClockToSlave(mExternalClock, mVideoClock);
+    videoClock_->set(pts);
+    syncClockToSlave(externalClock_, videoClock_);
 }
 
 void SyncManager::syncClockToSlave(std::shared_ptr<Clock> clock,
@@ -103,29 +103,29 @@ void SyncManager::syncClockToSlave(std::shared_ptr<Clock> clock,
 }
 
 void SyncManager::updateAudioTime(double pts, double duration) {
-    mAudioClock->set(pts + duration);
-    syncClockToSlave(mExternalClock, mAudioClock);
+    audioClock_->set(pts + duration);
+    syncClockToSlave(externalClock_, audioClock_);
 }
 
 double SyncManager::getClockTime() const {
-    std::lock_guard<std::mutex> lock(mMutex);
+    std::lock_guard<std::mutex> lock(mutex_);
     double clockTime = getMasterClock()->get();
     return clockTime;
 }
 
 std::shared_ptr<Clock> SyncManager::getMasterClock() const {
-    switch (mType) {
+    switch (type_) {
         case SyncType::Audio:
-            return mAudioClock;
+            return audioClock_;
         case SyncType::External:
-            return mExternalClock;
+            return externalClock_;
         case SyncType::Video:
-            return mVideoClock;
+            return videoClock_;
         default:
-            return mExternalClock;  // Default to external clock for unknown types
+            return externalClock_;  // Default to external clock for unknown types
     }
 }
 
-void SyncManager::setMaxFrameDuration(float duration) { mMaxFrameDuration = duration; }
+void SyncManager::setMaxFrameDuration(float duration) { maxFrameDuration_ = duration; }
 
 }  // namespace yffplayer

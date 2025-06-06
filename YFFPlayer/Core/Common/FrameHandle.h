@@ -29,13 +29,13 @@ public:
     FrameHandle& operator=(const FrameHandle&) = delete;
 
     // 获取AVFrame指针
-    AVFrame* getFrame() const { return mFrame; }
+    AVFrame* getFrame() const { return frame_; }
 
     // 检查是否有效
-    bool isValid() const { return mFrame != nullptr; }
+    bool isValid() const { return frame_ != nullptr; }
 
 private:
-    AVFrame* mFrame;
+    AVFrame* frame_;
 };
 
 }  // namespace yffplayer

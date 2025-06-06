@@ -6,20 +6,20 @@ extern "C" {
 
 namespace yffplayer {
 LogStream::LogStream(LogLevel level, const char* file, int line, Logger* logger)
-    : mLevel(level), mFile(file), mLine(line), mLogger(logger) {}
+    : level_(level), file_(file), line_(line), logger_(logger) {}
 
 LogStream::~LogStream() {
     std::ostringstream full;
-    if (mLine >= 0) {
-        full << mFile << ":" << mLine << " " << mStream.str();
+    if (line_ >= 0) {
+        full << file_ << ":" << line_ << " " << stream_.str();
     } else {
-        full << mStream.str();
+        full << stream_.str();
     }
-    if (mLogger) {
-        mLogger->log(mLevel, full.str());
+    if (logger_) {
+        logger_->log(level_, full.str());
     } else {
         const char* levelStr = "";
-        switch (mLevel) {
+        switch (level_) {
             case LogLevel::Debug:
                 levelStr = "[DEBUG] ";
                 break;
@@ -38,11 +38,11 @@ LogStream::~LogStream() {
 }
 
 LogStream& LogStream::operator<<(StreamManipulator manip) {
-    manip(mStream);
+    manip(stream_);
     return *this;
 }
 
-void LogStream::setLogger(Logger* logger) { mLogger = logger; }
+void LogStream::setLogger(Logger* logger) { logger_ = logger; }
 
 // Log
 
