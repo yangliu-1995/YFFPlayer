@@ -38,22 +38,7 @@
 		0D4D51E92DEA23270009BB99 /* YFFPlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51182DEA23270009BB99 /* YFFPlayer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0D4D52772DEA23270009BB99 /* sonic.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51B92DEA23270009BB99 /* sonic.h */; };
 		A1148BC02DEF1545008992FA /* FFmpeg.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D4D511D2DEA23270009BB99 /* FFmpeg.xcframework */; };
-		A1148BC12DEF1545008992FA /* FFmpeg.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0D4D511D2DEA23270009BB99 /* FFmpeg.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		A1148BC22DEF1545008992FA /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				A1148BC12DEF1545008992FA /* FFmpeg.xcframework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		030F82932DE9879800C6CF04 /* YFFPlayer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -296,7 +281,6 @@
 				030F828F2DE9879800C6CF04 /* Sources */,
 				030F82902DE9879800C6CF04 /* Frameworks */,
 				030F82912DE9879800C6CF04 /* Resources */,
-				A1148BC22DEF1545008992FA /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
