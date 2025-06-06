@@ -67,7 +67,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         if (!videoProcessor_) {
             videoProcessor_ = std::make_unique<VideoFrameProcessor>();
         }
-        if (!videoOutput_->initialize(mediaInfo_.videoWidth_, mediaInfo_.videoHeight_)) {
+        if (!videoOutput_->initialize(mediaInfo_.videoWidth_, mediaInfo_.videoHeight_, mediaInfo_.videoFrameRate_)) {
             return false;
         }
     }

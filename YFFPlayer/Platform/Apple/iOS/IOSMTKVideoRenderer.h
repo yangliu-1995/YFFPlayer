@@ -4,6 +4,7 @@
 
 @interface IOSMTKVideoRenderer : NSObject <IOSVideoRendererProtocol, MTKViewDelegate>
 
+@property (nonatomic, assign) NSInteger fps;
 @property (nonatomic, assign) float brightness;
 @property (nonatomic, assign) float contrast;
 @property (nonatomic, assign) float saturation;

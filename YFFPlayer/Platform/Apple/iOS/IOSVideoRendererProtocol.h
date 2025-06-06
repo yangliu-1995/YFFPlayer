@@ -10,6 +10,7 @@ class VideoFrame;
 - (instancetype)initWithView:(UIView *)view;
 
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame;
+- (void)setFps:(NSInteger)fps;
 - (void)setBrightness:(float)brightness;
 - (float)brightness;
 - (void)setContrast:(float)contrast;

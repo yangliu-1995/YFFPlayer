@@ -1,14 +1,14 @@
 #include "IOSVideoOutput.h"
 #include "VideoFrame.h"
 
-#import "IOSCVPixelBufferVideoRenderer.h"
 #import "IOSMTKVideoRenderer.h"
 
 IOSVideoOutput::IOSVideoOutput(UIView* view) {
     mVideoRenderer = [[IOSMTKVideoRenderer alloc] initWithView:view];
 }
 
-bool IOSVideoOutput::initialize(int width, int height) {
+bool IOSVideoOutput::initialize(int width, int height, int fps) {
+    [mVideoRenderer setFps: fps];
     return mVideoRenderer != nil;
 }
 

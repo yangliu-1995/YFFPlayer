@@ -85,8 +85,9 @@ typedef struct {
     self.mtkView.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
     self.mtkView.clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
     self.mtkView.framebufferOnly = NO;
-    self.mtkView.paused = YES;
-    self.mtkView.enableSetNeedsDisplay = YES;
+    self.mtkView.paused = NO;
+    self.mtkView.enableSetNeedsDisplay = NO;
+    self.mtkView.preferredFramesPerSecond = 30;
 
     [parentView addSubview:self.mtkView];
     // Setup auto layout
@@ -101,6 +102,14 @@ typedef struct {
 
 - (void)setupMetal {
     self.commandQueue = [self.device newCommandQueue];
+
+    CVMetalTextureCacheRef textureCache = NULL;
+    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
+    if (result == kCVReturnSuccess) {
+        self.textureCache = textureCache; // 持有引用
+    } else {
+        NSLog(@"Failed to create texture cache: %d", result);
+    }
 }
 
 - (void)setupRenderPipeline {
@@ -195,6 +204,11 @@ typedef struct {
                                                   options:MTLResourceStorageModeShared];
 }
 
+- (void)setFps:(NSInteger)fps {
+    _fps = MIN(MAX(0, fps), 60);
+    self.mtkView.preferredFramesPerSecond = _fps;
+}
+
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame {
     dispatch_sync(_renderQueue, ^{
         if (!frame.isValid()) {
@@ -228,10 +242,6 @@ typedef struct {
 
         // Update uniform buffer
         [self updateUniforms];
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.mtkView setNeedsDisplay];
-        });
     });
 }
 
@@ -353,29 +363,20 @@ typedef struct {
         return NO;
     }
 
-    // 释放之前的pixelBuffer
     if (self.currentPixelBuffer) {
         CVPixelBufferRelease(self.currentPixelBuffer);
     }
-
-    // 保持新的pixelBuffer引用
     self.currentPixelBuffer = CVPixelBufferRetain(pixelBuffer);
 
-    CVMetalTextureCacheRef textureCache = nil;
-    CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
-    if (result != kCVReturnSuccess) {
-        NSLog(@"Error creating CVMetalTextureCache: %d", result);
-        return NO;
-    }
+    CVMetalTextureCacheFlush(self.textureCache, 0); // 添加刷新，防止残留旧纹理
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
 
-    // 创建Y纹理
     CVMetalTextureRef yTextureRef = NULL;
-    result = CVMetalTextureCacheCreateTextureFromImage(
+    CVReturn result = CVMetalTextureCacheCreateTextureFromImage(
         kCFAllocatorDefault,
-        textureCache,
+        self.textureCache,
         pixelBuffer,
         NULL,
         MTLPixelFormatR8Unorm,
@@ -386,16 +387,14 @@ typedef struct {
     );
 
     if (result != kCVReturnSuccess || !yTextureRef) {
-        NSLog(@"Error creating Y texture from CVPixelBuffer: %d", result);
-        CFRelease(textureCache);
+        NSLog(@"Error creating Y texture: %d", result);
         return NO;
     }
 
-    // 创建UV纹理
     CVMetalTextureRef uvTextureRef = NULL;
     result = CVMetalTextureCacheCreateTextureFromImage(
         kCFAllocatorDefault,
-        textureCache,
+        self.textureCache,
         pixelBuffer,
         NULL,
         MTLPixelFormatRG8Unorm,
@@ -406,20 +405,17 @@ typedef struct {
     );
 
     if (result != kCVReturnSuccess || !uvTextureRef) {
-        NSLog(@"Error creating UV texture from CVPixelBuffer: %d", result);
+        NSLog(@"Error creating UV texture: %d", result);
         CFRelease(yTextureRef);
-        CFRelease(textureCache);
         return NO;
     }
 
-    // 获取Metal纹理（这些纹理会保持对CVPixelBuffer的引用）
     self.yTexture = CVMetalTextureGetTexture(yTextureRef);
     self.uvTexture = CVMetalTextureGetTexture(uvTextureRef);
 
-    // 清理临时引用
     CFRelease(yTextureRef);
     CFRelease(uvTextureRef);
-    CFRelease(textureCache);
+
     return YES;
 }
 
@@ -444,7 +440,7 @@ typedef struct {
 }
 
 - (void)drawInMTKView:(MTKView *)view {
-    dispatch_async(_renderQueue, ^{
+    dispatch_sync(_renderQueue, ^{
         id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
         MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
 

@@ -8,7 +8,7 @@ public:
     IOSVideoOutput(UIView* view);
     ~IOSVideoOutput() override = default;
 
-    bool initialize(int width, int height) override;
+    bool initialize(int width, int height, int fps) override;
     void renderVideoFrame(const yffplayer::VideoFrame& frame) override;
     void stop() override;
     void pause() override;

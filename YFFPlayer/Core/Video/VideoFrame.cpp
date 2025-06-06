@@ -55,7 +55,7 @@ void VideoFrame::setupDataPointers() {
             break;
     }
 
-    isKeyFrame_ = (avFrame->key_frame == 1);
+    isKeyFrame_ = avFrame->flags & AV_FRAME_FLAG_KEY;
 }
 
 VideoFrame::VideoFrame(VideoFrame&& other) noexcept

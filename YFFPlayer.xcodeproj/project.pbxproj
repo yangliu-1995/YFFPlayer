@@ -21,17 +21,13 @@
 		030F83182DE988AA00C6CF04 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83172DE988AA00C6CF04 /* Metal.framework */; };
 		030F83192DE988BB00C6CF04 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83052DE9880A00C6CF04 /* MetalKit.framework */; };
 		0D3F6D1E2DEB56F900500A07 /* YFFPlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51182DEA23270009BB99 /* YFFPlayer.h */; };
-		0D4D51C92DEA23270009BB99 /* IOSAUAudioOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D510D2DEA23270009BB99 /* IOSAUAudioOutput.mm */; };
 		0D4D51CA2DEA23270009BB99 /* IOSAudioOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */; };
-		0D4D51CB2DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51112DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.mm */; };
 		0D4D51CC2DEA23270009BB99 /* IOSMTKVideoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */; };
 		0D4D51CD2DEA23270009BB99 /* IOSVideoOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51152DEA23270009BB99 /* IOSVideoOutput.mm */; };
 		0D4D51CE2DEA23270009BB99 /* VideoRenderer.metal in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51172DEA23270009BB99 /* VideoRenderer.metal */; };
 		0D4D51CF2DEA23270009BB99 /* YFFPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51192DEA23270009BB99 /* YFFPlayer.mm */; };
 		0D4D51D02DEA23270009BB99 /* sonic.c in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51BA2DEA23270009BB99 /* sonic.c */; };
-		0D4D51E32DEA23270009BB99 /* IOSAUAudioOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510C2DEA23270009BB99 /* IOSAUAudioOutput.h */; };
 		0D4D51E42DEA23270009BB99 /* IOSAudioOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */; };
-		0D4D51E52DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51102DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h */; };
 		0D4D51E62DEA23270009BB99 /* IOSMTKVideoRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */; };
 		0D4D51E72DEA23270009BB99 /* IOSVideoOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */; };
 		0D4D51E82DEA23270009BB99 /* IOSVideoRendererProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51162DEA23270009BB99 /* IOSVideoRendererProtocol.h */; };
@@ -57,12 +53,8 @@
 		030F83152DE9889D00C6CF04 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
 		030F83172DE988AA00C6CF04 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
 		0D3F6D162DEB56C600500A07 /* YFFPlayer_macOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer_macOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		0D4D510C2DEA23270009BB99 /* IOSAUAudioOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSAUAudioOutput.h; sourceTree = "<group>"; };
-		0D4D510D2DEA23270009BB99 /* IOSAUAudioOutput.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSAUAudioOutput.mm; sourceTree = "<group>"; };
 		0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSAudioOutput.h; sourceTree = "<group>"; };
 		0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSAudioOutput.mm; sourceTree = "<group>"; };
-		0D4D51102DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSCVPixelBufferVideoRenderer.h; sourceTree = "<group>"; };
-		0D4D51112DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSCVPixelBufferVideoRenderer.mm; sourceTree = "<group>"; };
 		0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSMTKVideoRenderer.h; sourceTree = "<group>"; };
 		0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSMTKVideoRenderer.mm; sourceTree = "<group>"; };
 		0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSVideoOutput.h; sourceTree = "<group>"; };
@@ -166,12 +158,8 @@
 		0D4D511A2DEA23270009BB99 /* iOS */ = {
 			isa = PBXGroup;
 			children = (
-				0D4D510C2DEA23270009BB99 /* IOSAUAudioOutput.h */,
-				0D4D510D2DEA23270009BB99 /* IOSAUAudioOutput.mm */,
 				0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */,
 				0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */,
-				0D4D51102DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h */,
-				0D4D51112DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.mm */,
 				0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */,
 				0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */,
 				0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */,
@@ -251,9 +239,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0D4D51E32DEA23270009BB99 /* IOSAUAudioOutput.h in Headers */,
 				0D4D51E42DEA23270009BB99 /* IOSAudioOutput.h in Headers */,
-				0D4D51E52DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.h in Headers */,
 				0D4D51E62DEA23270009BB99 /* IOSMTKVideoRenderer.h in Headers */,
 				0D4D51E72DEA23270009BB99 /* IOSVideoOutput.h in Headers */,
 				0D4D51E82DEA23270009BB99 /* IOSVideoRendererProtocol.h in Headers */,
@@ -376,9 +362,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0D4D51C92DEA23270009BB99 /* IOSAUAudioOutput.mm in Sources */,
 				0D4D51CA2DEA23270009BB99 /* IOSAudioOutput.mm in Sources */,
-				0D4D51CB2DEA23270009BB99 /* IOSCVPixelBufferVideoRenderer.mm in Sources */,
 				0D4D51CC2DEA23270009BB99 /* IOSMTKVideoRenderer.mm in Sources */,
 				0D4D51CD2DEA23270009BB99 /* IOSVideoOutput.mm in Sources */,
 				0D4D51CE2DEA23270009BB99 /* VideoRenderer.metal in Sources */,
