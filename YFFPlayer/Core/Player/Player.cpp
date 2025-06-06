@@ -84,7 +84,7 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
             }
         }
     }
-//    mSyncManager = std::make_unique<SyncManager>(SyncManager::SyncType::External);
+    mSyncManager = std::make_unique<SyncManager>(SyncManager::SyncType::External);
     return true;
 }
 
@@ -102,8 +102,10 @@ void Player::start() {
                 int64_t pts = frame->pts;
                 int64_t duration = frame->duration;
                 duration /= mPlaybackRate;
-                mSyncManager->initAudioClock((pts + duration) / 1000.0);
-                mSyncManager->initVideoClock(0 / 1000.0);
+                mSyncManager->initAudioClock((pts) / 1000.0);
+                if (mMediaInfo.mHasVideo) {
+                    mSyncManager->initVideoClock(pts / 1000.0);
+                }
             }
         }
     }
