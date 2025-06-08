@@ -305,11 +305,11 @@ void Player::audioOutputThread() {
         if (absDelay < 0.010) {
             audioPlaybackRateDelt_ = 0.0;
         } else if (absDelay < 0.030) {
-            audioPlaybackRateDelt_ = 0.03 * sign;
+            audioPlaybackRateDelt_ = 0.01 * sign;
         } else if (absDelay < 0.050) {
-            audioPlaybackRateDelt_ = 0.05 * sign;
+            audioPlaybackRateDelt_ = 0.03 * sign;
         } else {
-            audioPlaybackRateDelt_ = 0.07 * sign;
+            audioPlaybackRateDelt_ = 0.05 * sign;
         }
 
         if (audioProcessor_) {
