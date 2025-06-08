@@ -294,7 +294,7 @@ void Player::audioOutputThread() {
 
     audioPlaybackRateDelt_ = 0;
     audioOutput_->setPlaybackCallback([this](int64_t pts, int64_t duration) {
-        int64_t adjustedDuration = duration / (playbackRate_ + audioPlaybackRateDelt_);
+        int64_t adjustedDuration = duration / playbackRate_;
         syncManager_->updateAudioTime(pts / 1000.0, adjustedDuration / 1000.0);
         double delay = syncManager_->computeAudioTargetDelay((pts + adjustedDuration) / 1000.0);
         LogInfo << "audio delay: " << delay;
