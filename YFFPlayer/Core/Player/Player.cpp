@@ -309,7 +309,7 @@ void Player::audioOutputThread() {
         } else if (absDelay < 0.050) {
             audioPlaybackRateDelt_ = 0.03 * sign;
         } else {
-            audioPlaybackRateDelt_ = 0.05 * sign;
+            audioPlaybackRateDelt_ = 0.1 * sign;
         }
 
         if (audioProcessor_) {
@@ -373,7 +373,7 @@ void Player::videoOutputThread() {
             LogInfo << "last duration: " << lastDuration << ", sleep time: " << sleepTime;
             if (time < frameTimer_ + delay) {
                 sleepTime = FFMIN(frameTimer_ + delay - time, sleepTime);
-                sleepTime = FFMAX(sleepTime, 0.1);
+                LogInfo << "final sleep time" << sleepTime;
                 av_usleep(static_cast<unsigned int>(sleepTime * 1000 * 1000));
             }
             videoOutput_->renderVideoFrame(*videoFrame);

@@ -1,6 +1,6 @@
 #pragma once
 #import <UIKit/UIKit.h>
-#import "IOSVideoRendererProtocol.h"
+#import "VideoRendererProtocol.h"
 #include "VideoOutput.h"
 
 class IOSVideoOutput : public yffplayer::VideoOutput {
@@ -15,5 +15,5 @@ public:
     void resume() override;
 
 private:
-    id<IOSVideoRendererProtocol> mVideoRenderer;
+    id<VideoRendererProtocol> mVideoRenderer;
 };

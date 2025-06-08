@@ -1,13 +1,20 @@
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import <TargetConditionals.h>
 
+#if TARGET_OS_IOS
+#import <UIKit/UIKit.h>
+typedef UIView PlatformView;
+#elif TARGET_OS_OSX
+#import <AppKit/AppKit.h>
+typedef NSView PlatformView;
+#endif
 namespace yffplayer {
 class VideoFrame;
 }
 
-@protocol IOSVideoRendererProtocol <NSObject>
+@protocol VideoRendererProtocol <NSObject>
 
-- (instancetype)initWithView:(UIView *)view;
+- (instancetype)initWithView:(PlatformView *)view;
 
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame;
 - (void)setFps:(NSInteger)fps;

@@ -1,8 +1,7 @@
 #import <Foundation/Foundation.h>
-#import <MetalKit/MetalKit.h>
-#import "IOSVideoRendererProtocol.h"
+#import "VideoRendererProtocol.h"
 
-@interface IOSMTKVideoRenderer : NSObject <IOSVideoRendererProtocol, MTKViewDelegate>
+@interface MetalVideoRenderer : PlatformView <VideoRendererProtocol>
 
 @property (nonatomic, assign) NSInteger fps;
 @property (nonatomic, assign) float brightness;

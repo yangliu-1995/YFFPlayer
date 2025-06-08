@@ -1,4 +1,4 @@
-#import "IOSMTKVideoRenderer.h"
+#import "MetalVideoRenderer.h"
 #import "VideoFrame.h"
 #import <Metal/Metal.h>
 #import <simd/simd.h>
@@ -16,9 +16,9 @@ typedef struct {
     float saturation;
 } ColorUniforms;
 
-@interface IOSMTKVideoRenderer ()
+@interface MetalVideoRenderer ()
 
-@property (nonatomic, strong) MTKView *mtkView;
+@property(nonatomic, readonly) CAMetalLayer *metalLayer;
 @property (nonatomic, strong) id<MTLDevice> device;
 @property (nonatomic, strong) id<MTLCommandQueue> commandQueue;
 @property (nonatomic, strong) id<MTLRenderPipelineState> yuv420pPipelineState;
@@ -43,10 +43,14 @@ typedef struct {
 
 @end
 
-@implementation IOSMTKVideoRenderer
+@implementation MetalVideoRenderer
 
-- (instancetype)initWithView:(UIView *)view {
-    self = [super init];
++ (Class)layerClass {
+    return [CAMetalLayer class];
+}
+
+- (instancetype)initWithView:(PlatformView *)view {
+    self = [super initWithFrame:view.frame];
     if (self) {
         // Initialize default values
         _brightness = 0.0f;
@@ -55,8 +59,15 @@ typedef struct {
         _currentFormat = yffplayer::PixelFormat::YUV420P;
         _videoSize = CGSizeZero;
         _renderQueue = dispatch_queue_create("com.yffplayer.render.video", DISPATCH_QUEUE_SERIAL);
-        // Setup MTKView
-        [self setupMTKViewWithParentView:view];
+        
+        [view addSubview:self];
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        [NSLayoutConstraint activateConstraints:@[
+            [self.topAnchor constraintEqualToAnchor:view.topAnchor],
+            [self.leadingAnchor constraintEqualToAnchor:view.leadingAnchor],
+            [self.trailingAnchor constraintEqualToAnchor:view.trailingAnchor],
+            [self.bottomAnchor constraintEqualToAnchor:view.bottomAnchor]
+        ]];
         
         // Setup Metal
         [self setupMetal];
@@ -73,40 +84,27 @@ typedef struct {
     return self;
 }
 
-- (void)setupMTKViewWithParentView:(UIView *)parentView {
+- (CAMetalLayer *)metalLayer {
+    return static_cast<CAMetalLayer*>(self.layer);
+}
+
+- (void)setupMetal {
     self.device = MTLCreateSystemDefaultDevice();
     if (!self.device) {
         NSLog(@"Metal is not supported on this device");
         return;
     }
     
-    self.mtkView = [[MTKView alloc] initWithFrame:parentView.bounds device:self.device];
-    self.mtkView.delegate = self;
-    self.mtkView.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
-    self.mtkView.clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
-    self.mtkView.framebufferOnly = NO;
-    self.mtkView.paused = NO;
-    self.mtkView.enableSetNeedsDisplay = NO;
-    self.mtkView.preferredFramesPerSecond = 30;
-
-    [parentView addSubview:self.mtkView];
-    // Setup auto layout
-    self.mtkView.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.mtkView.topAnchor constraintEqualToAnchor:parentView.topAnchor],
-        [self.mtkView.leadingAnchor constraintEqualToAnchor:parentView.leadingAnchor],
-        [self.mtkView.trailingAnchor constraintEqualToAnchor:parentView.trailingAnchor],
-        [self.mtkView.bottomAnchor constraintEqualToAnchor:parentView.bottomAnchor]
-    ]];
-}
-
-- (void)setupMetal {
+    self.metalLayer.device = self.device;
+    self.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    self.metalLayer.framebufferOnly = NO;
+    
     self.commandQueue = [self.device newCommandQueue];
 
     CVMetalTextureCacheRef textureCache = NULL;
     CVReturn result = CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, self.device, NULL, &textureCache);
     if (result == kCVReturnSuccess) {
-        self.textureCache = textureCache; // 持有引用
+        self.textureCache = textureCache;
     } else {
         NSLog(@"Failed to create texture cache: %d", result);
     }
@@ -153,7 +151,7 @@ typedef struct {
     yuv420pDescriptor.vertexFunction = vertexFunction;
     yuv420pDescriptor.fragmentFunction = fragmentYUV420PFunction;
     yuv420pDescriptor.vertexDescriptor = vertexDescriptor;
-    yuv420pDescriptor.colorAttachments[0].pixelFormat = self.mtkView.colorPixelFormat;
+    yuv420pDescriptor.colorAttachments[0].pixelFormat = self.metalLayer.pixelFormat;
     
     self.yuv420pPipelineState = [self.device newRenderPipelineStateWithDescriptor:yuv420pDescriptor error:&error];
     if (error) {
@@ -165,7 +163,7 @@ typedef struct {
     nv12Descriptor.vertexFunction = vertexFunction;
     nv12Descriptor.fragmentFunction = fragmentNV12Function;
     nv12Descriptor.vertexDescriptor = vertexDescriptor;
-    nv12Descriptor.colorAttachments[0].pixelFormat = self.mtkView.colorPixelFormat;
+    nv12Descriptor.colorAttachments[0].pixelFormat = self.metalLayer.pixelFormat;
     
     self.nv12PipelineState = [self.device newRenderPipelineStateWithDescriptor:nv12Descriptor error:&error];
     if (error) {
@@ -177,7 +175,7 @@ typedef struct {
     rgb24Descriptor.vertexFunction = vertexFunction;
     rgb24Descriptor.fragmentFunction = fragmentRGB24Function;
     rgb24Descriptor.vertexDescriptor = vertexDescriptor;
-    rgb24Descriptor.colorAttachments[0].pixelFormat = self.mtkView.colorPixelFormat;
+    rgb24Descriptor.colorAttachments[0].pixelFormat = self.metalLayer.pixelFormat;
     
     self.rgb24PipelineState = [self.device newRenderPipelineStateWithDescriptor:rgb24Descriptor error:&error];
     if (error) {
@@ -206,7 +204,7 @@ typedef struct {
 
 - (void)setFps:(NSInteger)fps {
     _fps = MIN(MAX(0, fps), 60);
-    self.mtkView.preferredFramesPerSecond = _fps;
+    // Note: fps is ignored as requested, using manual refresh
 }
 
 - (void)renderVideoFrame:(const yffplayer::VideoFrame &)frame {
@@ -242,6 +240,12 @@ typedef struct {
 
         // Update uniform buffer
         [self updateUniforms];
+        
+        // Manually trigger rendering
+        NSTimeInterval s = CFAbsoluteTimeGetCurrent();
+        [self drawFrame];
+        NSTimeInterval c = CFAbsoluteTimeGetCurrent() - s;
+        NSLog(@"draw cost: %f", c);
     });
 }
 
@@ -368,7 +372,7 @@ typedef struct {
     }
     self.currentPixelBuffer = CVPixelBufferRetain(pixelBuffer);
 
-    CVMetalTextureCacheFlush(self.textureCache, 0); // 添加刷新，防止残留旧纹理
+    CVMetalTextureCacheFlush(self.textureCache, 0);
 
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
@@ -419,10 +423,85 @@ typedef struct {
     return YES;
 }
 
-- (void)dealloc {
-    if (self.currentPixelBuffer) {
-        CVPixelBufferRelease(self.currentPixelBuffer);
-        self.currentPixelBuffer = NULL;
+- (void)drawFrame {
+    @autoreleasepool {
+        id<CAMetalDrawable> drawable = [self.metalLayer nextDrawable];
+        if (!drawable) {
+            return;
+        }
+        
+        id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
+        if (!commandBuffer) {
+            return;
+        }
+        
+        MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
+        renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+        renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
+        renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+        
+        id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+        if (!renderEncoder) {
+            return;
+        }
+
+        // Select appropriate pipeline and set textures based on pixel format
+        switch (self.currentFormat) {
+            case yffplayer::PixelFormat::YUV420P:
+                if (self.yuv420pPipelineState && self.yTexture && self.uTexture && self.vTexture) {
+                    [renderEncoder setRenderPipelineState:self.yuv420pPipelineState];
+                    [renderEncoder setFragmentTexture:self.yTexture atIndex:0];
+                    [renderEncoder setFragmentTexture:self.uTexture atIndex:1];
+                    [renderEncoder setFragmentTexture:self.vTexture atIndex:2];
+                } else {
+                    [renderEncoder endEncoding];
+                    return;
+                }
+                break;
+            case yffplayer::PixelFormat::NV12:
+                if (self.nv12PipelineState && self.yTexture && self.uvTexture) {
+                    [renderEncoder setRenderPipelineState:self.nv12PipelineState];
+                    [renderEncoder setFragmentTexture:self.yTexture atIndex:0];
+                    [renderEncoder setFragmentTexture:self.uvTexture atIndex:1];
+                } else {
+                    [renderEncoder endEncoding];
+                    return;
+                }
+                break;
+            case yffplayer::PixelFormat::RGB24:
+                if (self.rgb24PipelineState && self.rgbTexture) {
+                    [renderEncoder setRenderPipelineState:self.rgb24PipelineState];
+                    [renderEncoder setFragmentTexture:self.rgbTexture atIndex:0];
+                } else {
+                    [renderEncoder endEncoding];
+                    return;
+                }
+                break;
+            case yffplayer::PixelFormat::VIDEOTOOLBOX:
+                if (self.nv12PipelineState && self.yTexture && self.uvTexture) {
+                    [renderEncoder setRenderPipelineState:self.nv12PipelineState];
+                    [renderEncoder setFragmentTexture:self.yTexture atIndex:0];
+                    [renderEncoder setFragmentTexture:self.uvTexture atIndex:1];
+                } else {
+                    [renderEncoder endEncoding];
+                    return;
+                }
+                break;
+            default:
+                NSLog(@"Unsupported pixel format: %d", (int)self.currentFormat);
+                [renderEncoder endEncoding];
+                return;
+        }
+
+        [renderEncoder setVertexBuffer:self.vertexBuffer offset:0 atIndex:0];
+        [renderEncoder setFragmentBuffer:self.uniformBuffer offset:0 atIndex:0];
+
+        [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+        [renderEncoder endEncoding];
+
+        [commandBuffer presentDrawable:drawable];
+        [commandBuffer commit];
     }
 }
 
@@ -433,84 +512,16 @@ typedef struct {
     uniforms->saturation = self.saturation;
 }
 
-#pragma mark - MTKViewDelegate
-
-- (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
-    // Handle view size changes
-}
-
-- (void)drawInMTKView:(MTKView *)view {
-    dispatch_sync(_renderQueue, ^{
-        id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-        MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
-
-        if (renderPassDescriptor) {
-            id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-
-            // Select appropriate pipeline and set textures based on pixel format
-            switch (self.currentFormat) {
-                case yffplayer::PixelFormat::YUV420P:
-                    if (self.yuv420pPipelineState && self.yTexture && self.uTexture && self.vTexture) {
-                        [renderEncoder setRenderPipelineState:self.yuv420pPipelineState];
-                        [renderEncoder setFragmentTexture:self.yTexture atIndex:0];
-                        [renderEncoder setFragmentTexture:self.uTexture atIndex:1];
-                        [renderEncoder setFragmentTexture:self.vTexture atIndex:2];
-                    } else {
-                        [renderEncoder endEncoding];
-                        [commandBuffer commit];
-                        return;
-                    }
-                    break;
-                case yffplayer::PixelFormat::NV12:
-                    if (self.nv12PipelineState && self.yTexture && self.uvTexture) {
-                        [renderEncoder setRenderPipelineState:self.nv12PipelineState];
-                        [renderEncoder setFragmentTexture:self.yTexture atIndex:0];
-                        [renderEncoder setFragmentTexture:self.uvTexture atIndex:1];
-                    } else {
-                        [renderEncoder endEncoding];
-                        [commandBuffer commit];
-                        return;
-                    }
-                    break;
-                case yffplayer::PixelFormat::RGB24:
-                    if (self.rgb24PipelineState && self.rgbTexture) {
-                        [renderEncoder setRenderPipelineState:self.rgb24PipelineState];
-                        [renderEncoder setFragmentTexture:self.rgbTexture atIndex:0];
-                    } else {
-                        [renderEncoder endEncoding];
-                        [commandBuffer commit];
-                        return;
-                    }
-                    break;
-                case yffplayer::PixelFormat::VIDEOTOOLBOX:
-                    if (self.nv12PipelineState && self.yTexture && self.uvTexture) {
-                        [renderEncoder setRenderPipelineState:self.nv12PipelineState];
-                        [renderEncoder setFragmentTexture:self.yTexture atIndex:0];
-                        [renderEncoder setFragmentTexture:self.uvTexture atIndex:1];
-                    } else {
-                        [renderEncoder endEncoding];
-                        [commandBuffer commit];
-                        return;
-                    }
-                    break;
-                default:
-                    NSLog(@"Unsupported pixel format: %d", (int)self.currentFormat);
-                    [renderEncoder endEncoding];
-                    [commandBuffer commit];
-                    return;
-            }
-
-            [renderEncoder setVertexBuffer:self.vertexBuffer offset:0 atIndex:0];
-            [renderEncoder setFragmentBuffer:self.uniformBuffer offset:0 atIndex:0];
-
-            [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
-            [renderEncoder endEncoding];
-
-            [commandBuffer presentDrawable:view.currentDrawable];
-        }
-
-        [commandBuffer commit];
-    });
+- (void)dealloc {
+    if (self.currentPixelBuffer) {
+        CVPixelBufferRelease(self.currentPixelBuffer);
+        self.currentPixelBuffer = NULL;
+    }
+    
+    if (self.textureCache) {
+        CFRelease(self.textureCache);
+        self.textureCache = NULL;
+    }
 }
 
 #pragma mark - Property Setters

@@ -3,6 +3,7 @@
 
 #if TARGET_OS_IOS
 #import <UIKit/UIKit.h>
+#endif
 
 @interface YFFPlayer : NSObject
 
@@ -21,4 +22,4 @@
 //- (void)play;
 
 @end
-#endif
+

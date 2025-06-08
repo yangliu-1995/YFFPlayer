@@ -93,7 +93,7 @@ void ffmpegLogCallback(void* ptr, int level, const char* fmt, va_list vl) {
 }
 
 void Log::redirectFFmpegLog() {
-    av_log_set_level(AV_LOG_DEBUG);
+//    av_log_set_level(AV_LOG_DEBUG);
     av_log_set_callback(ffmpegLogCallback);
 }
 }  // namespace yffplayer

@@ -1,10 +1,10 @@
 #include "IOSVideoOutput.h"
 #include "VideoFrame.h"
 
-#import "IOSMTKVideoRenderer.h"
+#import "MetalVideoRenderer.h"
 
 IOSVideoOutput::IOSVideoOutput(UIView* view) {
-    mVideoRenderer = [[IOSMTKVideoRenderer alloc] initWithView:view];
+    mVideoRenderer = [[MetalVideoRenderer alloc] initWithView:view];
 }
 
 bool IOSVideoOutput::initialize(int width, int height, int fps) {

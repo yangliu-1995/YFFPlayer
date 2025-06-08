@@ -18,22 +18,23 @@
 		030F83122DE9888200C6CF04 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83112DE9888200C6CF04 /* AudioToolbox.framework */; };
 		030F83142DE9888F00C6CF04 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83132DE9888F00C6CF04 /* AVFoundation.framework */; };
 		030F83162DE9889D00C6CF04 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83152DE9889D00C6CF04 /* CoreGraphics.framework */; };
-		030F83182DE988AA00C6CF04 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83172DE988AA00C6CF04 /* Metal.framework */; };
-		030F83192DE988BB00C6CF04 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 030F83052DE9880A00C6CF04 /* MetalKit.framework */; };
 		0D3F6D1E2DEB56F900500A07 /* YFFPlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51182DEA23270009BB99 /* YFFPlayer.h */; };
 		0D4D51CA2DEA23270009BB99 /* IOSAudioOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */; };
-		0D4D51CC2DEA23270009BB99 /* IOSMTKVideoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */; };
 		0D4D51CD2DEA23270009BB99 /* IOSVideoOutput.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51152DEA23270009BB99 /* IOSVideoOutput.mm */; };
 		0D4D51CE2DEA23270009BB99 /* VideoRenderer.metal in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51172DEA23270009BB99 /* VideoRenderer.metal */; };
 		0D4D51CF2DEA23270009BB99 /* YFFPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51192DEA23270009BB99 /* YFFPlayer.mm */; };
 		0D4D51D02DEA23270009BB99 /* sonic.c in Sources */ = {isa = PBXBuildFile; fileRef = 0D4D51BA2DEA23270009BB99 /* sonic.c */; };
 		0D4D51E42DEA23270009BB99 /* IOSAudioOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */; };
-		0D4D51E62DEA23270009BB99 /* IOSMTKVideoRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */; };
 		0D4D51E72DEA23270009BB99 /* IOSVideoOutput.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */; };
-		0D4D51E82DEA23270009BB99 /* IOSVideoRendererProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51162DEA23270009BB99 /* IOSVideoRendererProtocol.h */; };
+		0D4D51E82DEA23270009BB99 /* VideoRendererProtocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51162DEA23270009BB99 /* VideoRendererProtocol.h */; };
 		0D4D51E92DEA23270009BB99 /* YFFPlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51182DEA23270009BB99 /* YFFPlayer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0D4D52772DEA23270009BB99 /* sonic.h in Headers */ = {isa = PBXBuildFile; fileRef = 0D4D51B92DEA23270009BB99 /* sonic.h */; };
 		A1148BC02DEF1545008992FA /* FFmpeg.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D4D511D2DEA23270009BB99 /* FFmpeg.xcframework */; };
+		A91A85862DF5CFAC0092AA65 /* MetalVideoRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = A91A85852DF5CF990092AA65 /* MetalVideoRenderer.h */; };
+		A91A85882DF5CFC60092AA65 /* MetalVideoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A91A85872DF5CFC30092AA65 /* MetalVideoRenderer.mm */; };
+		A9AA1BFD2DF5D495000CFB41 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9AA1BFC2DF5D494000CFB41 /* UIKit.framework */; };
+		A9AA1C012DF5D4BD000CFB41 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9AA1C002DF5D4BD000CFB41 /* Metal.framework */; };
+		A9AA1C032DF5D4D5000CFB41 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9AA1C022DF5D4D5000CFB41 /* QuartzCore.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,14 +53,12 @@
 		030F83132DE9888F00C6CF04 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		030F83152DE9889D00C6CF04 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
 		030F83172DE988AA00C6CF04 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
-		0D3F6D162DEB56C600500A07 /* YFFPlayer_macOS.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer_macOS.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D3F6D162DEB56C600500A07 /* YFFPlayer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = YFFPlayer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSAudioOutput.h; sourceTree = "<group>"; };
 		0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSAudioOutput.mm; sourceTree = "<group>"; };
-		0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSMTKVideoRenderer.h; sourceTree = "<group>"; };
-		0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSMTKVideoRenderer.mm; sourceTree = "<group>"; };
 		0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSVideoOutput.h; sourceTree = "<group>"; };
 		0D4D51152DEA23270009BB99 /* IOSVideoOutput.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = IOSVideoOutput.mm; sourceTree = "<group>"; };
-		0D4D51162DEA23270009BB99 /* IOSVideoRendererProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOSVideoRendererProtocol.h; sourceTree = "<group>"; };
+		0D4D51162DEA23270009BB99 /* VideoRendererProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoRendererProtocol.h; sourceTree = "<group>"; };
 		0D4D51172DEA23270009BB99 /* VideoRenderer.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = VideoRenderer.metal; sourceTree = "<group>"; };
 		0D4D51182DEA23270009BB99 /* YFFPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YFFPlayer.h; sourceTree = "<group>"; };
 		0D4D51192DEA23270009BB99 /* YFFPlayer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = YFFPlayer.mm; sourceTree = "<group>"; };
@@ -70,6 +69,12 @@
 		0D4D560F2DEA2CFC0009BB99 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
 		0D4D56342DEA34E30009BB99 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		0D4D56362DEA34F70009BB99 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		A91A85852DF5CF990092AA65 /* MetalVideoRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetalVideoRenderer.h; sourceTree = "<group>"; };
+		A91A85872DF5CFC30092AA65 /* MetalVideoRenderer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MetalVideoRenderer.mm; sourceTree = "<group>"; };
+		A9AA1BFC2DF5D494000CFB41 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
+		A9AA1BFE2DF5D4B7000CFB41 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/MetalKit.framework; sourceTree = DEVELOPER_DIR; };
+		A9AA1C002DF5D4BD000CFB41 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
+		A9AA1C022DF5D4D5000CFB41 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -87,11 +92,12 @@
 			files = (
 				030F83162DE9889D00C6CF04 /* CoreGraphics.framework in Frameworks */,
 				030F83002DE987DB00C6CF04 /* CoreMedia.framework in Frameworks */,
-				030F83182DE988AA00C6CF04 /* Metal.framework in Frameworks */,
 				030F83082DE9883E00C6CF04 /* VideoToolbox.framework in Frameworks */,
+				A9AA1BFD2DF5D495000CFB41 /* UIKit.framework in Frameworks */,
 				030F83042DE987FE00C6CF04 /* libbz2.tbd in Frameworks */,
-				030F83192DE988BB00C6CF04 /* MetalKit.framework in Frameworks */,
+				A9AA1C032DF5D4D5000CFB41 /* QuartzCore.framework in Frameworks */,
 				030F83122DE9888200C6CF04 /* AudioToolbox.framework in Frameworks */,
+				A9AA1C012DF5D4BD000CFB41 /* Metal.framework in Frameworks */,
 				030F83022DE987F100C6CF04 /* libz.tbd in Frameworks */,
 				030F830A2DE9884900C6CF04 /* libxml2.tbd in Frameworks */,
 				030F830C2DE9885400C6CF04 /* libiconv.tbd in Frameworks */,
@@ -125,7 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				030F82932DE9879800C6CF04 /* YFFPlayer.framework */,
-				0D3F6D162DEB56C600500A07 /* YFFPlayer_macOS.framework */,
+				0D3F6D162DEB56C600500A07 /* YFFPlayer.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -133,6 +139,10 @@
 		030F82FC2DE987D500C6CF04 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A9AA1C022DF5D4D5000CFB41 /* QuartzCore.framework */,
+				A9AA1C002DF5D4BD000CFB41 /* Metal.framework */,
+				A9AA1BFE2DF5D4B7000CFB41 /* MetalKit.framework */,
+				A9AA1BFC2DF5D494000CFB41 /* UIKit.framework */,
 				0D4D56362DEA34F70009BB99 /* Foundation.framework */,
 				0D4D56342DEA34E30009BB99 /* libc++.tbd */,
 				0D4D560F2DEA2CFC0009BB99 /* VideoToolbox.framework */,
@@ -160,11 +170,8 @@
 			children = (
 				0D4D510E2DEA23270009BB99 /* IOSAudioOutput.h */,
 				0D4D510F2DEA23270009BB99 /* IOSAudioOutput.mm */,
-				0D4D51122DEA23270009BB99 /* IOSMTKVideoRenderer.h */,
-				0D4D51132DEA23270009BB99 /* IOSMTKVideoRenderer.mm */,
 				0D4D51142DEA23270009BB99 /* IOSVideoOutput.h */,
 				0D4D51152DEA23270009BB99 /* IOSVideoOutput.mm */,
-				0D4D51162DEA23270009BB99 /* IOSVideoRendererProtocol.h */,
 				0D4D51172DEA23270009BB99 /* VideoRenderer.metal */,
 				0D4D51182DEA23270009BB99 /* YFFPlayer.h */,
 				0D4D51192DEA23270009BB99 /* YFFPlayer.mm */,
@@ -175,6 +182,7 @@
 		0D4D511B2DEA23270009BB99 /* Apple */ = {
 			isa = PBXGroup;
 			children = (
+				A91A85842DF5CC880092AA65 /* Common */,
 				0D4D511A2DEA23270009BB99 /* iOS */,
 			);
 			path = Apple;
@@ -232,6 +240,16 @@
 			path = YFFPlayer;
 			sourceTree = "<group>";
 		};
+		A91A85842DF5CC880092AA65 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				0D4D51162DEA23270009BB99 /* VideoRendererProtocol.h */,
+				A91A85852DF5CF990092AA65 /* MetalVideoRenderer.h */,
+				A91A85872DF5CFC30092AA65 /* MetalVideoRenderer.mm */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -240,10 +258,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				0D4D51E42DEA23270009BB99 /* IOSAudioOutput.h in Headers */,
-				0D4D51E62DEA23270009BB99 /* IOSMTKVideoRenderer.h in Headers */,
 				0D4D51E72DEA23270009BB99 /* IOSVideoOutput.h in Headers */,
-				0D4D51E82DEA23270009BB99 /* IOSVideoRendererProtocol.h in Headers */,
+				0D4D51E82DEA23270009BB99 /* VideoRendererProtocol.h in Headers */,
 				0D4D51E92DEA23270009BB99 /* YFFPlayer.h in Headers */,
+				A91A85862DF5CFAC0092AA65 /* MetalVideoRenderer.h in Headers */,
 				0D4D52772DEA23270009BB99 /* sonic.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -299,7 +317,7 @@
 			packageProductDependencies = (
 			);
 			productName = "YFFPlayer macOS";
-			productReference = 0D3F6D162DEB56C600500A07 /* YFFPlayer_macOS.framework */;
+			productReference = 0D3F6D162DEB56C600500A07 /* YFFPlayer.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
@@ -314,6 +332,7 @@
 				TargetAttributes = {
 					030F82922DE9879800C6CF04 = {
 						CreatedOnToolsVersion = 16.3;
+						LastSwiftMigration = 1640;
 					};
 					0D3F6D152DEB56C600500A07 = {
 						CreatedOnToolsVersion = 16.4;
@@ -362,8 +381,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A91A85882DF5CFC60092AA65 /* MetalVideoRenderer.mm in Sources */,
 				0D4D51CA2DEA23270009BB99 /* IOSAudioOutput.mm in Sources */,
-				0D4D51CC2DEA23270009BB99 /* IOSMTKVideoRenderer.mm in Sources */,
 				0D4D51CD2DEA23270009BB99 /* IOSVideoOutput.mm in Sources */,
 				0D4D51CE2DEA23270009BB99 /* VideoRenderer.metal in Sources */,
 				0D4D51CF2DEA23270009BB99 /* YFFPlayer.mm in Sources */,
@@ -506,6 +525,7 @@
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -544,6 +564,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.4;
@@ -555,6 +576,7 @@
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -628,12 +650,12 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				PRODUCT_BUNDLE_IDENTIFIER = "ttx.YFFPlayer-macOS";
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				PRODUCT_NAME = YFFPlayer;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -669,12 +691,12 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				PRODUCT_BUNDLE_IDENTIFIER = "ttx.YFFPlayer-macOS";
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				PRODUCT_NAME = YFFPlayer;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
