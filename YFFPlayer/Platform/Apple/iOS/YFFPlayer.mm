@@ -48,7 +48,13 @@ private:
 
 - (void)playVideoWithURL:(NSURL *)url {
     yffplayer::MediaInfo mediaInfo;
-    if (_player->open(url.absoluteString.UTF8String, mediaInfo)) {
+    NSString *urlStr;
+    if ([url isFileURL]) {
+        urlStr = url.path;
+    } else {
+        urlStr = url.absoluteString;
+    }
+    if (_player->open(urlStr.UTF8String, mediaInfo)) {
         NSLog(@"Media Info, hasAudio: %d, sampleRate: %d, channels: %d, hasVideo: %d, width: %d, height: %d, frameRate: %d",
               mediaInfo.hasAudio_, mediaInfo.audioSampleRate_, mediaInfo.audioChannels_,
               mediaInfo.hasVideo_, mediaInfo.videoWidth_, mediaInfo.videoHeight_, mediaInfo.videoFrameRate_);

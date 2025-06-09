@@ -34,9 +34,6 @@
                                                 <rect key="frame" x="0.0" y="0.0" width="85.333333333333329" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="Play"/>
-                                                <connections>
-                                                    <action selector="playAct:" destination="BYZ-38-t0r" eventType="touchUpInside" id="WCq-Y4-Adu"/>
-                                                </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="eRm-MV-qbs">
                                                 <rect key="frame" x="85.333333333333343" y="0.0" width="85.333333333333343" height="34.333333333333336"/>
@@ -129,6 +126,7 @@
                     </view>
                     <connections>
                         <outlet property="pV" destination="gm9-9n-Wf3" id="YMx-xB-7UT"/>
+                        <outlet property="playButton" destination="UVP-6S-cQn" id="w1z-ta-eeU"/>
                         <outlet property="urlField" destination="UPN-Va-x8S" id="SIl-zV-UdQ"/>
                     </connections>
                 </viewController>

@@ -13,8 +13,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        clearTmpDirectory()
         return true
+    }
+
+    func clearTmpDirectory() {
+        let tmpDir = FileManager.default.temporaryDirectory
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: nil, options: [])
+            for file in contents {
+                try FileManager.default.removeItem(at: file)
+            }
+            print("🧹 清空 tmp 成功")
+        } catch {
+            print("❌ 清空 tmp 失败: \(error)")
+        }
     }
 
     // MARK: UISceneSession Lifecycle

@@ -84,8 +84,6 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         }
     }
     syncManager_->setMaxFrameDuration(mediaInfo_.isTsDiscont_ ? 10.0 : 3600.0);
-    // Just for testing, use external sync manager
-    syncManager_ = std::make_unique<SyncManager>(SyncManager::SyncType::External);
     return true;
 }
 
