@@ -1,5 +1,5 @@
 #include "FrameQueue.h"
-
+#include "Log.h"
 #include "FrameHandle.h"
 
 namespace yffplayer {
@@ -85,6 +85,12 @@ template <typename T>
 size_t FrameQueue<T>::size() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return size_;
+}
+
+template <typename T>
+FrameQueue<T>::~FrameQueue() {
+    clear();
+    LogInfo << "~FrameQueue";
 }
 
 // 显式实例化

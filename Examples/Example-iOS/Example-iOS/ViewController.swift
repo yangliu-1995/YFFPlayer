@@ -98,7 +98,7 @@ class ViewController: UIViewController {
     }
 
     @IBAction func playURLAction(_ sender: Any) {
-        view.endEditing(true)
+        urlField.resignFirstResponder()
         guard let urlString = urlField.text,
               let url = URL(string: urlString) else {
             return

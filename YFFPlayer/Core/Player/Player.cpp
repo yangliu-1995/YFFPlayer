@@ -32,7 +32,10 @@ Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOu
     Log::redirectFFmpegLog();
 }
 
-Player::~Player() { stop(); }
+Player::~Player() {
+    stop();
+    LogInfo << "~Player";
+}
 
 bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
     stop();

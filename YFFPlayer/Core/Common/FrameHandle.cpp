@@ -1,4 +1,5 @@
 #include "FrameHandle.h"
+#include "Log.h"
 
 extern "C" {
 #include <libavutil/frame.h>
@@ -15,6 +16,7 @@ FrameHandle::~FrameHandle() {
         av_frame_free(&frame_);
         frame_ = nullptr;
     }
+    LogInfo << "~FrameHandle";
 }
 
 FrameHandle::FrameHandle(FrameHandle&& other) noexcept : frame_(other.frame_) {

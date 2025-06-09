@@ -1,11 +1,16 @@
 #include "IOSAudioOutput.h"
+
+#include "Log.h"
 #include <algorithm>
 #include <cstring>
 #import <AVFoundation/AVFoundation.h>
 
 IOSAudioOutput::IOSAudioOutput() : volume_(1.0f), mute_(false) {}
 
-IOSAudioOutput::~IOSAudioOutput() { stop(); }
+IOSAudioOutput::~IOSAudioOutput() {
+    stop();
+    LogInfo << "~IOSAudioOutput";
+}
 
 bool IOSAudioOutput::init(int sampleRate, int channels) {
     sampleRate_ = sampleRate;

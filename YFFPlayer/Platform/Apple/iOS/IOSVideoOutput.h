@@ -6,7 +6,7 @@
 class IOSVideoOutput : public yffplayer::VideoOutput {
 public:
     IOSVideoOutput(UIView* view);
-    ~IOSVideoOutput() override = default;
+    ~IOSVideoOutput();
 
     bool initialize(int width, int height, int fps) override;
     void renderVideoFrame(const yffplayer::VideoFrame& frame) override;
@@ -15,5 +15,5 @@ public:
     void resume() override;
 
 private:
-    id<VideoRendererProtocol> videoRenderer_{nullptr};
+    UIView<VideoRendererProtocol> *videoRenderer_{nullptr};
 };

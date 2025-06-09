@@ -24,6 +24,37 @@ Demuxer::~Demuxer() {
     if (formatCtx_) {
         avformat_close_input(&formatCtx_);
     }
+    LogInfo << "~Demuxer";
+}
+
+int find_first_video_and_audio_streams(AVFormatContext *formatCtx, int *videoStreamIndex, int *audioStreamIndex) {
+    *videoStreamIndex = -1;
+    *audioStreamIndex = -1;
+
+    // Traverse streams to find the first video and audio streams
+    for (unsigned int i = 0; i < formatCtx->nb_streams; i++) {
+        AVStream *stream = formatCtx->streams[i];
+        if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && *videoStreamIndex < 0) {
+            *videoStreamIndex = i;
+        } else if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && *audioStreamIndex < 0) {
+            *audioStreamIndex = i;
+        }
+        // Exit early if both streams are found
+        if (*videoStreamIndex >= 0 && *audioStreamIndex >= 0) {
+            break;
+        }
+    }
+
+    // Handle cases where video or audio is missing
+    if (*videoStreamIndex < 0) {
+        fprintf(stderr, "Warning: No video stream found\n");
+    }
+    if (*audioStreamIndex < 0) {
+        fprintf(stderr, "Warning: No audio stream found\n");
+    }
+
+    // Return success if at least one stream is found
+    return (*videoStreamIndex >= 0 || *audioStreamIndex >= 0) ? 0 : -1;
 }
 
 bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
@@ -35,9 +66,16 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     av_dict_set(&options, "rtmp_buffer", "100", 0);
     av_dict_set(&options, "rtmp_live", "live", 0);
     av_dict_set(&options, "flush_packets", "1", 0);
-    av_dict_set(&options, "timeout", "3000000", 0);
 
-    int ret = avformat_open_input(&formatCtx_, url.c_str(), nullptr, nullptr);
+    av_dict_set(&options, "timeout", "500000", 0); // 500ms 超时
+    av_dict_set(&options, "reconnect", "1", 0); // 启用自动重连
+    av_dict_set(&options, "reconnect_streamed", "1", 0);
+    av_dict_set(&options, "reconnect_delay_max", "2", 0); // 最大重连延迟 2 秒
+
+    av_dict_set(&options, "scan_all_pmts", "0", 0);
+
+    int ret = avformat_open_input(&formatCtx_, url.c_str(), nullptr, &options);
+    av_dict_free(&options);
     if (ret < 0) {
         LogInfo << "Failed to open input: " << url << "ret: " << ret << "\n";
         if (auto callback = callback_.lock()) {

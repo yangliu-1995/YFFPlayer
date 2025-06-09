@@ -48,23 +48,26 @@ private:
 }
 
 - (void)playVideoWithURL:(NSURL *)url {
-    NSString *urlStr;
-    if ([url isFileURL]) {
-        urlStr = url.path;
-    } else {
-        urlStr = url.absoluteString;
-    }
-    if (_player->open(urlStr.UTF8String, _mediaInfo)) {
-        _isLiveStream = _mediaInfo.isLiveStream_;
-        NSLog(@"Media Info, hasAudio: %d, sampleRate: %d, channels: %d, hasVideo: %d, width: %d, height: %d, frameRate: %d",
-              _mediaInfo.hasAudio_, _mediaInfo.audioSampleRate_, _mediaInfo.audioChannels_,
-              _mediaInfo.hasVideo_, _mediaInfo.videoWidth_, _mediaInfo.videoHeight_, _mediaInfo.videoFrameRate_);
-        _player->start();
-    }
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSString *urlStr;
+        if ([url isFileURL]) {
+            urlStr = url.path;
+        } else {
+            urlStr = url.absoluteString;
+        }
+        if (self->_player->open(urlStr.UTF8String, self->_mediaInfo)) {
+            self->_isLiveStream = self->_mediaInfo.isLiveStream_;
+            NSLog(@"Media Info, hasAudio: %d, sampleRate: %d, channels: %d, hasVideo: %d, width: %d, height: %d, frameRate: %d",
+                  self->_mediaInfo.hasAudio_, self->_mediaInfo.audioSampleRate_, self->_mediaInfo.audioChannels_,
+                  self->_mediaInfo.hasVideo_, self->_mediaInfo.videoWidth_, self->_mediaInfo.videoHeight_, self->_mediaInfo.videoFrameRate_);
+            self->_player->start();
+        }
+    });
 }
 
 - (void)stop {
     _player->stop();
+    _player = nil;
 }
 
 - (void)pause {

@@ -1,4 +1,5 @@
 #include "PacketQueue.h"
+#include "Log.h"
 
 namespace yffplayer {
 
@@ -102,6 +103,11 @@ void PacketQueue::flush() {
 size_t PacketQueue::size() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return size_;
+}
+
+PacketQueue::~PacketQueue() {
+    clear();
+    LogInfo << "~PacketQueue";
 }
 
 }  // namespace yffplayer

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Log.h"
+
 extern "C" {
 #include <libavcodec/packet.h>
 }
@@ -45,6 +47,7 @@ struct Packet {
         if (packet_) {
             av_packet_free(&packet_);
         }
+        LogInfo << "~Packet";
     }
 };
 }  // namespace yffplayer

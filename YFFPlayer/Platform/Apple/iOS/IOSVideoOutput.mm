@@ -1,5 +1,6 @@
 #include "IOSVideoOutput.h"
 #include "VideoFrame.h"
+#include "Log.h"
 
 #import "MetalVideoRenderer.h"
 
@@ -23,4 +24,10 @@ void IOSVideoOutput::pause() {
 }
 
 void IOSVideoOutput::resume() {
+}
+
+IOSVideoOutput::~IOSVideoOutput() {
+    [videoRenderer_ removeFromSuperview];
+    videoRenderer_ = nil;
+    LogInfo << "~IOSVideoOutput";
 }

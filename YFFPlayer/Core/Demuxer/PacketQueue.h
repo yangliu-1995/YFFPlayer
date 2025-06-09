@@ -14,6 +14,7 @@ namespace yffplayer {
 class PacketQueue {
 public:
     PacketQueue(size_t capacity);
+    ~PacketQueue();
 
     bool try_push(std::shared_ptr<Packet> packet, std::chrono::milliseconds timeout);
     bool try_push_with_drop_if_keyframe(std::shared_ptr<Packet> packet,

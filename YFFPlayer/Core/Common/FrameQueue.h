@@ -13,6 +13,7 @@ template <typename T>
 class FrameQueue {
 public:
     explicit FrameQueue(size_t capacity);
+    ~FrameQueue();
 
     void push(std::shared_ptr<T> frame);
     std::shared_ptr<T> pop();
