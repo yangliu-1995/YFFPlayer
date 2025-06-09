@@ -14,9 +14,9 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#define AV_SYNC_THRESHOLD_MIN 0.04
-
-#define AV_SYNC_THRESHOLD_MAX 0.1
+namespace {
+constexpr double kAVSyncThresholdMax = 0.1;  // 最大音视频同步阈值
+}
 
 namespace yffplayer {
 Player::Player(std::shared_ptr<AudioOutput> audioOutput, std::shared_ptr<VideoOutput> videoOutput,
@@ -91,7 +91,6 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
 
 void Player::start() {
     running_ = true;
-    requiresSyncClock_ = true;
     lastVideoPts_ = NAN;
     demuxer_->start();
     if (mediaInfo_.hasAudio_) {
@@ -177,13 +176,6 @@ void Player::stop() {
 void Player::notifyProgressChanged() {
     if (callback_) {
         callback_->onProgress(syncManager_->getClockTime(), mediaInfo_.durationMs_);
-    }
-}
-
-void Player::syncClockIfNeeded(int64_t pts) {
-    if (requiresSyncClock_.load()) {
-        //        syncManager_->updateTime(pts / 1000.0);
-        requiresSyncClock_ = false;
     }
 }
 
@@ -292,29 +284,9 @@ void Player::audioOutputThread() {
         audioProcessor_->setPlaybackRate(playbackRate_.load());
     }
 
-    audioPlaybackRateDelt_ = 0;
     audioOutput_->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         int64_t adjustedDuration = duration / playbackRate_;
         syncManager_->updateAudioTime(pts / 1000.0, adjustedDuration / 1000.0);
-        double delay = syncManager_->computeAudioTargetDelay((pts + adjustedDuration) / 1000.0);
-        LogInfo << "audio delay: " << delay;
-
-        double absDelay = fabs(delay);
-        double sign = (delay > 0) ? 1.0 : -1.0;
-
-        if (absDelay < 0.010) {
-            audioPlaybackRateDelt_ = 0.0;
-        } else if (absDelay < 0.030) {
-            audioPlaybackRateDelt_ = 0.01 * sign;
-        } else if (absDelay < 0.050) {
-            audioPlaybackRateDelt_ = 0.03 * sign;
-        } else {
-            audioPlaybackRateDelt_ = 0.05 * sign;
-        }
-
-        if (audioProcessor_) {
-            audioProcessor_->setPlaybackRate(playbackRate_ + audioPlaybackRateDelt_);
-        }
         notifyProgressChanged();
     });
 
@@ -327,8 +299,41 @@ void Player::audioOutputThread() {
         }
         auto frameHandle = audioFrameQueue_->pop();
         if (frameHandle) {
-            auto audioFrame = audioProcessor_->processAudioFrame(frameHandle, 0);
+            auto avFrame = frameHandle->getFrame();
+            if (!avFrame) {
+                LogWarning << "Received empty audio frame, skipping";
+                continue;  // 跳过空音频帧
+            }
+            double delay = syncManager_->getAudioDiff();
+            LogInfo << "audio delay: " << delay;
+            if (delay < -0.5) {
+                LogInfo << "Audio delay too large, dropping frame";
+                syncManager_->updateAudioTime(avFrame->pts / 1000.0, (avFrame->duration / playbackRate_) / 1000.0);
+                continue;  // 如果延迟过大，直接跳过当前帧
+            }
+
+            double absDelay = fabs(delay);
+            double sign = (delay > 0) ? -1.0 : 1.0;
+            double playbackRateDelt = 0.0;
+
+            if (absDelay < 0.010) {
+                playbackRateDelt = 0.0;
+            } else if (absDelay < 0.030) {
+                playbackRateDelt = 0.01 * sign;
+            } else if (absDelay < 0.050) {
+                playbackRateDelt = 0.03 * sign;
+            } else {
+                playbackRateDelt = 0.05 * sign;
+            }
+            if (audioProcessor_) {
+                audioProcessor_->setPlaybackRate(playbackRate_ + playbackRateDelt);
+            }
+            auto audioFrame = audioProcessor_->processAudioFrame(frameHandle, avFrame->nb_samples);
             if (audioFrame) {
+                if (!firstAudioArrived_) {
+                    syncManager_->updateAudioTime(audioFrame->pts_ / 1000.0, 0);
+                    firstAudioArrived_ = true;
+                }
                 audioOutput_->enqueueAudioFrame(*audioFrame);
             } else {
                 av_usleep(static_cast<unsigned int>(10 * 1000));
@@ -378,7 +383,7 @@ void Player::videoOutputThread() {
             }
             videoOutput_->renderVideoFrame(*videoFrame);
             frameTimer_ += delay;
-            if (delay > 0 && time - frameTimer_ > AV_SYNC_THRESHOLD_MAX) frameTimer_ = time;
+            if (delay > 0 && time - frameTimer_ > kAVSyncThresholdMax) frameTimer_ = time;
             lastVideoPts_ = pts;
             syncManager_->updateVideoTime(pts / 1000.0);
         }

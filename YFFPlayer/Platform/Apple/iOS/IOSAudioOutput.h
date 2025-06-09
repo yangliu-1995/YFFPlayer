@@ -30,23 +30,23 @@ private:
                                    AudioQueueBufferRef inBuffer);
     void handleBuffer(AudioQueueBufferRef inBuffer);
 
-    bool mRunning = false;
-    bool mPaused = false;
+    bool running_ = false;
+    bool paused_ = false;
 
-    int mSampleRate = 0;
-    int mChannels = 0;
-    UInt32 mFrameBytes = 0;
+    int sampleRate_ = 0;
+    int channels_ = 0;
+    UInt32 frameBytes_ = 0;
 
-    float mVolume = 1.0f;
-    bool mMute = false;
+    float volume_ = 1.0f;
+    bool mute_ = false;
 
-    AudioQueueRef mAudioQueue = nullptr;
+    AudioQueueRef audioQueue_ = nullptr;
     static constexpr int kNumBuffers = 3;
-    AudioQueueBufferRef mBuffers[kNumBuffers];
+    AudioQueueBufferRef buffers_[kNumBuffers];
 
-    std::mutex mMutex;
-    std::condition_variable mCond;
-    std::deque<yffplayer::AudioFrame> mFrameQueue;
-    const size_t mMaxQueueSize = 20;
-    yffplayer::AudioPlaybackCallback mPlaybackCallback;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    std::deque<yffplayer::AudioFrame> frameQueue_;
+    const size_t maxQueueSize_ = 4;
+    yffplayer::AudioPlaybackCallback playbackCallback_;
 };

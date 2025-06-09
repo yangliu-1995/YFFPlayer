@@ -3,14 +3,14 @@
 #include <cstring>
 #import <AVFoundation/AVFoundation.h>
 
-IOSAudioOutput::IOSAudioOutput() : mVolume(1.0f), mMute(false) {}
+IOSAudioOutput::IOSAudioOutput() : volume_(1.0f), mute_(false) {}
 
 IOSAudioOutput::~IOSAudioOutput() { stop(); }
 
 bool IOSAudioOutput::init(int sampleRate, int channels) {
-    mSampleRate = sampleRate;
-    mChannels = channels;
-    mFrameBytes = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.2s of audio data
+    sampleRate_ = sampleRate;
+    channels_ = channels;
+    frameBytes_ = (UInt32)(sampleRate * 0.2 * channels * 2);  // 0.2s of audio data
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
 
@@ -25,83 +25,83 @@ bool IOSAudioOutput::init(int sampleRate, int channels) {
     format.mBytesPerPacket = channels * 2;
 
     OSStatus status =
-        AudioQueueNewOutput(&format, AudioQueueCallback, this, nullptr, nullptr, 0, &mAudioQueue);
+        AudioQueueNewOutput(&format, AudioQueueCallback, this, nullptr, nullptr, 0, &audioQueue_);
     if (status != noErr) {
         return false;
     }
 
     for (int i = 0; i < kNumBuffers; ++i) {
-        status = AudioQueueAllocateBuffer(mAudioQueue, mFrameBytes, &mBuffers[i]);
+        status = AudioQueueAllocateBuffer(audioQueue_, frameBytes_, &buffers_[i]);
         if (status != noErr) {
             return false;
         }
     }
 
     // 初始化音量参数
-    setVolume(mVolume);
+    setVolume(volume_);
 
     return true;
 }
 
 void IOSAudioOutput::start() {
-    if (mRunning) return;
+    if (running_) return;
 
-    mRunning = true;
-    mPaused = false;
+    running_ = true;
+    paused_ = false;
 
     for (int i = 0; i < kNumBuffers; ++i) {
-        handleBuffer(mBuffers[i]);
+        handleBuffer(buffers_[i]);
     }
 
-    AudioQueueStart(mAudioQueue, nullptr);
+    AudioQueueStart(audioQueue_, nullptr);
 }
 
 void IOSAudioOutput::stop() {
-    if (!mRunning) return;
+    if (!running_) return;
 
-    mRunning = false;
-    AudioQueueStop(mAudioQueue, true);
-    AudioQueueDispose(mAudioQueue, true);
-    mAudioQueue = nullptr;
+    running_ = false;
+    AudioQueueStop(audioQueue_, true);
+    AudioQueueDispose(audioQueue_, true);
+    audioQueue_ = nullptr;
 
-    std::lock_guard<std::mutex> lock(mMutex);
-    mFrameQueue.clear();
-    mCond.notify_one();
+    std::lock_guard<std::mutex> lock(mutex_);
+    frameQueue_.clear();
+    cond_.notify_one();
 }
 
 void IOSAudioOutput::pause() {
-    if (mPaused || !mRunning) return;
-    AudioQueuePause(mAudioQueue);
-    mPaused = true;
+    if (paused_ || !running_) return;
+    AudioQueuePause(audioQueue_);
+    paused_ = true;
 }
 
 void IOSAudioOutput::resume() {
-    if (!mPaused || !mRunning) return;
-    AudioQueueStart(mAudioQueue, nullptr);
-    mPaused = false;
-    std::lock_guard<std::mutex> lock(mMutex);
-    mCond.notify_one();
+    if (!paused_ || !running_) return;
+    AudioQueueStart(audioQueue_, nullptr);
+    paused_ = false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    cond_.notify_one();
 }
 
 void IOSAudioOutput::flush() {
-    std::lock_guard<std::mutex> lock(mMutex);
-    mFrameQueue.clear();
-    AudioQueueFlush(mAudioQueue);
-    mCond.notify_one();
+    std::lock_guard<std::mutex> lock(mutex_);
+    frameQueue_.clear();
+    AudioQueueFlush(audioQueue_);
+    cond_.notify_one();
 }
 
 bool IOSAudioOutput::enqueueAudioFrame(const yffplayer::AudioFrame& frame) {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mCond.wait(lock, [&] { return mFrameQueue.size() < mMaxQueueSize || !mRunning; });
-    if (!mRunning) return false;
-    mFrameQueue.push_back(frame);
-    mCond.notify_one();
+    std::unique_lock<std::mutex> lock(mutex_);
+    cond_.wait(lock, [&] { return frameQueue_.size() < maxQueueSize_ || !running_; });
+    if (!running_) return false;
+    frameQueue_.push_back(frame);
+    cond_.notify_one();
     return true;
 }
 
 void IOSAudioOutput::setPlaybackCallback(yffplayer::AudioPlaybackCallback callback) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    mPlaybackCallback = callback;
+    std::lock_guard<std::mutex> lock(mutex_);
+    playbackCallback_ = callback;
 }
 
 void IOSAudioOutput::AudioQueueCallback(void* userData, AudioQueueRef inAQ,
@@ -115,44 +115,44 @@ void IOSAudioOutput::handleBuffer(AudioQueueBufferRef inBuffer) {
     bool hasFrame = false;
 
     {
-        std::unique_lock<std::mutex> lock(mMutex);
-        if (!mRunning) return;
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!running_) return;
 
-        if (mFrameQueue.empty()) {
+        if (frameQueue_.empty()) {
             UInt32 silenceBytes = std::min((UInt32)512, inBuffer->mAudioDataBytesCapacity);
             memset(inBuffer->mAudioData, 0, silenceBytes);
             inBuffer->mAudioDataByteSize = silenceBytes;
         } else {
-            frame = mFrameQueue.front();
-            mFrameQueue.pop_front();
-            mCond.notify_one();
+            frame = frameQueue_.front();
+            frameQueue_.pop_front();
+            cond_.notify_one();
             hasFrame = true;
 
-            size_t dataSize = std::min(frame.data_.size(), (size_t)mFrameBytes);
+            size_t dataSize = std::min(frame.data_.size(), (size_t)frameBytes_);
             memcpy(inBuffer->mAudioData, frame.data_.data(), dataSize);
             inBuffer->mAudioDataByteSize = (UInt32)dataSize;
         }
-        AudioQueueEnqueueBuffer(mAudioQueue, inBuffer, 0, nullptr);
+        AudioQueueEnqueueBuffer(audioQueue_, inBuffer, 0, nullptr);
     }
 
     // 在锁外调用回调，避免死锁
-    if (hasFrame && mPlaybackCallback) {
+    if (hasFrame && playbackCallback_) {
         if (baseTime == 0) {
             baseTime = CFAbsoluteTimeGetCurrent();
         }
-        mPlaybackCallback(frame.pts_, frame.duration_);
+        playbackCallback_(frame.pts_, frame.duration_);
     }
 }
 
 void IOSAudioOutput::setVolume(float volume) {
     if (volume < 0.f) volume = 0.f;
     if (volume > 1.f) volume = 1.f;
-    mVolume = volume;
+    volume_ = volume;
 
-    if (mMute) volume = 0.f;
+    if (mute_) volume = 0.f;
 
-    if (mAudioQueue) {
-        OSStatus status = AudioQueueSetParameter(mAudioQueue, kAudioQueueParam_Volume, volume);
+    if (audioQueue_) {
+        OSStatus status = AudioQueueSetParameter(audioQueue_, kAudioQueueParam_Volume, volume);
         if (status != noErr) {
             // 可选择记录日志
         }
@@ -160,12 +160,12 @@ void IOSAudioOutput::setVolume(float volume) {
 }
 
 void IOSAudioOutput::setMute(bool mute) {
-    mMute = mute;
+    mute_ = mute;
 
-    float volume = mute ? 0.f : mVolume;
+    float volume = mute ? 0.f : volume_;
 
-    if (mAudioQueue) {
-        OSStatus status = AudioQueueSetParameter(mAudioQueue, kAudioQueueParam_Volume, volume);
+    if (audioQueue_) {
+        OSStatus status = AudioQueueSetParameter(audioQueue_, kAudioQueueParam_Volume, volume);
         if (status != noErr) {
             // 可选择记录日志
         }

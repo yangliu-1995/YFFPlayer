@@ -10,13 +10,12 @@ extern "C" {
 #include <libavutil/time.h>
 }
 
-#define AV_NOSYNC_THRESHOLD 10.0
-
-#define AV_SYNC_THRESHOLD_MIN 0.04
-
-#define AV_SYNC_THRESHOLD_MAX 0.1
-
-#define AV_SYNC_FRAMEDUP_THRESHOLD 0.1
+namespace {
+constexpr double kAVNosyncThreshold = 10.0;
+constexpr double kAVSyncThresholdMin = 0.04;
+constexpr double kAVSyncThresholdMax = 0.1;
+constexpr double kAVSyncFramedupThreshold = 0.1;
+}
 
 namespace yffplayer {
 SyncManager::SyncManager(SyncType type) : type_(type) {
@@ -71,11 +70,11 @@ double SyncManager::computeVideoTargetDelay(double delay) {
     double diff = videoTime - masterTime;
 
     double originalDelay = delay;
-    double sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
+    double sync_threshold = FFMAX(kAVSyncThresholdMin, FFMIN(kAVSyncThresholdMax, delay));
     if (!isnan(diff) && fabs(diff) < maxFrameDuration_) {
         if (diff <= -sync_threshold)
             delay = FFMAX(0, delay + diff);
-        else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD)
+        else if (diff >= sync_threshold && delay > kAVSyncFramedupThreshold)
             delay = delay + diff;
         else if (diff >= sync_threshold)
             delay = 2 * delay;
@@ -86,7 +85,23 @@ double SyncManager::computeVideoTargetDelay(double delay) {
     return delay;
 }
 
-double SyncManager::computeAudioTargetDelay(double pts) { return getClockTime() - pts; }
+double SyncManager::computeAudioTargetDelay(double pts) {
+    double audioTime = audioClock_->get();
+    double masterTime = getClockTime();
+    double videoTime = videoClock_->get();
+    double diff = audioTime - masterTime;
+    LogInfo << "compute audio delay, audio time: " << audioTime
+            << ", master time: " << masterTime << ", video time: " << videoTime
+            << ", diff: " << diff
+            << ", av diff: " << audioTime - videoTime;
+    return getClockTime() - pts;
+}
+
+double SyncManager::getAudioDiff() const {
+    double audioTime = audioClock_->get();
+    double masterTime = getClockTime();
+    return audioTime - masterTime;
+}
 
 void SyncManager::updateVideoTime(double pts) {
     videoClock_->set(pts);
@@ -97,7 +112,7 @@ void SyncManager::syncClockToSlave(std::shared_ptr<Clock> clock,
                                    std::shared_ptr<Clock> slaveClock) {
     double time = clock->get();
     double slaveTime = slaveClock->get();
-    if (!slaveClock->isNAN() && (clock->isNAN() || fabs(time - slaveTime) > AV_NOSYNC_THRESHOLD)) {
+    if (!slaveClock->isNAN() && (clock->isNAN() || fabs(time - slaveTime) > kAVNosyncThreshold)) {
         clock->set(slaveTime);
     }
 }

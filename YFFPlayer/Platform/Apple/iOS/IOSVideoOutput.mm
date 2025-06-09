@@ -4,16 +4,16 @@
 #import "MetalVideoRenderer.h"
 
 IOSVideoOutput::IOSVideoOutput(UIView* view) {
-    mVideoRenderer = [[MetalVideoRenderer alloc] initWithView:view];
+    videoRenderer_ = [[MetalVideoRenderer alloc] initWithView:view];
 }
 
 bool IOSVideoOutput::initialize(int width, int height, int fps) {
-    [mVideoRenderer setFps: fps];
-    return mVideoRenderer != nil;
+    [videoRenderer_ setFps: fps];
+    return true;
 }
 
 void IOSVideoOutput::renderVideoFrame(const yffplayer::VideoFrame& frame) {
-    [mVideoRenderer renderVideoFrame:frame];
+    [videoRenderer_ renderVideoFrame:frame];
 }
 
 void IOSVideoOutput::stop() {

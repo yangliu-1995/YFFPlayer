@@ -53,7 +53,6 @@ private:
     void audioOutputThread();
     void videoOutputThread();
     void notifyProgressChanged();
-    void syncClockIfNeeded(int64_t pts);
 
     std::unique_ptr<SyncManager> syncManager_;
     std::unique_ptr<Demuxer> demuxer_;
@@ -72,14 +71,17 @@ private:
     std::atomic<bool> running_{false};
     std::atomic<bool> paused_{false};
     std::atomic<int> droppedVideoFramesCount_{0};
-    std::atomic<float> playbackRate_{1.0f};      // 播放倍率
-    std::atomic<bool> requiresSyncClock_{true};  // 标记是否需要漂移同步
+    std::atomic<float> playbackRate_{1.0f};
     std::shared_ptr<PlayerCallback> callback_;
     std::unique_ptr<AudioFrameProcessor> audioProcessor_;
     std::unique_ptr<VideoFrameProcessor> videoProcessor_;
 
+    // video output timing
     double frameTimer_{0};
     double lastVideoPts_{0};  // 上一帧视频的PTS
+
+    // audio sync
+    bool firstAudioArrived_{false};
     std::atomic<float> audioPlaybackRateDelt_{0.0f};
 };
 }  // namespace yffplayer

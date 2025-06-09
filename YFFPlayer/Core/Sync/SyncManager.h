@@ -33,6 +33,8 @@ public:
 
     double computeVideoTargetDelay(double delay);
 
+    double getAudioDiff() const;
+
     void updateAudioTime(double pts, double duration);
 
     void updateVideoTime(double pts);
@@ -42,6 +44,8 @@ public:
     double getClockTime() const;
 
     void setMaxFrameDuration(float duration);
+
+    SyncType getSyncType() const { return type_; }
 
 private:
     void syncClockToSlave(std::shared_ptr<Clock> clock, std::shared_ptr<Clock> slaveClock);

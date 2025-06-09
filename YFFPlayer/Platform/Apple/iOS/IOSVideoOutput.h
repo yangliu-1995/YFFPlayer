@@ -15,5 +15,5 @@ public:
     void resume() override;
 
 private:
-    id<VideoRendererProtocol> mVideoRenderer;
+    id<VideoRendererProtocol> videoRenderer_{nullptr};
 };

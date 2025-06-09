@@ -45,8 +45,6 @@ bool AudioDecoder::open(AVCodecParameters* codecParams, AVRational timeBase) {
         return false;
     }
 
-    // 移除重采样逻辑，decoder只负责解码
-
     return true;
 }
 
@@ -163,6 +161,15 @@ void AudioDecoder::decodeLoop() {
                     frameClone->pts = static_cast<int64_t>(frameClone->best_effort_timestamp *
                                                            av_q2d(timeBase_) * 1000);
                 }
+
+                int64_t duration = 0;
+                if (frameClone->nb_samples > 0 && frameClone->sample_rate > 0) {
+                    duration = static_cast<int64_t>(
+                        (double)frameClone->nb_samples / (double)frameClone->sample_rate * 1000
+                    );
+                }
+                frameClone->duration = duration;
+
                 frameQueue_->push(std::make_shared<FrameHandle>(frameClone));
             } else if (ret == AVERROR(EAGAIN)) {
                 break;  // 需要更多输入
