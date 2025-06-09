@@ -15,11 +15,13 @@ class ViewController: UIViewController {
         return player
     }()
 
+    @IBOutlet weak var urlField: UITextField!
+    
     @IBOutlet weak var pV: UIView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        urlField.clearButtonMode = .whileEditing
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -33,6 +35,15 @@ class ViewController: UIViewController {
         player.playVideo(with: url)
     }
 
+    @IBAction func playURLAction(_ sender: Any) {
+        view.endEditing(true)
+        guard let urlString = urlField.text,
+              let url = URL(string: urlString) else {
+            return
+        }
+        player.playVideo(with: url)
+    }
+    
     @IBAction func pauseAct(_ sender: Any) {
         player.pause()
     }

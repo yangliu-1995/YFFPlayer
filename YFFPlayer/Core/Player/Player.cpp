@@ -325,6 +325,8 @@ void Player::audioOutputThread() {
             } else {
                 playbackRateDelt = 0.05 * sign;
             }
+
+            LogInfo << "audio rate delt: " << playbackRateDelt;
             if (audioProcessor_) {
                 audioProcessor_->setPlaybackRate(playbackRate_ + playbackRateDelt);
             }
@@ -383,7 +385,11 @@ void Player::videoOutputThread() {
             }
             videoOutput_->renderVideoFrame(*videoFrame);
             frameTimer_ += delay;
-            if (delay > 0 && time - frameTimer_ > kAVSyncThresholdMax) frameTimer_ = time;
+            if (delay > 0 && time - frameTimer_ > kAVSyncThresholdMax) {
+                LogInfo << "should update frame timer, original: " << frameTimer_
+                        << ", new: " << time;
+                frameTimer_ = time;
+            }
             lastVideoPts_ = pts;
             syncManager_->updateVideoTime(pts / 1000.0);
         }

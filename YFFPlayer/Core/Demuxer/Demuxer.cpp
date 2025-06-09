@@ -30,7 +30,6 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     AVDictionary* options = nullptr;
 
     av_dict_set(&options, "fflags", "nobuffer", 0);
-
     av_dict_set(&options, "probesize", "32", 0);
     av_dict_set(&options, "analyzeduration", "100000", 0);
     av_dict_set(&options, "rtmp_buffer", "100", 0);

@@ -215,6 +215,7 @@ typedef struct {
 
         self.currentFormat = frame.format_;
         self.videoSize = CGSizeMake(frame.width_, frame.height_);
+        self.metalLayer.drawableSize = self.videoSize;
 
         BOOL shouldDisplay = YES;
 
@@ -434,7 +435,7 @@ typedef struct {
         if (!commandBuffer) {
             return;
         }
-        
+
         MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
         renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
         renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
