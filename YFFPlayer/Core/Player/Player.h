@@ -53,6 +53,7 @@ private:
     void audioOutputThread();
     void videoOutputThread();
     void notifyProgressChanged();
+    int synchronizeAudio(int nbSamples);  // 音频同步方法
 
     std::unique_ptr<SyncManager> syncManager_;
     std::unique_ptr<Demuxer> demuxer_;

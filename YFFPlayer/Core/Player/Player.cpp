@@ -407,6 +407,35 @@ void Player::setPlaybackRate(float rate) {
 
 float Player::getPlaybackRate() const { return playbackRate_.load(); }
 
+int Player::synchronizeAudio(int nbSamples) {
+    int wantedNbSamples = nbSamples;
+    if (syncManager_->getSyncType() != SyncManager::SyncType::Audio) {
+        double audioDiff = syncManager_->getAudioDiff();
+
+        const double syncThreshold = 0.040;
+        const double maxCorrection = 0.1;
+
+        if (fabs(audioDiff) < syncThreshold) {
+            return nbSamples;
+        }
+
+        int sampleRate = audioDecoder_->getSampleRate();
+        int correctionSamples = static_cast<int>(audioDiff * sampleRate);
+
+        int maxCorrectionSamples = static_cast<int>(nbSamples * maxCorrection);
+        correctionSamples = std::max(-maxCorrectionSamples,
+                                     std::min(maxCorrectionSamples, correctionSamples));
+
+        wantedNbSamples = nbSamples + correctionSamples;
+
+        wantedNbSamples = std::max(nbSamples / 2, std::min(nbSamples * 2, wantedNbSamples));
+
+        LogInfo << "Audio sync: diff=" << audioDiff << "s, samples=" << nbSamples
+        << " -> " << wantedNbSamples << " (correction=" << correctionSamples << ")";
+    }
+    return wantedNbSamples;
+}
+
 void Player::onDemuxStarted() {}
 void Player::onDemuxPaused() {}
 void Player::onDemuxResumed() {}

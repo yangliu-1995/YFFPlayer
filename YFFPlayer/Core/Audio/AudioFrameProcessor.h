@@ -31,7 +31,7 @@ public:
     void setPitch(float pitch = 1.0f);  // 可选：保持音调不变
 
     std::unique_ptr<AudioFrame> processAudioFrame(const std::shared_ptr<FrameHandle> frameHandle,
-                                                  double delay);
+                                                  int wantedNbSamples);
 
     void flush();
     void reset();
@@ -55,7 +55,7 @@ private:
     void floatToShort(const float* input, short* output, size_t samples);
     void shortToFloat(const short* input, float* output, size_t samples);
 
-    std::unique_ptr<AudioFrame> reSampleAVFrame(const AVFrame& frame);
+    std::unique_ptr<AudioFrame> reSampleAVFrame(const AVFrame& frame, int wantedNbSamples);
 };
 
 }  // namespace yffplayer

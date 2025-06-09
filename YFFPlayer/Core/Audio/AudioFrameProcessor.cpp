@@ -68,13 +68,13 @@ void AudioFrameProcessor::setPitch(float pitch) {
 }
 
 std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(
-    const std::shared_ptr<FrameHandle> frameHandle, double delay) {
+    const std::shared_ptr<FrameHandle> frameHandle, int wantedNbSamples) {
     AVFrame* frame = frameHandle->getFrame();
     SwrContext* swrContext = resampleContext_->getSwrContext();
     if (!swrContext) {
         return nullptr;
     }
-    auto audioFrame = reSampleAVFrame(*frame);
+    auto audioFrame = reSampleAVFrame(*frame, wantedNbSamples);
     if (std::abs(currentRate_ - 1.0f) < 0.01f) {
         return audioFrame;
     }
@@ -106,7 +106,7 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(
     return outputFrame;
 }
 
-std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame) {
+std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& frame, int wantedNbSamples) {
     int inSampleRate = frame.sample_rate;
     int outSampleRate = resampleContext_->getOutSampleRate();
     int outChannels = resampleContext_->getOutNbChannels();
@@ -118,10 +118,11 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
     }
 
     int inChannels = frame.ch_layout.nb_channels;
+    int inNbSamples = frame.nb_samples;
 
     // 直接拷贝无需重采样
     if (inSampleRate == outSampleRate && outSampleFmt == frame.format &&
-        inChannels == outChannels) {
+        inChannels == outChannels && wantedNbSamples == inNbSamples) {
         int bufferSize =
             av_samples_get_buffer_size(nullptr, outChannels, frame.nb_samples, outSampleFmt, 0);
         if (bufferSize < 0) {
@@ -136,6 +137,15 @@ std::unique_ptr<AudioFrame> AudioFrameProcessor::reSampleAVFrame(const AVFrame& 
 
         return std::make_unique<AudioFrame>(frame.pts, duration, outSampleRate, outChannels,
                                             frame.nb_samples, std::move(audioBuffer));
+    }
+
+    // 如果wantedNbSamples与实际样本数不一致，使用swr_set_compensation进行补偿
+    if (wantedNbSamples != inNbSamples) {
+        int compensation = wantedNbSamples - inNbSamples;
+        int ret = swr_set_compensation(swrContext, compensation, wantedNbSamples);
+        if (ret < 0) {
+            LogInfo << "swr_set_compensation failed: " << ret;
+        }
     }
 
     // 重采样
