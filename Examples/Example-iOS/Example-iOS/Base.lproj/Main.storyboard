@@ -25,18 +25,38 @@
                                 </constraints>
                             </view>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="Mid-tm-U0X">
-                                <rect key="frame" x="68.666666666666686" y="310" width="256" height="103"/>
+                                <rect key="frame" x="16" y="310" width="361" height="133"/>
                                 <subviews>
+                                    <stackView opaque="NO" contentMode="scaleToFill" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="nNy-eO-loj">
+                                        <rect key="frame" x="0.0" y="0.0" width="361" height="30"/>
+                                        <subviews>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" horizontalCompressionResistancePriority="1000" text="--:--" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="WGG-kI-xhe">
+                                                <rect key="frame" x="0.0" y="0.0" width="26.333333333333332" height="30"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="12"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <slider opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" minValue="0.0" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="xwD-a7-cQJ">
+                                                <rect key="frame" x="32.333333333333343" y="0.0" width="296.33333333333326" height="31"/>
+                                            </slider>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" horizontalCompressionResistancePriority="1000" text="--:--" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="s4d-tk-10a">
+                                                <rect key="frame" x="334.66666666666669" y="0.0" width="26.333333333333314" height="30"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="12"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                        </subviews>
+                                    </stackView>
                                     <stackView opaque="NO" contentMode="scaleToFill" distribution="fillEqually" translatesAutoresizingMaskIntoConstraints="NO" id="Zr2-Wp-0Ha">
-                                        <rect key="frame" x="0.0" y="0.0" width="256" height="34.333333333333336"/>
+                                        <rect key="frame" x="0.0" y="30.000000000000004" width="361" height="34.333333333333343"/>
                                         <subviews>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="UVP-6S-cQn">
-                                                <rect key="frame" x="0.0" y="0.0" width="85.333333333333329" height="34.333333333333336"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="90.333333333333329" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="Play"/>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="eRm-MV-qbs">
-                                                <rect key="frame" x="85.333333333333343" y="0.0" width="85.333333333333343" height="34.333333333333336"/>
+                                                <rect key="frame" x="90.333333333333343" y="0.0" width="90.333333333333343" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="Pause"/>
                                                 <connections>
@@ -44,20 +64,28 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="SSg-yR-SkT">
-                                                <rect key="frame" x="170.66666666666669" y="0.0" width="85.333333333333314" height="34.333333333333336"/>
+                                                <rect key="frame" x="180.66666666666666" y="0.0" width="89.999999999999972" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="Resume"/>
                                                 <connections>
                                                     <action selector="resumeAct:" destination="BYZ-38-t0r" eventType="touchUpInside" id="vZc-JB-b6F"/>
                                                 </connections>
                                             </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Dmv-tJ-HWA">
+                                                <rect key="frame" x="270.66666666666669" y="0.0" width="90.333333333333314" height="34.333333333333336"/>
+                                                <state key="normal" title="Button"/>
+                                                <buttonConfiguration key="configuration" style="plain" title="Stop"/>
+                                                <connections>
+                                                    <action selector="stopAct:" destination="BYZ-38-t0r" eventType="touchUpInside" id="C20-dR-b5K"/>
+                                                </connections>
+                                            </button>
                                         </subviews>
                                     </stackView>
                                     <stackView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="HGO-2D-Hfo">
-                                        <rect key="frame" x="0.0" y="34.333333333333314" width="256" height="34.333333333333343"/>
+                                        <rect key="frame" x="0.0" y="64.333333333333314" width="361" height="34.333333333333343"/>
                                         <subviews>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="csZ-ah-8hP">
-                                                <rect key="frame" x="0.0" y="0.0" width="64" height="34.333333333333336"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="90.333333333333329" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="0.5x"/>
                                                 <connections>
@@ -65,7 +93,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="vOh-tL-1DJ">
-                                                <rect key="frame" x="63.999999999999986" y="0.0" width="64" height="34.333333333333336"/>
+                                                <rect key="frame" x="90.333333333333343" y="0.0" width="90.333333333333343" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="1.0x"/>
                                                 <connections>
@@ -73,7 +101,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="JY2-Gy-hGq">
-                                                <rect key="frame" x="128" y="0.0" width="64" height="34.333333333333336"/>
+                                                <rect key="frame" x="180.66666666666666" y="0.0" width="89.999999999999972" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="1.5x"/>
                                                 <connections>
@@ -81,7 +109,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="NJm-Kd-Bf3">
-                                                <rect key="frame" x="192" y="0.0" width="64" height="34.333333333333336"/>
+                                                <rect key="frame" x="270.66666666666669" y="0.0" width="90.333333333333314" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="2.0x"/>
                                                 <connections>
@@ -91,18 +119,15 @@
                                         </subviews>
                                     </stackView>
                                     <stackView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="grA-zb-BCe">
-                                        <rect key="frame" x="0.0" y="68.666666666666686" width="256" height="34.333333333333343"/>
+                                        <rect key="frame" x="0.0" y="98.666666666666686" width="361" height="34.333333333333343"/>
                                         <subviews>
                                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="url to play" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="UPN-Va-x8S">
-                                                <rect key="frame" x="0.0" y="0.0" width="176" height="34.333333333333336"/>
-                                                <constraints>
-                                                    <constraint firstAttribute="width" constant="176.33000000000001" id="oHk-qR-yCR"/>
-                                                </constraints>
+                                                <rect key="frame" x="0.0" y="0.0" width="281.33333333333331" height="34.333333333333336"/>
                                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                                 <textInputTraits key="textInputTraits"/>
                                             </textField>
                                             <button opaque="NO" contentMode="scaleToFill" horizontalCompressionResistancePriority="1000" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fbf-KG-3TT">
-                                                <rect key="frame" x="176" y="0.0" width="80" height="34.333333333333336"/>
+                                                <rect key="frame" x="281.33333333333331" y="0.0" width="79.666666666666686" height="34.333333333333336"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="Play url"/>
                                                 <connections>
@@ -118,6 +143,8 @@
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="gm9-9n-Wf3" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" id="2GL-Ko-9Qc"/>
+                            <constraint firstItem="Mid-tm-U0X" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" constant="16" id="KyS-sf-nUw"/>
+                            <constraint firstAttribute="trailing" secondItem="Mid-tm-U0X" secondAttribute="trailing" constant="16" id="LAw-At-PDx"/>
                             <constraint firstItem="gm9-9n-Wf3" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="PA0-Nk-4N5"/>
                             <constraint firstItem="gm9-9n-Wf3" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="TUb-TZ-p3u"/>
                             <constraint firstItem="Mid-tm-U0X" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="xaU-gg-hMa"/>
@@ -125,8 +152,11 @@
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="currentTimeLabel" destination="WGG-kI-xhe" id="pAV-gW-9fL"/>
+                        <outlet property="durationLabel" destination="s4d-tk-10a" id="Iy9-mb-YpC"/>
                         <outlet property="pV" destination="gm9-9n-Wf3" id="YMx-xB-7UT"/>
                         <outlet property="playButton" destination="UVP-6S-cQn" id="w1z-ta-eeU"/>
+                        <outlet property="slider" destination="xwD-a7-cQJ" id="717-Q3-V8n"/>
                         <outlet property="urlField" destination="UPN-Va-x8S" id="SIl-zV-UdQ"/>
                     </connections>
                 </viewController>

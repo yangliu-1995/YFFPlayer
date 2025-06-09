@@ -70,10 +70,6 @@ void AudioFrameProcessor::setPitch(float pitch) {
 std::unique_ptr<AudioFrame> AudioFrameProcessor::processAudioFrame(
     const std::shared_ptr<FrameHandle> frameHandle, int wantedNbSamples) {
     AVFrame* frame = frameHandle->getFrame();
-    SwrContext* swrContext = resampleContext_->getSwrContext();
-    if (!swrContext) {
-        return nullptr;
-    }
     auto audioFrame = reSampleAVFrame(*frame, wantedNbSamples);
     if (std::abs(currentRate_ - 1.0f) < 0.01f) {
         return audioFrame;

@@ -27,6 +27,7 @@ private:
 
 @interface YFFPlayer ()<PlayerCoreDelegate> {
     std::shared_ptr<yffplayer::Player> _player;
+    yffplayer::MediaInfo _mediaInfo;
 }
 
 @property (nonatomic, strong) UIView *videoRenderView;
@@ -47,17 +48,17 @@ private:
 }
 
 - (void)playVideoWithURL:(NSURL *)url {
-    yffplayer::MediaInfo mediaInfo;
     NSString *urlStr;
     if ([url isFileURL]) {
         urlStr = url.path;
     } else {
         urlStr = url.absoluteString;
     }
-    if (_player->open(urlStr.UTF8String, mediaInfo)) {
+    if (_player->open(urlStr.UTF8String, _mediaInfo)) {
+        _isLiveStream = _mediaInfo.isLiveStream_;
         NSLog(@"Media Info, hasAudio: %d, sampleRate: %d, channels: %d, hasVideo: %d, width: %d, height: %d, frameRate: %d",
-              mediaInfo.hasAudio_, mediaInfo.audioSampleRate_, mediaInfo.audioChannels_,
-              mediaInfo.hasVideo_, mediaInfo.videoWidth_, mediaInfo.videoHeight_, mediaInfo.videoFrameRate_);
+              _mediaInfo.hasAudio_, _mediaInfo.audioSampleRate_, _mediaInfo.audioChannels_,
+              _mediaInfo.hasVideo_, _mediaInfo.videoWidth_, _mediaInfo.videoHeight_, _mediaInfo.videoFrameRate_);
         _player->start();
     }
 }
@@ -75,8 +76,16 @@ private:
 }
 
 - (void)testSeek {
-//    _player->seek(120 * 1000);
+    //    _player->seek(120 * 1000);
     _player->setPlaybackRate(2);
+}
+
+- (void)seekTo:(float)position {
+    if (_mediaInfo.isLiveStream_) {
+        return;
+    }
+    double targetPosition = position * _mediaInfo.durationMs_;
+    _player->seek(static_cast<int64_t>(targetPosition));
 }
 
 - (void)setPlaybackRate:(float)rate {
@@ -84,10 +93,12 @@ private:
 }
 
 - (void)onProgress:(int64_t)current total:(int64_t)total {
-//    if (total == 0) {
-//        return;
-//    }
-//    NSLog(@"progress: %f", ((double)current) / (((double)total)));
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.progressHandler) {
+            return;
+        }
+        self.progressHandler(current, total);
+    });
 }
 
 @end

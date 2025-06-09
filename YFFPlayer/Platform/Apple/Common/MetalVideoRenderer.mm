@@ -59,7 +59,8 @@ typedef struct {
         _currentFormat = yffplayer::PixelFormat::YUV420P;
         _videoSize = CGSizeZero;
         _renderQueue = dispatch_queue_create("com.yffplayer.render.video", DISPATCH_QUEUE_SERIAL);
-        
+        _metalLayer = static_cast<CAMetalLayer*>(self.layer);
+
         [view addSubview:self];
         self.translatesAutoresizingMaskIntoConstraints = NO;
         [NSLayoutConstraint activateConstraints:@[
@@ -82,10 +83,6 @@ typedef struct {
         [self setupUniformBuffer];
     }
     return self;
-}
-
-- (CAMetalLayer *)metalLayer {
-    return static_cast<CAMetalLayer*>(self.layer);
 }
 
 - (void)setupMetal {

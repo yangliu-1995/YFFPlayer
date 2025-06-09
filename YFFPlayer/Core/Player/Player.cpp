@@ -84,12 +84,13 @@ bool Player::open(const std::string& url, MediaInfo& mediaInfo) {
         }
     }
     syncManager_->setMaxFrameDuration(mediaInfo_.isTsDiscont_ ? 10.0 : 3600.0);
+    syncManager_ = std::make_unique<SyncManager>(SyncManager::SyncType::External);
     return true;
 }
 
 void Player::start() {
     running_ = true;
-    lastVideoPts_ = NAN;
+    lastVideoDuration_ = NAN;
     demuxer_->start();
     if (mediaInfo_.hasAudio_) {
         audioDecoder_->start();
@@ -172,8 +173,11 @@ void Player::stop() {
 }
 
 void Player::notifyProgressChanged() {
+    if (seeking_) {
+        return;
+    }
     if (callback_) {
-        callback_->onProgress(syncManager_->getClockTime(), mediaInfo_.durationMs_);
+        callback_->onProgress(syncManager_->getClockTime() * 1000, mediaInfo_.durationMs_);
     }
 }
 
@@ -233,7 +237,7 @@ void Player::resume() {
 
 bool Player::seek(int64_t positionMs) {
     if (!running_) return false;
-
+    seeking_ = true;
     pause();  // 暂停所有模块，避免数据冲突
 
     // 设置所有队列进入 abort 状态以终止阻塞
@@ -251,8 +255,12 @@ bool Player::seek(int64_t positionMs) {
     // 通知解复用器跳转
     if (!demuxer_->seek(positionMs)) {
         resume();  // 恢复播放状态
+        seeking_ = false;
         return false;
     }
+
+    lastVideoDuration_ = NAN;
+    frameTimer_ = 0;
 
     // 刷新解码器内部状态（丢弃之前缓冲的帧）
     if (audioDecoder_) audioDecoder_->flush();
@@ -270,6 +278,7 @@ bool Player::seek(int64_t positionMs) {
     videoFrameQueue_->start();
 
     resume();  // 恢复播放
+    seeking_ = false;
     return true;
 }
 
@@ -285,7 +294,9 @@ void Player::audioOutputThread() {
     audioOutput_->setPlaybackCallback([this](int64_t pts, int64_t duration) {
         int64_t adjustedDuration = duration / playbackRate_;
         syncManager_->updateAudioTime(pts / 1000.0, adjustedDuration / 1000.0);
-        notifyProgressChanged();
+        if (syncManager_->getSyncType() == SyncManager::SyncType::Audio) {
+            notifyProgressChanged();
+        }
     });
 
     audioOutput_->start();
@@ -367,15 +378,14 @@ void Player::videoOutputThread() {
 
         if (videoFrame) {
             int64_t pts = videoFrame->pts_;
-            if (std::isnan(lastVideoPts_)) {
-                lastVideoPts_ = pts;
+            if (std::isnan(lastVideoDuration_)) {
+                lastVideoDuration_ = 0;
                 syncManager_->updateVideoTime(pts / 1000.0);
             }
-            double lastDuration = pts - lastVideoPts_;
-            double delay = syncManager_->computeVideoTargetDelay(lastDuration / 1000.0);
+            double delay = syncManager_->computeVideoTargetDelay(lastVideoDuration_ / 1000.0);
             double time = av_gettime_relative() / 1000000.0;
             double sleepTime = delay;
-            LogInfo << "last duration: " << lastDuration << ", sleep time: " << sleepTime;
+            LogInfo << "last duration: " << lastVideoDuration_ << ", sleep time: " << sleepTime;
             if (time < frameTimer_ + delay) {
                 sleepTime = FFMIN(frameTimer_ + delay - time, sleepTime);
                 LogInfo << "final sleep time" << sleepTime;
@@ -388,8 +398,11 @@ void Player::videoOutputThread() {
                         << ", new: " << time;
                 frameTimer_ = time;
             }
-            lastVideoPts_ = pts;
+            lastVideoDuration_ = videoFrame->duration_;
             syncManager_->updateVideoTime(pts / 1000.0);
+            if (syncManager_->getSyncType() != SyncManager::SyncType::Audio) {
+                notifyProgressChanged();
+            }
         }
     }
 }

@@ -5,7 +5,13 @@
 #import <UIKit/UIKit.h>
 #endif
 
+typedef void(^PlayerProgressHandler)(NSInteger current, NSInteger duration);
+
 @interface YFFPlayer : NSObject
+
+@property(nonatomic, strong) PlayerProgressHandler progressHandler;
+
+@property(nonatomic, readonly) BOOL isLiveStream;
 
 - (instancetype)initWithVideoRenderView:(UIView *)videoRenderView;
 
@@ -19,7 +25,9 @@
 
 - (void)setPlaybackRate:(float)rate;
 
-//- (void)play;
+- (void)stop;
+
+- (void)seekTo:(float)position;
 
 @end
 

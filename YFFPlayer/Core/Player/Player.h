@@ -67,10 +67,10 @@ private:
     std::shared_ptr<VideoOutput> videoOutput_;
     std::thread audioOutputThread_;
     std::thread videoOutputThread_;
-    std::thread stopThread_;
     MediaInfo mediaInfo_;
     std::atomic<bool> running_{false};
     std::atomic<bool> paused_{false};
+    std::atomic<bool> seeking_{false};
     std::atomic<int> droppedVideoFramesCount_{0};
     std::atomic<float> playbackRate_{1.0f};
     std::shared_ptr<PlayerCallback> callback_;
@@ -79,7 +79,7 @@ private:
 
     // video output timing
     double frameTimer_{0};
-    double lastVideoPts_{0};  // 上一帧视频的PTS
+    double lastVideoDuration_{0};  // 上一帧视频的PTS
 
     // audio sync
     bool firstAudioArrived_{false};

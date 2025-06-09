@@ -16,11 +16,19 @@ class ViewController: UIViewController {
         return player
     }()
 
+    @IBOutlet weak var slider: UISlider!
+
     @IBOutlet weak var playButton: UIButton!
 
     @IBOutlet weak var urlField: UITextField!
 
     @IBOutlet weak var pV: UIView!
+
+    @IBOutlet weak var currentTimeLabel: UILabel!
+
+    @IBOutlet weak var durationLabel: UILabel!
+
+    var isUserDraggingSlider = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -48,10 +56,45 @@ class ViewController: UIViewController {
 
         playButton.menu = UIMenu(children: actions)
         playButton.showsMenuAsPrimaryAction = true
+
+        player.progressHandler = { [weak self] current, duration in
+            guard let self else {
+                return
+            }
+            if (self.player.isLiveStream) {
+                self.currentTimeLabel.text = "Live"
+                self.durationLabel.text = formatMilliseconds(current)
+                if !self.isUserDraggingSlider {
+                    self.slider.value = 1
+                }
+            } else {
+                self.currentTimeLabel.text = formatMilliseconds(current)
+                self.durationLabel.text = formatMilliseconds(duration)
+                if !self.isUserDraggingSlider {
+                    self.slider.value = Float(current) / Float(duration)
+                }
+            }
+        }
+
+        slider.addTarget(self, action: #selector(sliderTouchDown), for: .touchDown)
+        slider.addTarget(self, action: #selector(sliderTouchUp), for: [.touchUpInside, .touchUpOutside])
+        slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
     }
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesBegan(touches, with: event)
+    func formatMilliseconds(_ milliseconds: Int) -> String {
+        let totalSeconds = milliseconds / 1000
+        //        let ms = milliseconds % 1000
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            // 显示 hh:mm:ss.SSS
+            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            // 显示 mm:ss.SSS（省略小时）
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
     }
 
     @IBAction func playURLAction(_ sender: Any) {
@@ -85,6 +128,30 @@ class ViewController: UIViewController {
 
     @IBAction func rate_20(_ sender: Any) {
         player.setPlaybackRate(2.0)
+    }
+
+    @IBAction func stopAct(_ sender: Any) {
+        player.stop()
+    }
+
+    @objc func sliderTouchDown(_ sender: UISlider) {
+        isUserDraggingSlider = true
+    }
+
+    @objc func sliderTouchUp(_ sender: UISlider) {
+        isUserDraggingSlider = false
+        let seekTime = sender.value
+        seek(to: seekTime)
+    }
+
+    @objc func sliderValueChanged(_ sender: UISlider) {
+        // 可选：更新 label 等
+        print("拖动中 value: \(sender.value)")
+    }
+
+    func seek(to time: Float) {
+        print("🎯 执行 seek 到: \(time)")
+        player.seek(to: time)
     }
 
     private func showFilePicker() {
