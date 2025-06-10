@@ -61,13 +61,16 @@ bool Demuxer::open(const std::string& url, MediaInfo& mediaInfo) {
     AVDictionary* options = nullptr;
 
     av_dict_set(&options, "fflags", "nobuffer", 0);
-    av_dict_set(&options, "probesize", "32", 0);
+    av_dict_set(&options, "probesize", "1024", 0);
     av_dict_set(&options, "analyzeduration", "100000", 0);
     av_dict_set(&options, "rtmp_buffer", "100", 0);
     av_dict_set(&options, "rtmp_live", "live", 0);
     av_dict_set(&options, "flush_packets", "1", 0);
 
-    av_dict_set(&options, "timeout", "500000", 0); // 500ms 超时
+    av_dict_set(&options, "timeout", "500000", 0);
+    av_dict_set(&options, "stimeout", "500000", 0); // socket timeout（libav）
+    av_dict_set(&options, "http_timeout", "500000", 0); // 对 HTTP 更有效
+    
     av_dict_set(&options, "reconnect", "1", 0); // 启用自动重连
     av_dict_set(&options, "reconnect_streamed", "1", 0);
     av_dict_set(&options, "reconnect_delay_max", "2", 0); // 最大重连延迟 2 秒
